@@ -46,6 +46,7 @@ export interface Config {
     tasks: {
       syncLeagues: TaskSyncLeagues;
       testJobs: TaskTestJobs;
+      syncTeams: TaskSyncTeams;
       inline: {
         input: unknown;
         output: unknown;
@@ -210,16 +211,97 @@ export interface Match {
 export interface Team {
   id: number;
   name: string;
-  country_id: number;
   logo_path?: string | null;
-  short_code?: string | null;
-  founded?: number | null;
-  coach?: string | null;
+  country_id: number;
+  coaches?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   players?:
     | {
-        player_id?: number | null;
-        id?: string | null;
-      }[]
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  latest?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  upcoming?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  seasons?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  activeseasons?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  statistics?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  trophies?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  socials?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  rankings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
     | null;
   updatedAt: string;
   createdAt: string;
@@ -276,7 +358,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'syncLeagues' | 'testJobs';
+        taskSlug: 'inline' | 'syncLeagues' | 'testJobs' | 'syncTeams';
         taskID: string;
         input?:
           | {
@@ -309,7 +391,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'syncLeagues' | 'testJobs') | null;
+  taskSlug?: ('inline' | 'syncLeagues' | 'testJobs' | 'syncTeams') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -470,17 +552,18 @@ export interface MatchesSelect<T extends boolean = true> {
 export interface TeamsSelect<T extends boolean = true> {
   id?: T;
   name?: T;
-  country_id?: T;
   logo_path?: T;
-  short_code?: T;
-  founded?: T;
-  coach?: T;
-  players?:
-    | T
-    | {
-        player_id?: T;
-        id?: T;
-      };
+  country_id?: T;
+  coaches?: T;
+  players?: T;
+  latest?: T;
+  upcoming?: T;
+  seasons?: T;
+  activeseasons?: T;
+  statistics?: T;
+  trophies?: T;
+  socials?: T;
+  rankings?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -563,6 +646,25 @@ export interface TaskTestJobs {
   input?: unknown;
   output: {
     testJobsOutput?: string | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncTeams".
+ */
+export interface TaskSyncTeams {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
 }
 /**

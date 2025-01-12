@@ -15,6 +15,7 @@ import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
 
 import { syncLeaguesHandler, testJobsHandler } from './tasks/syncLeagues'
+import { syncTeamsHandler } from './tasks/syncTeams'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -77,6 +78,20 @@ export default buildConfig({
         onFail: () => {
           console.log('🚀 testJobs ~ onFailure ~ Something pooped!:')
         },
+      },
+      {
+        slug: 'syncTeams',
+        handler: syncTeamsHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
       },
     ],
   },

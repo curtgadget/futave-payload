@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload'
 
 export const Teams: CollectionConfig = {
   slug: 'teams',
@@ -14,35 +14,63 @@ export const Teams: CollectionConfig = {
       required: true,
     },
     {
+      name: 'logo_path',
+      type: 'text',
+    },
+    {
       name: 'country_id',
       type: 'number',
       required: true,
     },
     {
-      name: 'logo_path',
-      type: 'text',
-    },
-    {
-      name: 'short_code',
-      type: 'text',
-    },
-    {
-      name: 'founded',
-      type: 'number',
-    },
-    {
-      name: 'coach',
-      type: 'text',
+      name: 'coaches',
+      type: 'json',
+      required: false,
     },
     {
       name: 'players',
-      type: 'array',
-      fields: [
-        {
-          name: 'player_id',
-          type: 'number',
-        },
-      ],
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'latest',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'upcoming',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'seasons',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'activeseasons',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'statistics',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'trophies',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'socials',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'rankings',
+      type: 'json',
+      required: false,
     },
   ],
 }
