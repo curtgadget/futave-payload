@@ -12,6 +12,17 @@ function createStats(): SyncStats {
   }
 }
 
+function formatError(error: unknown): { message: string; stack?: string; cause?: unknown } {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause,
+    }
+  }
+  return { message: String(error) }
+}
+
 async function processBatch<T extends { id: number }>(
   batch: T[],
   stats: SyncStats,
@@ -20,9 +31,10 @@ async function processBatch<T extends { id: number }>(
 ): Promise<void> {
   const batchPromises = batch.map(async (item) => {
     try {
-      options.validateData(item)
+      // Transform
       const transformedData = options.transformData(item)
 
+      // Check if exists
       const existing = await payload.find({
         collection: options.collection,
         where: { id: { equals: item.id } },
@@ -44,10 +56,17 @@ async function processBatch<T extends { id: number }>(
       }
     } catch (error) {
       stats.failed++
+      const formattedError = formatError(error)
+
       stats.errors.push({
         id: item.id,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        data: item,
+        error: formattedError.message,
+        data: {
+          originalItem: item,
+          errorDetails: formattedError,
+          errorStack: formattedError.stack,
+          errorCause: formattedError.cause,
+        },
       })
     }
   })
@@ -67,14 +86,45 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
     const payload = await getPayload({ config })
 
     try {
-      const items = await syncOptions.fetchData()
-      const batches: T[][] = []
+      payload.logger.info({
+        msg: `Starting ${syncOptions.collection} sync`,
+        collection: syncOptions.collection,
+      })
 
+      let items: T[]
+      try {
+        items = await syncOptions.fetchData()
+        payload.logger.info({
+          msg: `Fetched ${items.length} ${syncOptions.collection}`,
+          collection: syncOptions.collection,
+          itemCount: items.length,
+        })
+      } catch (fetchError) {
+        throw Object.assign(new Error('Failed to fetch data'), {
+          cause: fetchError,
+        })
+      }
+
+      const batches: T[][] = []
       for (let i = 0; i < items.length; i += syncOptions.batchSize) {
         batches.push(items.slice(i, i + syncOptions.batchSize))
       }
 
-      for (const batch of batches) {
+      payload.logger.info({
+        msg: `Processing ${syncOptions.collection} in batches`,
+        collection: syncOptions.collection,
+        batchCount: batches.length,
+        batchSize: syncOptions.batchSize,
+      })
+
+      for (const [index, batch] of batches.entries()) {
+        payload.logger.info({
+          msg: `Processing batch ${index + 1}/${batches.length}`,
+          collection: syncOptions.collection,
+          batchNumber: index + 1,
+          totalBatches: batches.length,
+          itemCount: batch.length,
+        })
         await processBatch(batch, stats, payload, syncOptions)
       }
 
@@ -85,19 +135,27 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
 
       payload.logger.info({
         msg: message,
+        collection: syncOptions.collection,
         stats: {
           created: stats.created,
           updated: stats.updated,
           failed: stats.failed,
           totalProcessed: stats.created + stats.updated + stats.failed,
           duration,
+          errorCount: stats.errors.length,
         },
       })
 
       if (stats.errors.length > 0) {
         payload.logger.warn({
           msg: `${syncOptions.collection} sync errors`,
-          errors: stats.errors,
+          collection: syncOptions.collection,
+          errorCount: stats.errors.length,
+          errors: stats.errors.map((error) => ({
+            itemId: error.id,
+            error: error.error,
+            details: error.data,
+          })),
         })
       }
 
@@ -108,9 +166,20 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
       }
     } catch (error) {
       stats.endTime = Date.now()
-      const message = error instanceof Error ? error.message : 'Unknown error occurred during sync'
+      const formattedError = formatError(error)
+      const message = `Failed to sync ${syncOptions.collection}: ${formattedError.message}`
 
-      payload.logger.error(`Failed to sync ${syncOptions.collection}:`, error)
+      payload.logger.error({
+        msg: message,
+        collection: syncOptions.collection,
+        error: formattedError,
+        stats: {
+          created: stats.created,
+          updated: stats.updated,
+          failed: stats.failed,
+          duration: stats.endTime - stats.startTime,
+        },
+      })
 
       return {
         success: false,

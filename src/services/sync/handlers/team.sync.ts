@@ -1,6 +1,6 @@
 import { SportmonksTeam } from '../../sportmonks/client/types'
 import { createTeamsEndpoint } from '../../sportmonks/client/endpoints/teams'
-import { transformTeam, validateTeam } from '../../sportmonks/transformers/team.transformer'
+import { transformTeam } from '../../sportmonks/transformers/team.transformer'
 import { createSyncService } from '../base.sync'
 import { SportmonksConfig } from '../../sportmonks/client/types'
 
@@ -11,7 +11,6 @@ export function createTeamSync(config: SportmonksConfig) {
     collection: 'teams',
     fetchData: () => teamsEndpoint.getAll(),
     transformData: transformTeam,
-    validateData: validateTeam,
     batchSize: 10,
   })
 }

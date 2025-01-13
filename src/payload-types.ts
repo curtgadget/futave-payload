@@ -45,8 +45,8 @@ export interface Config {
   jobs: {
     tasks: {
       syncLeagues: TaskSyncLeagues;
-      testJobs: TaskTestJobs;
       syncTeams: TaskSyncTeams;
+      syncMatches: TaskSyncMatches;
       inline: {
         input: unknown;
         output: unknown;
@@ -191,16 +191,155 @@ export interface League {
  */
 export interface Match {
   id: number;
+  sport_id: number;
   league_id: number | League;
   season_id: number;
+  stage_id: number;
   state_id: number;
-  venue_id?: number | null;
-  home_team_id: number;
-  away_team_id: number;
-  score: {
-    home_score: number;
-    away_score: number;
-  };
+  participants?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  scores?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  venue?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  state?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  league?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  season?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  stage?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  round?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  group?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  aggregate?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  statistics?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  events?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  periods?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  lineups?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  weatherreport?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -358,7 +497,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'syncLeagues' | 'testJobs' | 'syncTeams';
+        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches';
         taskID: string;
         input?:
           | {
@@ -391,7 +530,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'syncLeagues' | 'testJobs' | 'syncTeams') | null;
+  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -530,18 +669,27 @@ export interface LeaguesSelect<T extends boolean = true> {
  */
 export interface MatchesSelect<T extends boolean = true> {
   id?: T;
+  sport_id?: T;
   league_id?: T;
   season_id?: T;
+  stage_id?: T;
   state_id?: T;
-  venue_id?: T;
-  home_team_id?: T;
-  away_team_id?: T;
-  score?:
-    | T
-    | {
-        home_score?: T;
-        away_score?: T;
-      };
+  participants?: T;
+  scores?: T;
+  venue?: T;
+  state?: T;
+  league?: T;
+  season?: T;
+  stage?: T;
+  round?: T;
+  group?: T;
+  aggregate?: T;
+  statistics?: T;
+  events?: T;
+  periods?: T;
+  lineups?: T;
+  metadata?: T;
+  weatherreport?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -636,16 +784,17 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
  */
 export interface TaskSyncLeagues {
   input?: unknown;
-  output?: unknown;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "TaskTestJobs".
- */
-export interface TaskTestJobs {
-  input?: unknown;
   output: {
-    testJobsOutput?: string | null;
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
   };
 }
 /**
@@ -653,6 +802,25 @@ export interface TaskTestJobs {
  * via the `definition` "TaskSyncTeams".
  */
 export interface TaskSyncTeams {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncMatches".
+ */
+export interface TaskSyncMatches {
   input?: unknown;
   output: {
     message?: string | null;

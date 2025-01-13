@@ -91,6 +91,11 @@ export const Matches: CollectionConfig = {
       required: true,
     },
     {
+      name: 'sport_id',
+      type: 'number',
+      required: true,
+    },
+    {
       name: 'league_id',
       type: 'relationship',
       relationTo: 'leagues',
@@ -102,42 +107,95 @@ export const Matches: CollectionConfig = {
       required: true,
     },
     {
+      name: 'stage_id',
+      type: 'number',
+      required: true,
+    },
+    {
       name: 'state_id',
       type: 'number',
       required: true,
     },
+    // JSON fields for includes
     {
-      name: 'venue_id',
-      type: 'number',
+      name: 'participants',
+      type: 'json',
       required: false,
     },
     {
-      name: 'home_team_id',
-      type: 'number',
-      required: true,
+      name: 'scores',
+      type: 'json',
+      required: false,
     },
     {
-      name: 'away_team_id',
-      type: 'number',
-      required: true,
+      name: 'venue',
+      type: 'json',
+      required: false,
     },
     {
-      name: 'score',
-      type: 'group',
-      fields: [
-        {
-          name: 'home_score',
-          type: 'number',
-          required: true,
-          defaultValue: 0,
-        },
-        {
-          name: 'away_score',
-          type: 'number',
-          required: true,
-          defaultValue: 0,
-        },
-      ],
+      name: 'state',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'league',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'season',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'stage',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'round',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'group',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'aggregate',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'statistics',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'events',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'periods',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'lineups',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'metadata',
+      type: 'json',
+      required: false,
+    },
+    {
+      name: 'weatherreport',
+      type: 'json',
+      required: false,
     },
   ],
 }

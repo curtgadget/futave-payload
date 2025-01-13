@@ -54,17 +54,35 @@ export interface SportmonksTeam {
 
 export interface SportmonksMatch {
   id: number
-  name: string
+  sport_id: number
   league_id: number
   season_id: number
-  stage_id?: number
-  round_id?: number
-  group_id?: number
-  aggregate_id?: number
-  venue_id?: number
-  referee_id?: number
-  localteam_id: number
-  visitorteam_id: number
+  stage_id: number
+  group_id: number | null
+  aggregate_id: number | null
+  round_id: number | null
+  state_id: number
+  venue_id: number | null
+  name: string | null
+  starting_at: string | null
+  result_info: string | null
+  leg: string
+  details: string | null
+  length: number | null
   participants?: unknown
   scores?: unknown
+  venue?: unknown
+  state?: unknown
+  league?: unknown
+  season?: unknown
+  stage?: unknown
+  round?: unknown
+  group?: unknown
+  aggregate?: unknown
+  statistics?: unknown
+  events?: unknown
+  periods?: unknown
+  lineups?: unknown
+  metadata?: unknown
+  weatherreport?: unknown
 }

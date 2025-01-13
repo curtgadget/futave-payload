@@ -21,17 +21,17 @@ export const CRY = async () => {
   payload.logger.info('learning!')
 
   payload.jobs.queue({
-    task: 'testJobs',
-    input: {},
-  })
-
-  payload.jobs.queue({
     task: 'syncLeagues',
     input: {},
   })
 
   payload.jobs.queue({
     task: 'syncTeams',
+    input: {},
+  })
+
+  payload.jobs.queue({
+    task: 'syncMatches',
     input: {},
   })
 

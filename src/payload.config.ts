@@ -14,8 +14,9 @@ import { Media } from './collections/Media'
 import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
 
-import { syncLeaguesHandler, testJobsHandler } from './tasks/syncLeagues'
-import { syncTeamsHandler } from './tasks/syncTeams'
+import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
+import { syncTeamsHandler } from './tasks/handlers/syncTeams'
+import { syncMatchesHandler } from './tasks/handlers/syncMatches'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -53,35 +54,34 @@ export default buildConfig({
       {
         slug: 'syncLeagues',
         handler: syncLeaguesHandler,
-        onSuccess: () => {
-          console.log('🚀 syncLeagues ~ onSuccess ~ It worked!:')
-        },
-        onFail: () => {
-          console.log('🚀 syncLeagues ~ onFailure ~ Something pooped!:')
-        },
-      },
-      {
-        slug: 'testJobs',
-        retries: {
-          shouldRestore: false,
-        },
         outputSchema: [
           {
-            name: 'testJobsOutput',
+            name: 'message',
             type: 'text',
           },
+          {
+            name: 'stats',
+            type: 'json',
+          },
         ],
-        handler: testJobsHandler,
-        onSuccess: () => {
-          console.log('🚀 testJobs ~ onSuccess ~ It worked!:')
-        },
-        onFail: () => {
-          console.log('🚀 testJobs ~ onFailure ~ Something pooped!:')
-        },
       },
       {
         slug: 'syncTeams',
         handler: syncTeamsHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
+      },
+      {
+        slug: 'syncMatches',
+        handler: syncMatchesHandler,
         outputSchema: [
           {
             name: 'message',
