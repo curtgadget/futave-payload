@@ -1,19 +1,17 @@
 import { SportmonksTeam } from '../../sportmonks/client/types'
-import { TeamsEndpoint } from '../../sportmonks/client/endpoints/teams'
+import { createTeamsEndpoint } from '../../sportmonks/client/endpoints/teams'
 import { transformTeam, validateTeam } from '../../sportmonks/transformers/team.transformer'
-import { BaseSyncService } from '../base.sync'
-import { SyncOptions } from '../types'
+import { createSyncService } from '../base.sync'
+import { SportmonksConfig } from '../../sportmonks/client/types'
 
-export class TeamSyncService extends BaseSyncService<SportmonksTeam> {
-  constructor(teamsEndpoint: TeamsEndpoint) {
-    const options: SyncOptions<SportmonksTeam> = {
-      collection: 'teams',
-      fetchData: () => teamsEndpoint.getAll(),
-      transformData: transformTeam,
-      validateData: validateTeam,
-      batchSize: 10,
-    }
+export function createTeamSync(config: SportmonksConfig) {
+  const teamsEndpoint = createTeamsEndpoint(config)
 
-    super(options)
-  }
+  return createSyncService<SportmonksTeam>({
+    collection: 'teams',
+    fetchData: () => teamsEndpoint.getAll(),
+    transformData: transformTeam,
+    validateData: validateTeam,
+    batchSize: 10,
+  })
 }

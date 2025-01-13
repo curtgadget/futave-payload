@@ -1,35 +1,31 @@
 import { FetchParams, SportmonksConfig, SportmonksResponse } from './types'
 
-export class SportmonksError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-    public response?: Response,
-  ) {
-    super(message)
-    this.name = 'SportmonksError'
-  }
+export function createSportmonksError(
+  message: string,
+  statusCode?: number,
+  response?: Response,
+): Error & { statusCode?: number; response?: Response } {
+  return Object.assign(new Error(message), {
+    name: 'SportmonksError',
+    statusCode,
+    response,
+  })
 }
 
-export class SportmonksClient {
-  private readonly apiKey: string
-  private readonly baseUrl: string
+export function createSportmonksClient(config: SportmonksConfig) {
+  const apiKey = config.apiKey
+  const baseUrl = config.baseUrl || 'https://api.sportmonks.com/v3/football'
 
-  constructor(config: SportmonksConfig) {
-    this.apiKey = config.apiKey
-    this.baseUrl = config.baseUrl || 'https://api.sportmonks.com/v3/football'
-
-    if (!this.apiKey) {
-      throw new Error('Sportmonks API key is required')
-    }
+  if (!apiKey) {
+    throw new Error('Sportmonks API key is required')
   }
 
-  protected async fetchFromApi<T>(
+  async function fetchFromApi<T>(
     endpoint: string,
     params: FetchParams = {},
   ): Promise<SportmonksResponse<T>> {
     const queryParams = new URLSearchParams({
-      api_token: this.apiKey,
+      api_token: apiKey,
       ...(params.include && { include: params.include }),
       ...(params.page && { page: params.page.toString() }),
       ...Object.entries(params.filters || {}).reduce(
@@ -38,13 +34,13 @@ export class SportmonksClient {
       ),
     })
 
-    const url = `${this.baseUrl}${endpoint}?${queryParams}`
+    const url = `${baseUrl}${endpoint}?${queryParams}`
 
     try {
       const response = await fetch(url)
 
       if (!response.ok) {
-        throw new SportmonksError(
+        throw createSportmonksError(
           `Sportmonks API error: ${response.statusText}`,
           response.status,
           response,
@@ -54,23 +50,23 @@ export class SportmonksClient {
       const data = await response.json()
       return data as SportmonksResponse<T>
     } catch (error) {
-      if (error instanceof SportmonksError) {
+      if (error instanceof Error && 'statusCode' in error) {
         throw error
       }
 
-      throw new SportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
+      throw createSportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
     }
   }
 
-  protected async fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
-    const firstPage = await this.fetchFromApi<T>(endpoint, { ...params, page: 1 })
+  async function fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
+    const firstPage = await fetchFromApi<T>(endpoint, { ...params, page: 1 })
     const results = [...firstPage.data]
 
     if (firstPage.pagination?.has_more) {
       const totalPages = Math.ceil(firstPage.pagination.count / firstPage.pagination.per_page)
 
       const pagePromises = Array.from({ length: totalPages - 1 }, (_, i) =>
-        this.fetchFromApi<T>(endpoint, {
+        fetchFromApi<T>(endpoint, {
           ...params,
           page: i + 2,
         }),
@@ -81,5 +77,10 @@ export class SportmonksClient {
     }
 
     return results
+  }
+
+  return {
+    fetchFromApi,
+    fetchAllPages,
   }
 }

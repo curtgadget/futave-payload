@@ -1,20 +1,11 @@
 import { TaskHandler } from 'payload'
-import { SportmonksClient } from '@/services/sportmonks/client'
-import { TeamsEndpoint } from '@/services/sportmonks/client/endpoints/teams'
-import { TeamSyncService } from '@/services/sync/handlers/team.sync'
+import { createTeamSync } from '@/services/sync/handlers/team.sync'
 
 export const syncTeamsHandler: TaskHandler<'syncTeams'> = async () => {
-  const client = new SportmonksClient({
+  const teamSync = createTeamSync({
     apiKey: process.env.SPORTMONKS_API_KEY || '',
     baseUrl: process.env.SPORTMONKS_BASE_URL,
   })
-
-  const teamsEndpoint = new TeamsEndpoint({
-    apiKey: process.env.SPORTMONKS_API_KEY || '',
-    baseUrl: process.env.SPORTMONKS_BASE_URL,
-  })
-
-  const teamSync = new TeamSyncService(teamsEndpoint)
 
   try {
     const result = await teamSync.sync()
