@@ -35,6 +35,11 @@ export const CRY = async () => {
     input: {},
   })
 
+  payload.jobs.queue({
+    task: 'syncPlayers',
+    input: {},
+  })
+
   /*
   const runJob = await payload.jobs.runByID({
     id: createJob.id,

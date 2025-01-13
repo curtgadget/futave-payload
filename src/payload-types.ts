@@ -16,6 +16,7 @@ export interface Config {
     leagues: League;
     matches: Match;
     teams: Team;
+    players: Player;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -28,6 +29,7 @@ export interface Config {
     leagues: LeaguesSelect<false> | LeaguesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
+    players: PlayersSelect<false> | PlayersSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -47,6 +49,7 @@ export interface Config {
       syncLeagues: TaskSyncLeagues;
       syncTeams: TaskSyncTeams;
       syncMatches: TaskSyncMatches;
+      syncPlayers: TaskSyncPlayers;
       inline: {
         input: unknown;
         output: unknown;
@@ -447,6 +450,102 @@ export interface Team {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "players".
+ */
+export interface Player {
+  id: number;
+  sport_id: number;
+  country_id: number;
+  nationality_id: number;
+  position_id?: number | null;
+  detailed_position_id?: number | null;
+  name: string;
+  common_name?: string | null;
+  firstname?: string | null;
+  lastname?: string | null;
+  display_name?: string | null;
+  image_path?: string | null;
+  height?: number | null;
+  weight?: number | null;
+  date_of_birth?: string | null;
+  gender?: string | null;
+  teams?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  statistics?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  lineups?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  transfers?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  pendingtransfers?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  trophies?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  latest?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  metadata?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -497,7 +596,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches';
+        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers';
         taskID: string;
         input?:
           | {
@@ -530,7 +629,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches') | null;
+  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -563,6 +662,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'teams';
         value: number | Team;
+      } | null)
+    | ({
+        relationTo: 'players';
+        value: number | Player;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -717,6 +820,38 @@ export interface TeamsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "players_select".
+ */
+export interface PlayersSelect<T extends boolean = true> {
+  id?: T;
+  sport_id?: T;
+  country_id?: T;
+  nationality_id?: T;
+  position_id?: T;
+  detailed_position_id?: T;
+  name?: T;
+  common_name?: T;
+  firstname?: T;
+  lastname?: T;
+  display_name?: T;
+  image_path?: T;
+  height?: T;
+  weight?: T;
+  date_of_birth?: T;
+  gender?: T;
+  teams?: T;
+  statistics?: T;
+  lineups?: T;
+  transfers?: T;
+  pendingtransfers?: T;
+  trophies?: T;
+  latest?: T;
+  metadata?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
@@ -821,6 +956,25 @@ export interface TaskSyncTeams {
  * via the `definition` "TaskSyncMatches".
  */
 export interface TaskSyncMatches {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncPlayers".
+ */
+export interface TaskSyncPlayers {
   input?: unknown;
   output: {
     message?: string | null;
