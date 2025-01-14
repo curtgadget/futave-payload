@@ -11,6 +11,7 @@ import { CRY } from './app/my-route/route'
 import { Leagues } from './collections/Leagues'
 import { Matches } from './collections/Matches'
 import { Media } from './collections/Media'
+import { MetadataTypes } from './collections/MetadataTypes'
 import { Players } from './collections/Players'
 import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
@@ -19,6 +20,7 @@ import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
 import { syncTeamsHandler } from './tasks/handlers/syncTeams'
 import { syncMatchesHandler } from './tasks/handlers/syncMatches'
 import { syncPlayersHandler } from './tasks/handlers/syncPlayers'
+import { syncMetadataTypesHandler } from './tasks/handlers/syncMetadataTypes'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -30,7 +32,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Leagues, Matches, Teams, Players],
+  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -98,6 +100,20 @@ export default buildConfig({
       {
         slug: 'syncPlayers',
         handler: syncPlayersHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
+      },
+      {
+        slug: 'syncMetadataTypes',
+        handler: syncMetadataTypesHandler,
         outputSchema: [
           {
             name: 'message',

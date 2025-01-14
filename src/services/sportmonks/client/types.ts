@@ -86,3 +86,14 @@ export interface SportmonksMatch {
   metadata?: unknown
   weatherreport?: unknown
 }
+
+export interface SportmonksMetadataType {
+  id: number
+  parent_id: number | null
+  name: string
+  code: string
+  developer_name: string | null
+  model_type: string | null
+  group: string | null
+  description: string | null
+}

@@ -17,6 +17,7 @@ export interface Config {
     matches: Match;
     teams: Team;
     players: Player;
+    'metadata-types': MetadataType;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -30,6 +31,7 @@ export interface Config {
     matches: MatchesSelect<false> | MatchesSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
     players: PlayersSelect<false> | PlayersSelect<true>;
+    'metadata-types': MetadataTypesSelect<false> | MetadataTypesSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -50,6 +52,7 @@ export interface Config {
       syncTeams: TaskSyncTeams;
       syncMatches: TaskSyncMatches;
       syncPlayers: TaskSyncPlayers;
+      syncMetadataTypes: TaskSyncMetadataTypes;
       inline: {
         input: unknown;
         output: unknown;
@@ -546,6 +549,21 @@ export interface Player {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metadata-types".
+ */
+export interface MetadataType {
+  id: number;
+  parent_id?: number | null;
+  name: string;
+  code: string;
+  developer_name?: string | null;
+  group?: string | null;
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -596,7 +614,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers';
+        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes';
         taskID: string;
         input?:
           | {
@@ -629,7 +647,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers') | null;
+  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -666,6 +684,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'players';
         value: number | Player;
+      } | null)
+    | ({
+        relationTo: 'metadata-types';
+        value: number | MetadataType;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -852,6 +874,21 @@ export interface PlayersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "metadata-types_select".
+ */
+export interface MetadataTypesSelect<T extends boolean = true> {
+  id?: T;
+  parent_id?: T;
+  name?: T;
+  code?: T;
+  developer_name?: T;
+  group?: T;
+  description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
@@ -975,6 +1012,25 @@ export interface TaskSyncMatches {
  * via the `definition` "TaskSyncPlayers".
  */
 export interface TaskSyncPlayers {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncMetadataTypes".
+ */
+export interface TaskSyncMetadataTypes {
   input?: unknown;
   output: {
     message?: string | null;
