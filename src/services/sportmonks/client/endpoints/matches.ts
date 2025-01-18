@@ -2,7 +2,7 @@ import { createSportmonksClient } from '../index'
 import { FetchParams, SportmonksConfig, SportmonksMatch } from '../types'
 
 const DEFAULT_INCLUDE =
-  'participants;scores;venue;state;league;season;stage;round;group;aggregate;statistics;events;periods;lineups;metadata;weatherreport'
+  'participants;scores;venue;state;league;season;stage;round;group;aggregate;statistics;events;periods;lineups;metadata.type;weatherreport'
 
 export function createMatchesEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient(config)

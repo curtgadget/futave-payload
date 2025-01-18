@@ -1,26 +1,19 @@
-export interface SportmonksConfig {
-  apiKey: string
-  baseUrl?: string
+export type SportmonksCountry = {
+  id: number
+  continent_id: number
+  name: string
+  official_name: string
+  fifa_name?: string
+  iso2?: string
+  iso3?: string
+  latitude?: string
+  longitude?: string
+  geonameid?: number
+  border?: string[]
+  image_path?: string
 }
 
-export interface FetchParams {
-  include?: string
-  filters?: Record<string, string | number>
-  page?: number
-}
-
-export interface SportmonksResponse<T> {
-  data: T[]
-  pagination?: {
-    count: number
-    per_page: number
-    current_page: number
-    next_page?: number
-    has_more: boolean
-  }
-}
-
-export interface SportmonksLeague {
+export type SportmonksLeague = {
   id: number
   name: string
   image_path: string
@@ -35,7 +28,7 @@ export interface SportmonksLeague {
   seasons?: unknown
 }
 
-export interface SportmonksTeam {
+export type SportmonksTeam = {
   id: number
   name: string
   image_path: string
@@ -52,7 +45,34 @@ export interface SportmonksTeam {
   rankings?: unknown
 }
 
-export interface SportmonksMatch {
+export type SportmonksPlayer = {
+  id: number
+  sport_id: number
+  country_id: number
+  nationality_id: number
+  position_id?: number
+  detailed_position_id: number | null
+  name: string
+  common_name: string | null
+  firstname: string | null
+  lastname: string | null
+  display_name: string | null
+  image_path: string | null
+  height: number | null
+  weight: number | null
+  date_of_birth: string | null
+  gender: string | null
+  teams?: unknown
+  statistics?: unknown
+  lineups?: unknown
+  transfers?: unknown
+  pendingtransfers?: unknown
+  trophies?: unknown
+  latest?: unknown
+  metadata?: unknown
+}
+
+export type SportmonksMatch = {
   id: number
   sport_id: number
   league_id: number
@@ -85,15 +105,4 @@ export interface SportmonksMatch {
   lineups?: unknown
   metadata?: unknown
   weatherreport?: unknown
-}
-
-export interface SportmonksMetadataType {
-  id: number
-  parent_id: number | null
-  name: string
-  code: string
-  developer_name: string | null
-  model_type: string | null
-  group: string | null
-  description: string | null
 }

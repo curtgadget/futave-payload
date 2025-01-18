@@ -45,13 +45,10 @@ export const CRY = async () => {
     input: {},
   })
 
-  /*
-  const runJob = await payload.jobs.runByID({
-    id: createJob.id,
+  payload.jobs.queue({
+    task: 'syncCountries',
+    input: {},
   })
-
-  console.log('🚀 ~ CRY ~ runJob:', runJob)
-  */
 
   payload.logger.info('this ran from a route')
 

@@ -18,6 +18,7 @@ export interface Config {
     teams: Team;
     players: Player;
     'metadata-types': MetadataType;
+    countries: Country;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -32,6 +33,7 @@ export interface Config {
     teams: TeamsSelect<false> | TeamsSelect<true>;
     players: PlayersSelect<false> | PlayersSelect<true>;
     'metadata-types': MetadataTypesSelect<false> | MetadataTypesSelect<true>;
+    countries: CountriesSelect<false> | CountriesSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -53,6 +55,7 @@ export interface Config {
       syncMatches: TaskSyncMatches;
       syncPlayers: TaskSyncPlayers;
       syncMetadataTypes: TaskSyncMetadataTypes;
+      syncCountries: TaskSyncCountries;
       inline: {
         input: unknown;
         output: unknown;
@@ -564,6 +567,31 @@ export interface MetadataType {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "countries".
+ */
+export interface Country {
+  id: number;
+  continent_id: number;
+  name: string;
+  official_name: string;
+  fifa_name?: string | null;
+  iso2?: string | null;
+  iso3?: string | null;
+  latitude?: string | null;
+  longitude?: string | null;
+  geonameid?: number | null;
+  borders?:
+    | {
+        value?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  image_path?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -614,7 +642,14 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes';
+        taskSlug:
+          | 'inline'
+          | 'syncLeagues'
+          | 'syncTeams'
+          | 'syncMatches'
+          | 'syncPlayers'
+          | 'syncMetadataTypes'
+          | 'syncCountries';
         taskID: string;
         input?:
           | {
@@ -647,7 +682,9 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes') | null;
+  taskSlug?:
+    | ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes' | 'syncCountries')
+    | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -688,6 +725,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'metadata-types';
         value: number | MetadataType;
+      } | null)
+    | ({
+        relationTo: 'countries';
+        value: number | Country;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -889,6 +930,31 @@ export interface MetadataTypesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "countries_select".
+ */
+export interface CountriesSelect<T extends boolean = true> {
+  id?: T;
+  continent_id?: T;
+  name?: T;
+  official_name?: T;
+  fifa_name?: T;
+  iso2?: T;
+  iso3?: T;
+  latitude?: T;
+  longitude?: T;
+  geonameid?: T;
+  borders?:
+    | T
+    | {
+        value?: T;
+        id?: T;
+      };
+  image_path?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
@@ -1031,6 +1097,25 @@ export interface TaskSyncPlayers {
  * via the `definition` "TaskSyncMetadataTypes".
  */
 export interface TaskSyncMetadataTypes {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncCountries".
+ */
+export interface TaskSyncCountries {
   input?: unknown;
   output: {
     message?: string | null;

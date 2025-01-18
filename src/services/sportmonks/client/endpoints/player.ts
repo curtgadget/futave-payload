@@ -1,6 +1,5 @@
 import { createSportmonksClient } from '../index'
-import { FetchParams, SportmonksConfig } from '../types'
-import { SportmonksPlayer } from '../types/player'
+import { FetchParams, SportmonksConfig, SportmonksPlayer } from '../types'
 
 const DEFAULT_INCLUDE =
   'teams;statistics;lineups;transfers;pendingtransfers;trophies;latest;metadata'

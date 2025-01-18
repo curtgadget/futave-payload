@@ -15,12 +15,14 @@ import { MetadataTypes } from './collections/MetadataTypes'
 import { Players } from './collections/Players'
 import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
+import { Countries } from './collections/Countries'
 
 import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
 import { syncTeamsHandler } from './tasks/handlers/syncTeams'
 import { syncMatchesHandler } from './tasks/handlers/syncMatches'
 import { syncPlayersHandler } from './tasks/handlers/syncPlayers'
 import { syncMetadataTypesHandler } from './tasks/handlers/syncMetadataTypes'
+import { syncCountriesHandler } from './tasks/handlers/syncCountries'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -32,7 +34,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes],
+  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -114,6 +116,20 @@ export default buildConfig({
       {
         slug: 'syncMetadataTypes',
         handler: syncMetadataTypesHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
+      },
+      {
+        slug: 'syncCountries',
+        handler: syncCountriesHandler,
         outputSchema: [
           {
             name: 'message',
