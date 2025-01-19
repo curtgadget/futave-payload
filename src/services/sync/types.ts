@@ -1,4 +1,4 @@
-export interface SyncStats {
+export type SyncStats = {
   created: number
   updated: number
   failed: number
@@ -11,13 +11,13 @@ export interface SyncStats {
   endTime?: number
 }
 
-export interface SyncResult {
+export type SyncResult = {
   success: boolean
   stats: SyncStats
   message: string
 }
 
-export interface SyncOptions<T> {
+export type SyncOptions<T> = {
   collection: string
   fetchData: () => Promise<T[]>
   transformData: (item: T) => Record<string, any>
