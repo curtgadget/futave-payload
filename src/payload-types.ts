@@ -1059,7 +1059,10 @@ export interface TaskSyncTeams {
  * via the `definition` "TaskSyncMatches".
  */
 export interface TaskSyncMatches {
-  input?: unknown;
+  input: {
+    startDate?: string | null;
+    endDate?: string | null;
+  };
   output: {
     message?: string | null;
     stats?:

@@ -1,11 +1,22 @@
 import { TaskHandler } from 'payload'
-import { createMatchSync } from '@/services/sync/handlers/match.sync'
+import { createMatchSync, createMatchSyncByRange } from '@/services/sync/handlers/match.sync'
 
-export const syncMatchesHandler: TaskHandler<'syncMatches'> = async () => {
-  const matchSync = createMatchSync({
+type SyncMatchesInput = {
+  startDate?: string
+  endDate?: string
+}
+
+export const syncMatchesHandler: TaskHandler<'syncMatches'> = async ({ input }) => {
+  const { startDate, endDate } = input as SyncMatchesInput
+  const config = {
     apiKey: process.env.SPORTMONKS_API_KEY || '',
     baseUrl: process.env.SPORTMONKS_BASE_URL,
-  })
+  }
+
+  const matchSync =
+    startDate && endDate
+      ? createMatchSyncByRange(config, startDate, endDate)
+      : createMatchSync(config)
 
   try {
     const result = await matchSync.sync()

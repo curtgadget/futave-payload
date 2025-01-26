@@ -1,3 +1,4 @@
+import { NINETY_DAYS_MS, ONE_DAY_MS } from '@/constants/time'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
@@ -30,9 +31,19 @@ export const CRY = async () => {
     input: {},
   })
 
+  /*
   payload.jobs.queue({
     task: 'syncMatches',
     input: {},
+  })
+  */
+
+  payload.jobs.queue({
+    task: 'syncMatches',
+    input: {
+      startDate: new Date(Date.now() - ONE_DAY_MS).toISOString().split('T')[0],
+      endDate: new Date(Date.now() + NINETY_DAYS_MS).toISOString().split('T')[0],
+    },
   })
 
   payload.jobs.queue({

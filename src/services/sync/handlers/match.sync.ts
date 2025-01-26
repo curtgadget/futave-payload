@@ -14,3 +14,18 @@ export function createMatchSync(config: SportmonksConfig) {
     batchSize: 10,
   })
 }
+
+export function createMatchSyncByRange(
+  config: SportmonksConfig,
+  startDate: string,
+  endDate: string,
+) {
+  const matchesEndpoint = createMatchesEndpoint(config)
+
+  return createSyncService<SportmonksMatch>({
+    collection: 'matches',
+    fetchData: () => matchesEndpoint.getByDateRange(startDate, endDate),
+    transformData: transformMatch,
+    batchSize: 10,
+  })
+}

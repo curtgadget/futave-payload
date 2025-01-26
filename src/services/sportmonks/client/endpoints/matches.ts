@@ -54,11 +54,23 @@ export function createMatchesEndpoint(config: SportmonksConfig) {
     })
   }
 
+  async function getByDateRange(
+    startDate: string,
+    endDate: string,
+    params: FetchParams = {},
+  ): Promise<SportmonksMatch[]> {
+    return client.fetchAllPages<SportmonksMatch>(`/fixtures/between/${startDate}/${endDate}`, {
+      ...params,
+      include: params.include || DEFAULT_INCLUDE,
+    })
+  }
+
   return {
     getAll,
     getById,
     getByLeague,
     getByTeam,
     getByDate,
+    getByDateRange,
   }
 }

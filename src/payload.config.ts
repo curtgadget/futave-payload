@@ -88,6 +88,16 @@ export default buildConfig({
       {
         slug: 'syncMatches',
         handler: syncMatchesHandler,
+        inputSchema: [
+          {
+            name: 'startDate',
+            type: 'text',
+          },
+          {
+            name: 'endDate',
+            type: 'text',
+          },
+        ],
         outputSchema: [
           {
             name: 'message',
