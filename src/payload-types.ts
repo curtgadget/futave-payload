@@ -360,7 +360,7 @@ export interface Team {
   id: number;
   name: string;
   logo_path?: string | null;
-  country_id: number;
+  country_id?: number | null;
   coaches?:
     | {
         [k: string]: unknown;
@@ -461,8 +461,8 @@ export interface Team {
 export interface Player {
   id: number;
   sport_id: number;
-  country_id: number;
-  nationality_id: number;
+  country_id?: number | null;
+  nationality_id?: number | null;
   position_id?: number | null;
   detailed_position_id?: number | null;
   name: string;
@@ -573,7 +573,7 @@ export interface Country {
   id: number;
   continent_id: number;
   name: string;
-  official_name: string;
+  official_name?: string | null;
   fifa_name?: string | null;
   iso2?: string | null;
   iso3?: string | null;

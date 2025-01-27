@@ -4,7 +4,7 @@ export interface TransformedTeam {
   id: number
   name: string
   logo_path: string
-  country_id: number
+  country_id: number | null
   coaches: unknown | null
   players: unknown | null
   latest: unknown | null
@@ -22,7 +22,7 @@ export function transformTeam(team: SportmonksTeam): TransformedTeam {
     id: team.id,
     name: team.name,
     logo_path: team.image_path,
-    country_id: team.country_id,
+    country_id: team.country_id || null,
     coaches: team.coaches || null,
     players: team.players || null,
     latest: team.latest || null,

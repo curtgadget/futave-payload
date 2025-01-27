@@ -21,7 +21,7 @@ export const Countries: CollectionConfig = {
     {
       name: 'official_name',
       type: 'text',
-      required: true,
+      required: false,
     },
     {
       name: 'fifa_name',

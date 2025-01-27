@@ -1,10 +1,10 @@
-import { SportmonksPlayer } from '../client/types/player'
+import { SportmonksPlayer } from '../client/types/football/index'
 
 export interface TransformedPlayer {
   id: number
   sport_id: number
-  country_id: number
-  nationality_id: number
+  country_id: number | null
+  nationality_id: number | null
   position_id: number
   detailed_position_id: number | null
   name: string
@@ -31,8 +31,8 @@ export function transformPlayer(player: SportmonksPlayer): TransformedPlayer {
   return {
     id: player.id,
     sport_id: player.sport_id,
-    country_id: player.country_id,
-    nationality_id: player.nationality_id,
+    country_id: player.country_id || null,
+    nationality_id: player.nationality_id || null,
     position_id: player.position_id,
     detailed_position_id: player.detailed_position_id,
     name: player.name,

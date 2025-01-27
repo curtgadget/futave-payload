@@ -20,12 +20,12 @@ export const Players: CollectionConfig = {
     {
       name: 'country_id',
       type: 'number',
-      required: true,
+      required: false,
     },
     {
       name: 'nationality_id',
       type: 'number',
-      required: true,
+      required: false,
     },
     {
       name: 'position_id',

@@ -20,7 +20,7 @@ export const Teams: CollectionConfig = {
     {
       name: 'country_id',
       type: 'number',
-      required: true,
+      required: false,
     },
     {
       name: 'coaches',

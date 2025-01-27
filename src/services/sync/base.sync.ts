@@ -23,60 +23,8 @@ function formatError(error: unknown): { message: string; stack?: string; cause?:
   return { message: String(error) }
 }
 
-async function processBatch<T extends { id: number }>(
-  batch: T[],
-  stats: SyncStats,
-  payload: any,
-  options: Required<SyncOptions<T>>,
-): Promise<void> {
-  const batchPromises = batch.map(async (item) => {
-    try {
-      // Transform
-      const transformedData = options.transformData(item)
-
-      // Check if exists
-      const existing = await payload.find({
-        collection: options.collection,
-        where: { id: { equals: item.id } },
-      })
-
-      if (existing.totalDocs > 0) {
-        await payload.update({
-          collection: options.collection,
-          where: { id: { equals: item.id } },
-          data: transformedData,
-        })
-        stats.updated++
-      } else {
-        await payload.create({
-          collection: options.collection,
-          data: transformedData,
-        })
-        stats.created++
-      }
-    } catch (error) {
-      stats.failed++
-      const formattedError = formatError(error)
-
-      stats.errors.push({
-        id: item.id,
-        error: formattedError.message,
-        data: {
-          originalItem: item,
-          errorDetails: formattedError,
-          errorStack: formattedError.stack,
-          errorCause: formattedError.cause,
-        },
-      })
-    }
-  })
-
-  await Promise.all(batchPromises)
-}
-
 export function createSyncService<T extends { id: number }>(options: SyncOptions<T>) {
-  const syncOptions: Required<SyncOptions<T>> = {
-    batchSize: 10,
+  const syncOptions: SyncOptions<T> = {
     validateData: () => {},
     ...options,
   }
@@ -93,7 +41,13 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
 
       let items: T[]
       try {
+        payload.logger.info({
+          msg: `Fetching ${syncOptions.collection} data (paginated)`,
+          collection: syncOptions.collection,
+        })
+
         items = await syncOptions.fetchData()
+
         payload.logger.info({
           msg: `Fetched ${items.length} ${syncOptions.collection}`,
           collection: syncOptions.collection,
@@ -105,28 +59,52 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
         })
       }
 
-      const batches: T[][] = []
-      for (let i = 0; i < items.length; i += syncOptions.batchSize) {
-        batches.push(items.slice(i, i + syncOptions.batchSize))
-      }
-
       payload.logger.info({
-        msg: `Processing ${syncOptions.collection} in batches`,
+        msg: `Processing ${items.length} ${syncOptions.collection}`,
         collection: syncOptions.collection,
-        batchCount: batches.length,
-        batchSize: syncOptions.batchSize,
+        itemCount: items.length,
       })
 
-      for (const [index, batch] of batches.entries()) {
-        payload.logger.info({
-          msg: `Processing batch ${index + 1}/${batches.length}`,
-          collection: syncOptions.collection,
-          batchNumber: index + 1,
-          totalBatches: batches.length,
-          itemCount: batch.length,
-        })
-        await processBatch(batch, stats, payload, syncOptions)
-      }
+      await Promise.all(
+        items.map(async (item) => {
+          try {
+            const transformedData = syncOptions.transformData(item)
+            const existing = await payload.find({
+              collection: syncOptions.collection as any,
+              where: { id: { equals: item.id } },
+            })
+
+            if (existing.totalDocs > 0) {
+              await payload.update({
+                collection: syncOptions.collection as any,
+                where: { id: { equals: item.id } },
+                data: transformedData,
+              })
+              stats.updated++
+            } else {
+              await payload.create({
+                collection: syncOptions.collection as any,
+                data: transformedData,
+              })
+              stats.created++
+            }
+          } catch (error) {
+            stats.failed++
+            const formattedError = formatError(error)
+
+            stats.errors.push({
+              id: item.id,
+              error: formattedError.message,
+              data: {
+                originalItem: item,
+                errorDetails: formattedError,
+                errorStack: formattedError.stack,
+                errorCause: formattedError.cause,
+              },
+            })
+          }
+        }),
+      )
 
       stats.endTime = Date.now()
       const duration = stats.endTime - stats.startTime

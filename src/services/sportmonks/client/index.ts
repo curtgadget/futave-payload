@@ -59,21 +59,30 @@ export function createSportmonksClient(config: SportmonksConfig) {
   }
 
   async function fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
-    const firstPage = await fetchFromApi<T>(endpoint, { ...params, page: 1 })
-    const results = [...firstPage.data]
+    const results: T[] = []
+    let currentPage = 1
 
-    if (firstPage.pagination?.has_more) {
-      const totalPages = Math.ceil(firstPage.pagination.count / firstPage.pagination.per_page)
+    while (true) {
+      const response = await fetchFromApi<T>(endpoint, { ...params, page: currentPage })
+      results.push(...response.data)
 
-      const pagePromises = Array.from({ length: totalPages - 1 }, (_, i) =>
-        fetchFromApi<T>(endpoint, {
-          ...params,
-          page: i + 2,
-        }),
-      )
+      if (!response.pagination?.has_more || !response.pagination?.next_page) {
+        break
+      }
 
-      const pages = await Promise.all(pagePromises)
-      pages.forEach((page) => results.push(...page.data))
+      try {
+        // Extract page number from next_page URL string
+        const nextPageUrl = new URL(response.pagination.next_page.toString())
+        const nextPage = nextPageUrl.searchParams.get('page')
+        if (!nextPage) {
+          break
+        }
+
+        currentPage = parseInt(nextPage, 10)
+      } catch (_error) {
+        // If we can't parse the next_page URL, stop pagination
+        break
+      }
     }
 
     return results

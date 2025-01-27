@@ -2,7 +2,7 @@ export type SportmonksCountry = {
   id: number
   continent_id: number
   name: string
-  official_name: string
+  official_name?: string
   fifa_name?: string
   iso2?: string
   iso3?: string
@@ -32,7 +32,7 @@ export type SportmonksTeam = {
   id: number
   name: string
   image_path: string
-  country_id: number
+  country_id?: number
   coaches?: unknown
   players?: unknown
   latest?: unknown
@@ -48,8 +48,8 @@ export type SportmonksTeam = {
 export type SportmonksPlayer = {
   id: number
   sport_id: number
-  country_id: number
-  nationality_id: number
+  country_id?: number
+  nationality_id?: number
   position_id?: number
   detailed_position_id: number | null
   name: string
