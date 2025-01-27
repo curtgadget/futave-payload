@@ -1,10 +1,11 @@
 import { SportmonksConfig, SportmonksMetadataType, SportmonksResponse, FetchParams } from '../types'
 import { createSportmonksClient } from '..'
+import { SPORTMONKS_CORE_BASE_URL } from '@/constants/api'
 
 export function createMetadataTypesEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient({
     ...config,
-    baseUrl: process.env.SPORTMONKS_CORE_BASE_URL,
+    baseUrl: SPORTMONKS_CORE_BASE_URL,
   })
 
   return {

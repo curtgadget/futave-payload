@@ -1,10 +1,11 @@
 import { SportmonksConfig, SportmonksCountry, FetchParams } from '../types'
 import { createSportmonksClient } from '..'
+import { SPORTMONKS_CORE_BASE_URL } from '@/constants/api'
 
 export function createCountriesEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient({
     ...config,
-    baseUrl: 'https://api.sportmonks.com/v3/core',
+    baseUrl: SPORTMONKS_CORE_BASE_URL,
   })
 
   return {

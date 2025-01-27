@@ -1,4 +1,5 @@
 import { FetchParams, SportmonksConfig, SportmonksResponse } from './types'
+import { SPORTMONKS_FOOTBALL_BASE_URL } from '@/constants/api'
 
 export function createSportmonksError(
   message: string,
@@ -14,7 +15,7 @@ export function createSportmonksError(
 
 export function createSportmonksClient(config: SportmonksConfig) {
   const apiKey = config.apiKey
-  const baseUrl = config.baseUrl || 'https://api.sportmonks.com/v3/football'
+  const baseUrl = config.baseUrl || SPORTMONKS_FOOTBALL_BASE_URL
 
   if (!apiKey) {
     throw new Error('Sportmonks API key is required')
