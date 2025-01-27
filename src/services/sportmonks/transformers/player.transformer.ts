@@ -5,7 +5,7 @@ export interface TransformedPlayer {
   sport_id: number
   country_id: number | null
   nationality_id: number | null
-  position_id: number
+  position_id: number | null
   detailed_position_id: number | null
   name: string
   common_name: string | null
@@ -33,7 +33,7 @@ export function transformPlayer(player: SportmonksPlayer): TransformedPlayer {
     sport_id: player.sport_id,
     country_id: player.country_id || null,
     nationality_id: player.nationality_id || null,
-    position_id: player.position_id,
+    position_id: player.position_id || null,
     detailed_position_id: player.detailed_position_id,
     name: player.name,
     common_name: player.common_name,
