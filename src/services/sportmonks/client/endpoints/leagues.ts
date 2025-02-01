@@ -1,7 +1,7 @@
 import { createSportmonksClient } from '../index'
 import { FetchParams, SportmonksConfig, SportmonksLeague } from '../types'
 
-const DEFAULT_INCLUDE = 'stages;latest;upcoming;inplay;today;currentseason;seasons'
+const DEFAULT_INCLUDE = 'stages;latest;upcoming;inplay;today;currentseason.teams;seasons'
 
 export function createLeaguesEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient(config)

@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { getTeamData } from './routes/teams/getTeamData'
 
 export const Teams: CollectionConfig = {
   slug: 'teams',
@@ -71,6 +72,13 @@ export const Teams: CollectionConfig = {
       name: 'rankings',
       type: 'json',
       required: false,
+    },
+  ],
+  endpoints: [
+    {
+      path: '/v1/teams/:id',
+      method: 'get',
+      handler: getTeamData,
     },
   ],
 }

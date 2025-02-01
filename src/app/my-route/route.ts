@@ -2,18 +2,6 @@ import { NINETY_DAYS_MS, ONE_DAY_MS } from '@/constants/time'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
-export const GET = async () => {
-  const payload = await getPayload({
-    config: configPromise,
-  })
-
-  const data = await payload.find({
-    collection: 'users',
-  })
-
-  return Response.json(data)
-}
-
 export const CRY = async () => {
   const payload = await getPayload({
     config: configPromise,
