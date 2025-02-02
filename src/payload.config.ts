@@ -24,6 +24,8 @@ import { syncPlayersHandler } from './tasks/handlers/syncPlayers'
 import { syncMetadataTypesHandler } from './tasks/handlers/syncMetadataTypes'
 import { syncCountriesHandler } from './tasks/handlers/syncCountries'
 
+import apiV1 from '@/app/api/v1'
+
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
 
@@ -54,6 +56,7 @@ export default buildConfig({
       method: 'get',
       handler: CRY,
     },
+    ...apiV1,
   ],
   jobs: {
     tasks: [
