@@ -1,8 +1,8 @@
 import type { APIRouteV1 } from '@/app/api/v1/index'
 import type { PayloadRequest } from 'payload'
+import type { TeamTab } from './types/team'
 import { createAuthMiddleware } from '@/utilities/auth'
-import { getPayload } from 'payload'
-import config from '@/payload.config'
+import { teamDataFetcher } from './services/teamDataFetcher'
 
 const getTeamDataHandler = async (req: PayloadRequest) => {
   if (!req.url) {
@@ -11,32 +11,25 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
 
   const url = new URL(req.url)
   const id = url.pathname.split('/').pop()
+  const tab = url.searchParams.get('tab') as TeamTab | null
 
   if (!id) {
     return Response.json({ error: 'Team ID is required' }, { status: 400 })
   }
 
   try {
-    const payload = await getPayload({
-      config,
-    })
+    const tabName = tab || 'overview'
+    const fetcherName =
+      `get${tabName.charAt(0).toUpperCase()}${tabName.slice(1)}` as keyof typeof teamDataFetcher
 
-    const result = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: id,
-        },
-      },
-    })
-
-    if (result.totalDocs === 0) {
-      return Response.json({ error: 'Team not found' }, { status: 404 })
+    if (!(fetcherName in teamDataFetcher)) {
+      return Response.json({ error: 'Invalid tab specified' }, { status: 400 })
     }
 
-    return Response.json(result.docs[0])
+    const data = await teamDataFetcher[fetcherName](id)
+    return Response.json(data)
   } catch (error) {
-    console.error('Error fetching team:', error)
+    console.error('Error fetching team data:', error)
     return Response.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
@@ -46,7 +39,7 @@ const getTeamPageHandler = async (req: PayloadRequest) => {
   const authResult = await authMiddleware(req)
 
   if (authResult) {
-    return authResult // Return early if authentication failed
+    return authResult
   }
 
   return getTeamDataHandler(req)
