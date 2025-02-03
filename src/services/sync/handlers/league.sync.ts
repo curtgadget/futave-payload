@@ -11,6 +11,5 @@ export function createLeagueSync(config: SportmonksConfig) {
     collection: 'leagues',
     fetchData: () => leaguesEndpoint.getAll(),
     transformData: transformLeague,
-    batchSize: 10,
   })
 }

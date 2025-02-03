@@ -22,5 +22,4 @@ export type SyncOptions<T> = {
   fetchData: () => Promise<T[]>
   transformData: (item: T) => Record<string, any>
   validateData?: (item: T) => void
-  batchSize?: number
 }

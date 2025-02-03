@@ -1,4 +1,4 @@
-import { SportmonksCountry } from '../client/types/index'
+import { SportmonksCountry } from '../client/types'
 
 export function transformCountry(country: SportmonksCountry) {
   return {

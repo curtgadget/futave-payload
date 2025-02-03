@@ -11,6 +11,5 @@ export function createTeamSync(config: SportmonksConfig) {
     collection: 'teams',
     fetchData: () => teamsEndpoint.getAll(),
     transformData: transformTeam,
-    batchSize: 10,
   })
 }

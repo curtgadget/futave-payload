@@ -1,4 +1,4 @@
-import { SportmonksPlayer } from '../../sportmonks/client/types/player'
+import { SportmonksPlayer } from '../../sportmonks/client/types'
 import { createPlayerEndpoint } from '../../sportmonks/client/endpoints/player'
 import { transformPlayer } from '../../sportmonks/transformers/player.transformer'
 import { createSyncService } from '../base.sync'
@@ -11,6 +11,5 @@ export function createPlayerSync(config: SportmonksConfig) {
     collection: 'players',
     fetchData: () => playerEndpoint.getAll(),
     transformData: transformPlayer,
-    batchSize: 10,
   })
 }

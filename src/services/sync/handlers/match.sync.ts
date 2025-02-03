@@ -11,7 +11,6 @@ export function createMatchSync(config: SportmonksConfig) {
     collection: 'matches',
     fetchData: () => matchesEndpoint.getAll(),
     transformData: transformMatch,
-    batchSize: 10,
   })
 }
 
@@ -26,6 +25,5 @@ export function createMatchSyncByRange(
     collection: 'matches',
     fetchData: () => matchesEndpoint.getByDateRange(startDate, endDate),
     transformData: transformMatch,
-    batchSize: 10,
   })
 }

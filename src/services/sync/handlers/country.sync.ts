@@ -11,6 +11,5 @@ export function createCountrySync(config: SportmonksConfig) {
     collection: 'countries',
     fetchData: () => endpoint.getAll(),
     transformData: transformCountry,
-    batchSize: 100,
   })
 }

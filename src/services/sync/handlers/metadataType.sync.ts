@@ -11,6 +11,5 @@ export function createMetadataTypeSync(config: SportmonksConfig) {
     collection: 'metadata-types',
     fetchData: () => metadataTypesEndpoint.getAll(),
     transformData: transformMetadataType,
-    batchSize: 100,
   })
 }

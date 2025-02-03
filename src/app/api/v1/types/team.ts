@@ -1,5 +1,3 @@
-import type { PayloadRequest } from 'payload'
-
 export type TeamTab = 'overview' | 'table' | 'fixtures' | 'results' | 'squad' | 'stats'
 
 export type TeamBase = {
@@ -17,6 +15,12 @@ export type TeamSeason = {
 export type TeamPlayer = {
   id: string
   name: string
+  position_id?: number
+  detailed_position_id?: number
+  common_name?: string
+  firstname?: string
+  lastname?: string
+  display_name?: string
   // Add other player fields here
 }
 
