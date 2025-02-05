@@ -13,20 +13,39 @@ import type {
   TeamStatsResponse,
 } from '../types/team'
 
-export function transformTeamOverview(rawTeam: any): TeamOverviewResponse {
+interface RawTeam {
+  id: number
+  name: string
+  activeseasons?: any[] | null
+  seasons?: any[] | null
+  upcoming?: any[] | null
+  latest?: any[] | null
+  players?: any[] | null
+  coaches?: any[] | null
+  statistics?: any | null
+}
+
+export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
+  if (!rawTeam?.id || !rawTeam?.name) {
+    throw new Error('Invalid team data: missing required fields')
+  }
+
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
-    // Add additional transformations as needed
   }
 }
 
-export function transformTeamTable(rawTeam: any): TeamTableResponse {
-  const transformSeason = (season: any): TeamSeason => ({
-    id: String(season.id),
-    name: season.name,
-    // Add additional season transformations
-  })
+export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
+  const transformSeason = (season: any): TeamSeason => {
+    if (!season?.id || !season?.name) {
+      throw new Error('Invalid season data: missing required fields')
+    }
+    return {
+      id: String(season.id),
+      name: season.name,
+    }
+  }
 
   return {
     activeseasons: Array.isArray(rawTeam?.activeseasons)
@@ -37,27 +56,27 @@ export function transformTeamTable(rawTeam: any): TeamTableResponse {
 }
 
 export function transformFixture(rawFixture: any): TeamFixture {
+  if (!rawFixture?.id || !rawFixture?.date) {
+    throw new Error('Invalid fixture data: missing required fields')
+  }
+
   return {
     id: String(rawFixture.id),
     date: rawFixture.date,
-    // Add additional fixture transformations
   }
 }
 
-export function transformTeamFixtures(rawTeam: any): TeamFixturesResponse {
+export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
   return Array.isArray(rawTeam?.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
 }
 
-export function transformTeamResults(rawTeam: any): TeamResultsResponse {
+export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {
   return Array.isArray(rawTeam?.latest) ? rawTeam.latest.map(transformFixture) : []
 }
 
 export function transformPlayer(rawPlayer: any): TeamPlayer {
-  if (!rawPlayer) {
-    return {
-      id: '',
-      name: '',
-    }
+  if (!rawPlayer?.id) {
+    throw new Error('Invalid player data: missing ID')
   }
 
   // Resolve the name based on priority:
@@ -70,7 +89,7 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
     (rawPlayer.firstname && rawPlayer.lastname
       ? `${rawPlayer.firstname} ${rawPlayer.lastname}`
       : '') ||
-    ''
+    'Unknown Player'
 
   // Create the base player object with required fields
   const player: TeamPlayer = {
@@ -78,23 +97,23 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
     name: resolvedName,
   }
 
-  // Add optional fields only if they exist
-  if (rawPlayer.position_id !== undefined) {
+  // Add optional fields only if they exist and are valid
+  if (typeof rawPlayer.position_id === 'number') {
     player.position_id = rawPlayer.position_id
   }
-  if (rawPlayer.detailed_position_id !== undefined) {
+  if (typeof rawPlayer.detailed_position_id === 'number') {
     player.detailed_position_id = rawPlayer.detailed_position_id
   }
-  if (rawPlayer.common_name) {
+  if (typeof rawPlayer.common_name === 'string') {
     player.common_name = rawPlayer.common_name
   }
-  if (rawPlayer.firstname) {
+  if (typeof rawPlayer.firstname === 'string') {
     player.firstname = rawPlayer.firstname
   }
-  if (rawPlayer.lastname) {
+  if (typeof rawPlayer.lastname === 'string') {
     player.lastname = rawPlayer.lastname
   }
-  if (rawPlayer.display_name) {
+  if (typeof rawPlayer.display_name === 'string') {
     player.display_name = rawPlayer.display_name
   }
 
@@ -102,21 +121,45 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
 }
 
 export function transformCoach(rawCoach: any): TeamCoach {
+  if (!rawCoach?.id || !rawCoach?.name) {
+    throw new Error('Invalid coach data: missing required fields')
+  }
+
   return {
     id: String(rawCoach.id),
     name: rawCoach.name,
-    // Add additional coach transformations
   }
 }
 
-export function transformTeamSquad(rawTeam: any): TeamSquadResponse {
+export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
   return {
-    players: Array.isArray(rawTeam?.players) ? rawTeam.players.map(transformPlayer) : [],
-    coaches: Array.isArray(rawTeam?.coaches) ? rawTeam.coaches.map(transformCoach) : [],
+    players: Array.isArray(rawTeam?.players)
+      ? rawTeam.players
+          .map((p) => {
+            try {
+              return transformPlayer(p)
+            } catch (error) {
+              console.error('Error transforming player:', error)
+              return null
+            }
+          })
+          .filter((p): p is TeamPlayer => p !== null)
+      : [],
+    coaches: Array.isArray(rawTeam?.coaches)
+      ? rawTeam.coaches
+          .map((c) => {
+            try {
+              return transformCoach(c)
+            } catch (error) {
+              console.error('Error transforming coach:', error)
+              return null
+            }
+          })
+          .filter((c): c is TeamCoach => c !== null)
+      : [],
   }
 }
 
-export function transformTeamStats(rawTeam: any): TeamStatsResponse {
+export function transformTeamStats(rawTeam: RawTeam): TeamStatsResponse {
   return rawTeam?.statistics || {}
-  // Add statistics transformations when we have the structure
 }

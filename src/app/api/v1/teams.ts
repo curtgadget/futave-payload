@@ -29,8 +29,30 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
     const data = await teamDataFetcher[fetcherName](id)
     return Response.json(data)
   } catch (error) {
-    console.error('Error fetching team data:', error)
-    return Response.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('Error in team data handler:', {
+      id,
+      tab,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    })
+
+    // Handle specific error cases
+    if (error instanceof Error) {
+      if (error.message.includes('Invalid team ID format')) {
+        return Response.json({ error: 'Invalid team ID format' }, { status: 400 })
+      }
+      if (error.message.includes('No team found')) {
+        return Response.json({ error: 'Team not found' }, { status: 404 })
+      }
+      if (error.message.includes('Invalid team data')) {
+        return Response.json({ error: 'Invalid team data structure' }, { status: 500 })
+      }
+    }
+
+    return Response.json(
+      { error: 'An unexpected error occurred while fetching team data' },
+      { status: 500 },
+    )
   }
 }
 

@@ -1,6 +1,7 @@
 import { getPayload } from 'payload'
 import type { Payload } from 'payload'
 import config from '@/payload.config'
+
 import type {
   TabDataFetcher,
   TeamOverviewResponse,
@@ -20,47 +21,127 @@ import {
   transformPlayer,
 } from '../transformers/teamTransformers'
 
+function validateTeamId(teamId: string): number {
+  const numericId = parseInt(teamId, 10)
+  if (isNaN(numericId) || numericId <= 0) {
+    throw new Error('Invalid team ID format')
+  }
+  return numericId
+}
+
 export const teamDataFetcher: TabDataFetcher = {
   async getOverview(teamId: string): Promise<TeamOverviewResponse> {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: teamId,
+    try {
+      console.log('Fetching team overview for ID:', teamId)
+      const numericId = validateTeamId(teamId)
+
+      const payload = await getPayload({ config })
+      console.log('Querying teams collection with ID:', numericId)
+
+      const result = await payload.find({
+        collection: 'teams',
+        where: {
+          id: {
+            equals: numericId,
+          },
         },
-      },
-      depth: 0,
-    })
-    return transformTeamOverview(result.docs[0])
+        depth: 0,
+      })
+
+      console.log('Team overview query result:', {
+        totalDocs: result.totalDocs,
+        hasResults: result.docs.length > 0,
+      })
+
+      if (!result.docs.length) {
+        throw new Error(`No team found with ID: ${teamId}`)
+      }
+
+      const team = result.docs[0]
+      if (!team.id || !team.name) {
+        throw new Error(`Invalid team data structure for ID: ${teamId}`)
+      }
+
+      console.log('Team data before transform:', {
+        id: team.id,
+        name: team.name,
+      })
+
+      const transformed = transformTeamOverview(team)
+      console.log('Team data after transform:', {
+        id: transformed.id,
+        name: transformed.name,
+      })
+
+      return transformed
+    } catch (error) {
+      console.error('Error in getOverview:', {
+        teamId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      throw error
+    }
   },
 
   async getTable(teamId: string): Promise<TeamTableResponse> {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: teamId,
+    try {
+      console.log('Fetching team table for ID:', teamId)
+      const numericId = validateTeamId(teamId)
+
+      const payload = await getPayload({ config })
+      const result = await payload.find({
+        collection: 'teams',
+        where: {
+          id: {
+            equals: numericId,
+          },
         },
-      },
-      depth: 1,
-    })
-    return transformTeamTable(result.docs[0])
+        depth: 0,
+      })
+
+      if (!result.docs.length) {
+        throw new Error(`No team found with ID: ${teamId}`)
+      }
+
+      return transformTeamTable(result.docs[0])
+    } catch (error) {
+      console.error('Error in getTable:', {
+        teamId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+      throw error
+    }
   },
 
   async getFixtures(teamId: string): Promise<TeamFixturesResponse> {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: teamId,
+    try {
+      console.log('Fetching team fixtures for ID:', teamId)
+      const numericId = validateTeamId(teamId)
+
+      const payload = await getPayload({ config })
+      const result = await payload.find({
+        collection: 'teams',
+        where: {
+          id: {
+            equals: numericId,
+          },
         },
-      },
-      depth: 1,
-    })
-    return transformTeamFixtures(result.docs[0])
+        depth: 0,
+      })
+
+      if (!result.docs.length) {
+        throw new Error(`No team found with ID: ${teamId}`)
+      }
+
+      return transformTeamFixtures(result.docs[0])
+    } catch (error) {
+      console.error('Error in getFixtures:', {
+        teamId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      })
+      throw error
+    }
   },
 
   async getResults(teamId: string): Promise<TeamResultsResponse> {
