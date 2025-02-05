@@ -2,10 +2,21 @@ import { NINETY_DAYS_MS, ONE_DAY_MS } from '@/constants/time'
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 
+type PayloadTaskSlug =
+  | 'inline'
+  | 'syncLeagues'
+  | 'syncTeams'
+  | 'syncMatches'
+  | 'syncPlayers'
+  | 'syncMetadataTypes'
+  | 'syncCountries'
+
+type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily'
+
 type SyncJob = {
-  task: string
+  task: PayloadTaskSlug
   input?: Record<string, unknown>
-  queue?: string
+  queue?: PayloadQueueSlug
 }
 
 const syncJobs: SyncJob[] = [
@@ -33,7 +44,7 @@ export async function syncAllHandler() {
 
   syncJobs.forEach((job) => {
     payload.jobs.queue({
-      task: job.task,
+      task: job.task as PayloadTaskSlug,
       input: job.input || {},
       ...(job.queue ? { queue: job.queue } : {}),
     })
