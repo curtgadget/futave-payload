@@ -13,7 +13,9 @@
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "create-sync": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/create-sync-handler.ts"
+    "create-sync": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/create-sync-handler.ts",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@payloadcms/db-mongodb": "latest",
@@ -31,12 +33,16 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
+    "@types/jest": "^29.5.12",
     "@types/node": "^22.5.4",
     "@types/react": "19.0.1",
     "@types/react-dom": "19.0.1",
     "eslint": "^9.16.0",
     "eslint-config-next": "15.1.0",
+    "jest": "^29.7.0",
     "prettier": "^3.4.2",
+    "ts-jest": "^29.1.2",
+    "ts-node": "^10.9.2",
     "typescript": "5.7.2"
   },
   "engines": {
