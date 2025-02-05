@@ -7,7 +7,7 @@ import { buildConfig } from 'payload'
 import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
-import { CRY } from './app/my-route/route'
+import { syncAllHandler } from './app/api/sync/all/route'
 import { Leagues } from './collections/Leagues'
 import { Matches } from './collections/Matches'
 import { Media } from './collections/Media'
@@ -52,9 +52,9 @@ export default buildConfig({
   ],
   endpoints: [
     {
-      path: '/cry',
+      path: '/api/sync/all',
       method: 'get',
-      handler: CRY,
+      handler: syncAllHandler,
     },
     ...apiV1,
   ],
