@@ -1,6 +1,7 @@
 import config from '@/payload.config'
 import { getPayload } from 'payload'
 
+import { getPositionGroup } from '@/constants/team'
 import {
   transformPlayer,
   transformTeamFixtures,
@@ -13,7 +14,9 @@ import type {
   TabDataFetcher,
   TeamFixturesResponse,
   TeamOverviewResponse,
+  TeamPlayer,
   TeamResultsResponse,
+  TeamSquadByPosition,
   TeamSquadResponse,
   TeamStatsResponse,
   TeamTableResponse,
@@ -30,11 +33,8 @@ function validateTeamId(teamId: string): number {
 export const teamDataFetcher: TabDataFetcher = {
   async getOverview(teamId: string): Promise<TeamOverviewResponse> {
     try {
-      console.log('Fetching team overview for ID:', teamId)
       const numericId = validateTeamId(teamId)
-
       const payload = await getPayload({ config })
-      console.log('Querying teams collection with ID:', numericId)
 
       const result = await payload.find({
         collection: 'teams',
@@ -46,11 +46,6 @@ export const teamDataFetcher: TabDataFetcher = {
         depth: 0,
       })
 
-      console.log('Team overview query result:', {
-        totalDocs: result.totalDocs,
-        hasResults: result.docs.length > 0,
-      })
-
       if (!result.docs.length) {
         throw new Error(`No team found with ID: ${teamId}`)
       }
@@ -60,24 +55,7 @@ export const teamDataFetcher: TabDataFetcher = {
         throw new Error(`Invalid team data structure for ID: ${teamId}`)
       }
 
-      console.log('We are here...')
-
-      /*
-      console.log('Team data before transform:', {
-        id: team.id,
-        name: team.name,
-      })
-      */
-
-      const transformed = transformTeamOverview(team)
-      /*
-      console.log('Team data after transform:', {
-        id: transformed.id,
-        name: transformed.name,
-      })
-      */
-
-      return transformed
+      return transformTeamOverview(team)
     } catch (error) {
       console.error('Error in getOverview:', {
         teamId,
@@ -167,7 +145,13 @@ export const teamDataFetcher: TabDataFetcher = {
 
     interface RawTeam {
       id: number
-      players?: Array<{ player_id: number }>
+      players?: Array<{
+        player_id: number
+        captain?: boolean
+        jersey_number?: number
+        position_id?: number
+        detailed_position_id?: number
+      }>
     }
 
     // First get the team data
@@ -182,22 +166,34 @@ export const teamDataFetcher: TabDataFetcher = {
     })
 
     const team = teamResult.docs[0] as unknown as RawTeam
-    // console.log('Team data:', team.players)
 
     if (!team || !team.players) {
-      return { players: [], coaches: [] }
+      return {
+        players: {
+          goalkeepers: [],
+          defenders: [],
+          midfielders: [],
+          forwards: [],
+        },
+        coaches: [],
+      }
     }
 
     // Get all player IDs from the team
     const playerIds = team.players.map((player) => player.player_id)
-    console.log('🚀 ~ getSquad ~ playerIds:', playerIds)
 
     if (playerIds.length === 0) {
       console.log('No player IDs found')
-      return { players: [], coaches: [] }
+      return {
+        players: {
+          goalkeepers: [],
+          defenders: [],
+          midfielders: [],
+          forwards: [],
+        },
+        coaches: [],
+      }
     }
-
-    console.log('🚀 ~ here....')
 
     // Fetch detailed player information with pagination handling
     const playersResult = await payload.find({
@@ -210,26 +206,64 @@ export const teamDataFetcher: TabDataFetcher = {
       pagination: false,
     })
 
-    console.log('🚀 ~ getSquad ~ playersResult:', playersResult)
-
     // Create a map of player details for quick lookup
     const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
 
-    // Merge team squad data with player details
-    const enrichedSquad = team.players.map((squadMember) => {
+    // Initialize squad structure
+    const squadByPosition: TeamSquadByPosition = {
+      goalkeepers: [],
+      defenders: [],
+      midfielders: [],
+      forwards: [],
+    }
+
+    // Transform and group players by position
+    team.players.forEach((squadMember) => {
       const playerDetails = playerDetailsMap.get(squadMember.player_id)
+      let transformedPlayer: TeamPlayer
+
       if (!playerDetails) {
-        return {
+        transformedPlayer = {
           id: String(squadMember.player_id),
           name: '',
+          captain: squadMember.captain,
+          jersey_number: squadMember.jersey_number,
+          position_id: squadMember.position_id,
+          detailed_position_id: squadMember.detailed_position_id,
+        }
+      } else {
+        // Transform the player details
+        const basePlayer = transformPlayer(playerDetails)
+
+        // Override with squad-specific data
+        transformedPlayer = {
+          ...basePlayer,
+          captain: squadMember.captain ?? basePlayer.captain,
+          jersey_number: squadMember.jersey_number ?? basePlayer.jersey_number,
+          position_id: squadMember.position_id ?? basePlayer.position_id,
+          detailed_position_id: squadMember.detailed_position_id ?? basePlayer.detailed_position_id,
         }
       }
-      const transformed = transformPlayer(playerDetails)
-      return transformed
+
+      // Add to the appropriate position group
+      const group = getPositionGroup(transformedPlayer.position_id)
+      squadByPosition[group].push(transformedPlayer)
+    })
+
+    // Sort each position group by jersey number if available
+    Object.values(squadByPosition).forEach((players) => {
+      players.sort((a, b) => {
+        // Put players with jersey numbers first
+        if (a.jersey_number && !b.jersey_number) return -1
+        if (!a.jersey_number && b.jersey_number) return 1
+        if (a.jersey_number && b.jersey_number) return a.jersey_number - b.jersey_number
+        // If no jersey numbers, sort by name
+        return a.name.localeCompare(b.name)
+      })
     })
 
     return {
-      players: enrichedSquad,
+      players: squadByPosition,
       coaches: [], // We're not handling coaches in this update
     }
   },

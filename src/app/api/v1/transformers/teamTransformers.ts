@@ -1,16 +1,14 @@
 import type {
-  TeamBase,
-  TeamSeason,
-  TeamFixture,
-  TeamPlayer,
   TeamCoach,
-  TeamStatistics,
-  TeamOverviewResponse,
-  TeamTableResponse,
+  TeamFixture,
   TeamFixturesResponse,
+  TeamOverviewResponse,
+  TeamPlayer,
   TeamResultsResponse,
-  TeamSquadResponse,
+  TeamSeason,
+  TeamSquadBase,
   TeamStatsResponse,
+  TeamTableResponse,
 } from '../types/team'
 
 interface RawTeam {
@@ -119,6 +117,25 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
   if (typeof rawPlayer.image_path === 'string') {
     player.image_path = rawPlayer.image_path
   }
+  if (typeof rawPlayer.captain === 'boolean') {
+    player.captain = rawPlayer.captain
+  }
+  if (typeof rawPlayer.jersey_number === 'number') {
+    player.jersey_number = rawPlayer.jersey_number
+  }
+  if (typeof rawPlayer.nationality?.name === 'string') {
+    player.nationality_name = rawPlayer.nationality.name
+  }
+  if (typeof rawPlayer.nationality?.id === 'number') {
+    player.nationality_id = rawPlayer.nationality.id
+  }
+  if (typeof rawPlayer.nationality?.image_path === 'string') {
+    player.nationality_image_path = rawPlayer.nationality.image_path
+  }
+  if (typeof rawPlayer.nationality?.fifa_name === 'string') {
+    // Extract first abbreviation from comma-delimited string
+    player.nationality_fifa_name = rawPlayer.nationality.fifa_name.split(',')[0].trim()
+  }
 
   return player
 }
@@ -134,7 +151,7 @@ export function transformCoach(rawCoach: any): TeamCoach {
   }
 }
 
-export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
+export function transformTeamSquad(rawTeam: RawTeam): TeamSquadBase {
   return {
     players: Array.isArray(rawTeam?.players)
       ? rawTeam.players
