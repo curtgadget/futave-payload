@@ -42,19 +42,62 @@ export async function syncAllHandler() {
 
   payload.logger.info('Starting full data sync')
 
-  syncJobs.forEach((job) => {
-    payload.jobs.queue({
+  const queuedJobs = []
+  const skippedJobs = []
+
+  for (const job of syncJobs) {
+    // Check if there's already a pending or processing job
+    const existingJobs = await payload.find({
+      collection: 'payload-jobs',
+      where: {
+        and: [
+          {
+            taskSlug: { equals: job.task },
+          },
+          {
+            or: [
+              {
+                // Job is currently processing
+                processing: { equals: true },
+              },
+              {
+                // Job is queued but not started yet
+                and: [
+                  { processing: { equals: false } },
+                  { completedAt: { exists: false } },
+                  { hasError: { equals: false } },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    if (existingJobs.docs.length > 0) {
+      const existingJob = existingJobs.docs[0]
+      const status = existingJob.processing ? 'processing' : 'queued'
+      payload.logger.info(`Skipping ${job.task} - job already ${status}`)
+      skippedJobs.push(job)
+      continue
+    }
+
+    await payload.jobs.queue({
       task: job.task as PayloadTaskSlug,
       input: job.input || {},
       ...(job.queue ? { queue: job.queue } : {}),
     })
-  })
+    queuedJobs.push(job)
+  }
 
-  payload.logger.info('All sync jobs have been queued')
+  payload.logger.info(
+    `Queued ${queuedJobs.length} jobs, skipped ${skippedJobs.length} already queued jobs`,
+  )
 
   return Response.json({
-    message: 'All sync jobs have been queued successfully',
-    jobs: syncJobs.map((job) => ({ task: job.task, queue: job.queue })),
+    message: 'Sync jobs have been processed',
+    queuedJobs: queuedJobs.map((job) => ({ task: job.task, queue: job.queue })),
+    skippedJobs: skippedJobs.map((job) => ({ task: job.task, queue: job.queue })),
   })
 }
 
