@@ -2,7 +2,7 @@ import { createSportmonksClient } from '../index'
 import { FetchParams, SportmonksConfig, SportmonksPlayer } from '../types'
 
 const DEFAULT_INCLUDE =
-  'teams;statistics;lineups;transfers;pendingtransfers;trophies;latest;metadata'
+  'teams;statistics;lineups;transfers;nationality;trophies;latest;metadata;position;detailedPosition'
 
 export function createPlayerEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient(config)

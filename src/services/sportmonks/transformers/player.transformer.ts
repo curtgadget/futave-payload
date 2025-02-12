@@ -25,6 +25,7 @@ export interface TransformedPlayer {
   trophies: unknown | null
   latest: unknown | null
   metadata: unknown | null
+  nationality: unknown | null
 }
 
 export function transformPlayer(player: SportmonksPlayer): TransformedPlayer {
@@ -53,5 +54,6 @@ export function transformPlayer(player: SportmonksPlayer): TransformedPlayer {
     trophies: player.trophies || null,
     latest: player.latest || null,
     metadata: player.metadata || null,
+    nationality: player.nationality || null,
   }
 }

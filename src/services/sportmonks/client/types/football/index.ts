@@ -70,6 +70,7 @@ export type SportmonksPlayer = {
   trophies?: unknown
   latest?: unknown
   metadata?: unknown
+  nationality?: SportmonksCountry
 }
 
 export type SportmonksMatch = {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
 import { transformPlayer } from '../player.transformer'
-import type { SportmonksPlayer } from '../../client/types/football'
+import type { SportmonksPlayer, SportmonksCountry } from '../../client/types/football'
 
 describe('Player Transformer', () => {
   // Base fields that must be present in every test case
@@ -19,6 +19,13 @@ describe('Player Transformer', () => {
     weight: null,
     date_of_birth: null,
     gender: null,
+  }
+
+  const mockNationality: SportmonksCountry = {
+    id: 456,
+    continent_id: 1,
+    name: 'Test Country',
+    image_path: 'https://example.com/flag.png',
   }
 
   const mockPlayer: SportmonksPlayer = {
@@ -43,6 +50,7 @@ describe('Player Transformer', () => {
     trophies: null,
     latest: null,
     metadata: null,
+    nationality: mockNationality,
   }
 
   describe('transformPlayer', () => {
@@ -66,14 +74,15 @@ describe('Player Transformer', () => {
         weight: mockPlayer.weight,
         date_of_birth: mockPlayer.date_of_birth,
         gender: mockPlayer.gender,
-        teams: null,
-        statistics: null,
-        lineups: null,
-        transfers: null,
-        pendingtransfers: null,
-        trophies: null,
-        latest: null,
-        metadata: null,
+        teams: mockPlayer.teams,
+        statistics: mockPlayer.statistics,
+        lineups: mockPlayer.lineups,
+        transfers: mockPlayer.transfers,
+        pendingtransfers: mockPlayer.pendingtransfers,
+        trophies: mockPlayer.trophies,
+        latest: mockPlayer.latest,
+        metadata: mockPlayer.metadata,
+        nationality: mockPlayer.nationality,
       })
     })
 

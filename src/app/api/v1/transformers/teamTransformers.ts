@@ -116,6 +116,9 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
   if (typeof rawPlayer.display_name === 'string') {
     player.display_name = rawPlayer.display_name
   }
+  if (typeof rawPlayer.image_path === 'string') {
+    player.image_path = rawPlayer.image_path
+  }
 
   return player
 }

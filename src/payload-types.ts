@@ -550,6 +550,15 @@ export interface Player {
     | number
     | boolean
     | null;
+  nationality?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -916,6 +925,7 @@ export interface PlayersSelect<T extends boolean = true> {
   trophies?: T;
   latest?: T;
   metadata?: T;
+  nationality?: T;
   updatedAt?: T;
   createdAt?: T;
 }

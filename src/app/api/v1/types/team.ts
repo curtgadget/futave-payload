@@ -21,6 +21,7 @@ export type TeamPlayer = {
   firstname?: string
   lastname?: string
   display_name?: string
+  image_path?: string
   // Add other player fields here
 }
 

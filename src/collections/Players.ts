@@ -109,5 +109,9 @@ export const Players: CollectionConfig = {
       name: 'metadata',
       type: 'json',
     },
+    {
+      name: 'nationality',
+      type: 'json',
+    },
   ],
 }

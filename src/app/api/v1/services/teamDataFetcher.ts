@@ -1,25 +1,23 @@
-import { getPayload } from 'payload'
-import type { Payload } from 'payload'
 import config from '@/payload.config'
+import { getPayload } from 'payload'
 
+import {
+  transformPlayer,
+  transformTeamFixtures,
+  transformTeamOverview,
+  transformTeamResults,
+  transformTeamStats,
+  transformTeamTable,
+} from '../transformers/teamTransformers'
 import type {
   TabDataFetcher,
-  TeamOverviewResponse,
-  TeamTableResponse,
   TeamFixturesResponse,
+  TeamOverviewResponse,
   TeamResultsResponse,
   TeamSquadResponse,
   TeamStatsResponse,
+  TeamTableResponse,
 } from '../types/team'
-import {
-  transformTeamOverview,
-  transformTeamTable,
-  transformTeamFixtures,
-  transformTeamResults,
-  transformTeamSquad,
-  transformTeamStats,
-  transformPlayer,
-} from '../transformers/teamTransformers'
 
 function validateTeamId(teamId: string): number {
   const numericId = parseInt(teamId, 10)
@@ -62,16 +60,22 @@ export const teamDataFetcher: TabDataFetcher = {
         throw new Error(`Invalid team data structure for ID: ${teamId}`)
       }
 
+      console.log('We are here...')
+
+      /*
       console.log('Team data before transform:', {
         id: team.id,
         name: team.name,
       })
+      */
 
       const transformed = transformTeamOverview(team)
+      /*
       console.log('Team data after transform:', {
         id: transformed.id,
         name: transformed.name,
       })
+      */
 
       return transformed
     } catch (error) {
@@ -166,17 +170,6 @@ export const teamDataFetcher: TabDataFetcher = {
       players?: Array<{ player_id: number }>
     }
 
-    interface RawPlayer {
-      id: number
-      name: string
-      position_id?: number
-      detailed_position_id?: number
-      common_name?: string
-      firstname?: string
-      lastname?: string
-      display_name?: string
-    }
-
     // First get the team data
     const teamResult = await payload.find({
       collection: 'teams',
@@ -189,6 +182,7 @@ export const teamDataFetcher: TabDataFetcher = {
     })
 
     const team = teamResult.docs[0] as unknown as RawTeam
+    // console.log('Team data:', team.players)
 
     if (!team || !team.players) {
       return { players: [], coaches: [] }
@@ -196,14 +190,16 @@ export const teamDataFetcher: TabDataFetcher = {
 
     // Get all player IDs from the team
     const playerIds = team.players.map((player) => player.player_id)
+    console.log('🚀 ~ getSquad ~ playerIds:', playerIds)
 
     if (playerIds.length === 0) {
+      console.log('No player IDs found')
       return { players: [], coaches: [] }
     }
 
-    console.log('Player IDs to fetch:', playerIds)
+    console.log('🚀 ~ here....')
 
-    // Fetch detailed player information
+    // Fetch detailed player information with pagination handling
     const playersResult = await payload.find({
       collection: 'players',
       where: {
@@ -211,28 +207,24 @@ export const teamDataFetcher: TabDataFetcher = {
           in: playerIds,
         },
       },
-      depth: 0,
+      pagination: false,
     })
 
-    console.log('Raw player data:', JSON.stringify(playersResult.docs, null, 2))
-
-    const players = playersResult.docs as unknown as RawPlayer[]
+    console.log('🚀 ~ getSquad ~ playersResult:', playersResult)
 
     // Create a map of player details for quick lookup
-    const playerDetailsMap = new Map(players.map((player) => [player.id, player]))
+    const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
 
     // Merge team squad data with player details
     const enrichedSquad = team.players.map((squadMember) => {
       const playerDetails = playerDetailsMap.get(squadMember.player_id)
       if (!playerDetails) {
-        console.log('No details found for player:', squadMember.player_id)
         return {
           id: String(squadMember.player_id),
           name: '',
         }
       }
       const transformed = transformPlayer(playerDetails)
-      console.log('Transformed player:', JSON.stringify(transformed, null, 2))
       return transformed
     })
 
