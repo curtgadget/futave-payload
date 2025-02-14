@@ -1,3 +1,4 @@
+import { getPositionGroup } from '@/constants/team'
 import type {
   TeamCoach,
   TeamFixture,
@@ -9,6 +10,9 @@ import type {
   TeamSquadBase,
   TeamStatsResponse,
   TeamTableResponse,
+  TeamSquadResponse,
+  TeamSquadByPosition,
+  PositionGroup,
 } from '../types/team'
 
 interface RawTeam {
@@ -28,9 +32,20 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
     throw new Error('Invalid team data: missing required fields')
   }
 
+  const squadData = transformTeamSquad(rawTeam)
+  const tableData = transformTeamTable(rawTeam)
+  const fixturesData = transformTeamFixtures({})
+  const resultsData = transformTeamResults({})
+  const statsData = transformTeamStats(rawTeam)
+
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
+    squad: squadData,
+    table: tableData,
+    fixtures: fixturesData,
+    results: resultsData,
+    stats: statsData,
   }
 }
 
@@ -65,11 +80,13 @@ export function transformFixture(rawFixture: any): TeamFixture {
 }
 
 export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
-  return Array.isArray(rawTeam?.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
+  if (!rawTeam?.upcoming) return {}
+  return Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : {}
 }
 
 export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {
-  return Array.isArray(rawTeam?.latest) ? rawTeam.latest.map(transformFixture) : []
+  if (!rawTeam?.latest) return []
+  return Array.isArray(rawTeam.latest) ? rawTeam.latest.map(transformFixture) : []
 }
 
 export function transformPlayer(rawPlayer: any): TeamPlayer {
@@ -151,32 +168,25 @@ export function transformCoach(rawCoach: any): TeamCoach {
   }
 }
 
-export function transformTeamSquad(rawTeam: RawTeam): TeamSquadBase {
+export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
+  const squadByPosition: TeamSquadByPosition = {
+    goalkeepers: [],
+    defenders: [],
+    midfielders: [],
+    forwards: [],
+  }
+
+  if (Array.isArray(rawTeam.players)) {
+    rawTeam.players.forEach((player) => {
+      const transformedPlayer = transformPlayer(player)
+      const group = getPositionGroup(transformedPlayer.position_id) as PositionGroup
+      squadByPosition[group].push(transformedPlayer)
+    })
+  }
+
   return {
-    players: Array.isArray(rawTeam?.players)
-      ? rawTeam.players
-          .map((p) => {
-            try {
-              return transformPlayer(p)
-            } catch (error) {
-              console.error('Error transforming player:', error)
-              return null
-            }
-          })
-          .filter((p): p is TeamPlayer => p !== null)
-      : [],
-    coaches: Array.isArray(rawTeam?.coaches)
-      ? rawTeam.coaches
-          .map((c) => {
-            try {
-              return transformCoach(c)
-            } catch (error) {
-              console.error('Error transforming coach:', error)
-              return null
-            }
-          })
-          .filter((c): c is TeamCoach => c !== null)
-      : [],
+    players: squadByPosition,
+    coaches: Array.isArray(rawTeam.coaches) ? rawTeam.coaches.map(transformCoach) : [],
   }
 }
 

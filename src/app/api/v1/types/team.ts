@@ -58,11 +58,19 @@ export type TeamFixture = {
   // Add other fixture fields here
 }
 
-export type TeamOverviewResponse = TeamBase
+export type TeamOverviewResponse = TeamBase & {
+  squad: TeamSquadResponse
+  table: TeamTableResponse
+  fixtures: TeamFixturesResponse
+  results: TeamResultsResponse
+  stats: TeamStatsResponse
+}
+
 export type TeamTableResponse = {
   activeseasons: TeamSeason[]
   seasons: TeamSeason[]
 }
+
 export type TeamFixturesResponse = TeamFixture[]
 export type TeamResultsResponse = TeamFixture[]
 export type TeamSquadResponse = {

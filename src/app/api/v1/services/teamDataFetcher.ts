@@ -43,7 +43,7 @@ export const teamDataFetcher: TabDataFetcher = {
             equals: numericId,
           },
         },
-        depth: 0,
+        depth: 1,
       })
 
       if (!result.docs.length) {
@@ -55,7 +55,19 @@ export const teamDataFetcher: TabDataFetcher = {
         throw new Error(`Invalid team data structure for ID: ${teamId}`)
       }
 
-      return transformTeamOverview(team)
+      const rawTeam = {
+        id: team.id,
+        name: team.name,
+        activeseasons: Array.isArray(team.activeseasons) ? team.activeseasons : null,
+        seasons: Array.isArray(team.seasons) ? team.seasons : null,
+        upcoming: Array.isArray(team.upcoming) ? team.upcoming : null,
+        latest: Array.isArray(team.latest) ? team.latest : null,
+        players: Array.isArray(team.players) ? team.players : null,
+        coaches: Array.isArray(team.coaches) ? team.coaches : null,
+        statistics: team.statistics || null,
+      }
+
+      return transformTeamOverview(rawTeam)
     } catch (error) {
       console.error('Error in getOverview:', {
         teamId,
@@ -116,7 +128,12 @@ export const teamDataFetcher: TabDataFetcher = {
         throw new Error(`No team found with ID: ${teamId}`)
       }
 
-      return transformTeamFixtures(result.docs[0])
+      const team = result.docs[0]
+      return transformTeamFixtures({
+        id: team.id,
+        name: team.name,
+        upcoming: Array.isArray(team.upcoming) ? team.upcoming : null,
+      })
     } catch (error) {
       console.error('Error in getFixtures:', {
         teamId,
@@ -137,7 +154,17 @@ export const teamDataFetcher: TabDataFetcher = {
       },
       depth: 1,
     })
-    return transformTeamResults(result.docs[0])
+
+    if (!result.docs.length) {
+      throw new Error(`No team found with ID: ${teamId}`)
+    }
+
+    const team = result.docs[0]
+    return transformTeamResults({
+      id: team.id,
+      name: team.name,
+      latest: Array.isArray(team.latest) ? team.latest : null,
+    })
   },
 
   async getSquad(teamId: string): Promise<TeamSquadResponse> {
