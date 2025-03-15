@@ -15,6 +15,7 @@ export interface TransformedTeam {
   trophies: unknown | null
   socials: unknown | null
   rankings: unknown | null
+  standings: unknown | null
 }
 
 export function transformTeam(team: SportmonksTeam): TransformedTeam {
@@ -33,6 +34,7 @@ export function transformTeam(team: SportmonksTeam): TransformedTeam {
     trophies: team.trophies || null,
     socials: team.socials || null,
     rankings: team.rankings || null,
+    standings: team.standings || null,
   }
 }
 

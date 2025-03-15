@@ -43,6 +43,7 @@ export type SportmonksTeam = {
   trophies?: unknown
   socials?: unknown
   rankings?: unknown
+  standings?: unknown
 }
 
 export type SportmonksPlayer = {
@@ -106,4 +107,46 @@ export type SportmonksMatch = {
   lineups?: unknown
   metadata?: unknown
   weatherreport?: unknown
+}
+
+export type SportmonksStandingTableRow = {
+  position: number
+  team_id: number
+  team_name: string
+  points: number
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  goal_difference: number
+  form?: string
+  current_streak?: string
+  clean_sheets?: number
+  failed_to_score?: number
+  team?: SportmonksTeam
+}
+
+export type SportmonksStandingTable = {
+  id: number
+  name: string
+  type: string
+  standings: {
+    data: SportmonksStandingTableRow[]
+  }
+}
+
+export type SportmonksStandings = {
+  id: number
+  name: string
+  type: string
+  league_id: number
+  season_id: number
+  stage_id: number | null
+  stage_name: string | null
+  resource: string
+  standings: {
+    data: SportmonksStandingTable[]
+  }
 }
