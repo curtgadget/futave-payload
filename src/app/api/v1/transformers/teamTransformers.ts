@@ -80,8 +80,8 @@ export function transformFixture(rawFixture: any): TeamFixture {
 }
 
 export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
-  if (!rawTeam?.upcoming) return {}
-  return Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : {}
+  if (!rawTeam?.upcoming) return []
+  return Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
 }
 
 export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {
