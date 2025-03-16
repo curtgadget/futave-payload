@@ -9,8 +9,49 @@ export type TeamBase = {
 export type TeamSeason = {
   id: string
   name: string
-  // Add other season fields here
 }
+
+// New standings types
+export type StandingTableRow = {
+  position: number
+  team_id: number // This is mapped from participant_id in the transformer
+  team_name: string // May need to be derived from other fields
+  points: number
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  goal_difference: number
+  form?: string
+  current_streak?: string
+  clean_sheets?: number
+  failed_to_score?: number
+  // Add comment about the mapping from Sportmonks API
+  // team_id is mapped from participant_id in the API
+  // team_name might need to be derived from related data
+}
+
+export type StandingTable = {
+  id: number
+  name: string
+  type: string
+  standings: StandingTableRow[]
+}
+
+export type StandingsData = {
+  id: number
+  name: string
+  type: string
+  league_id: number
+  season_id: number
+  stage_id: number | null
+  stage_name: string | null
+  standings: StandingTable[]
+}
+
+export type TeamTableResponse = Record<string, StandingsData> // Map of seasonId -> standings data
 
 export type PositionGroup = 'goalkeepers' | 'defenders' | 'midfielders' | 'forwards'
 
@@ -64,11 +105,6 @@ export type TeamOverviewResponse = TeamBase & {
   fixtures: TeamFixturesResponse
   results: TeamResultsResponse
   stats: TeamStatsResponse
-}
-
-export type TeamTableResponse = {
-  activeseasons: TeamSeason[]
-  seasons: TeamSeason[]
 }
 
 export type TeamFixturesResponse = TeamFixture[]
