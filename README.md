@@ -1,16 +1,17 @@
 # FutAve - Soccer Live Scores CMS
 
-FutAve is a soccer live scores platform powered by Payload CMS that provides real-time match data, league information, and team statistics.
+FutAve is a soccer live scores platform powered by Payload CMS that provides real-time match data, league information, team statistics, and standings.
 
 ## Overview
 
 This repository contains the backend and content management system (CMS) for FutAve. It integrates with the Sportmonks API to sync soccer data and provides a robust API for multiple frontend clients.
 
-### Key Features (WIP)
+### Key Features
 
 - Real-time match data and live scores
 - Comprehensive league and tournament information
 - Team and player statistics
+- League standings and team rankings
 - Automated data synchronization with Sportmonks API
 - RESTful API endpoints for frontend consumption
 
@@ -28,7 +29,10 @@ The CMS is structured around the following main collections:
 
 - **Leagues** - Soccer leagues and competitions
 - **Matches** - Live and historical match data
-- **Teams** - Team information and statistics
+- **Teams** - Team information, statistics, and standings
+- **Players** - Player information and statistics
+- **Countries** - Country information for teams and leagues
+- **MetadataTypes** - Supporting metadata for other collections
 - **Media** - Images and media assets
 - **Users** - CMS user management
 
@@ -37,14 +41,18 @@ The CMS is structured around the following main collections:
 The system includes automated jobs for:
 - Syncing league data
 - Updating match information
-- Maintaining team statistics
+- Maintaining team statistics and standings
+- Syncing player information
+- Updating country data
+- Managing metadata types
 
 ## API Endpoints
 
 The CMS exposes RESTful endpoints for:
 - Retrieving live match data
 - Accessing league information
-- Fetching team statistics
+- Fetching team statistics and standings
+- Accessing player information
 - Managing media assets
 
 ## Development
