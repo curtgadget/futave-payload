@@ -1,4 +1,9 @@
 import { getPositionGroup } from '@/constants/team'
+import {
+  STANDING_DETAIL_TYPES,
+  STANDING_DETAIL_NAME_PATTERNS,
+  matchesDetailPattern,
+} from '@/constants/sportmonks'
 import type {
   TeamCoach,
   TeamFixture,
@@ -31,6 +36,163 @@ interface RawTeam {
   standings?: Record<string, any> | null
 }
 
+/**
+ * Helper function to format team form data into a standard W/D/L format
+ * Handles different input formats from the Sportmonks API
+ */
+function formatTeamForm(formData: any): string | undefined {
+  // Log the form data type for debugging
+  console.log(
+    'Form data type:',
+    typeof formData,
+    Array.isArray(formData) ? `(array of ${formData.length} items)` : '',
+    formData && typeof formData === 'object' && formData.data ? `(contains data property)` : '',
+  )
+
+  // If formData is null or undefined
+  if (!formData) {
+    console.log('Form data is null or undefined')
+    return undefined
+  }
+
+  // If formData is already a string with content, just return it
+  if (typeof formData === 'string' && formData.length > 0) {
+    // Check if the string appears to be already in W/D/L format
+    if (/^[WDLwdl-]+$/.test(formData)) {
+      console.log('Form data is already in W/D/L format:', formData)
+      return formData.toUpperCase()
+    }
+
+    // Otherwise, log it for debugging
+    console.log('Form data is a string but not in expected format:', formData)
+    return formData
+  }
+
+  // Handle the specific format where form is an array of objects with form and sort_order properties
+  if (Array.isArray(formData) && formData.length > 0) {
+    // Log sample of the array
+    console.log('Form array sample (first item):', JSON.stringify(formData[0]))
+
+    // Check if the array contains objects with 'form' property
+    if (typeof formData[0]?.form === 'string') {
+      console.log('Processing form array with form property. Items:', formData.length)
+
+      // Sort by sort_order in ascending order (oldest to newest)
+      const sortedFormData = [...formData].sort((a, b) => {
+        // Handle the case where sort_order might be missing
+        const orderA = typeof a.sort_order === 'number' ? a.sort_order : 0
+        const orderB = typeof b.sort_order === 'number' ? b.sort_order : 0
+        return orderA - orderB // Ascending order
+      })
+
+      // Log the sort orders
+      console.log(
+        'Sort orders after sorting:',
+        sortedFormData.map((item) => item.sort_order),
+      )
+
+      // Take the 5 most recent matches (last 5 in the sorted array)
+      const lastFiveMatches = sortedFormData.slice(Math.max(0, sortedFormData.length - 5))
+
+      // Extract form values
+      const recentForm = lastFiveMatches.map((entry) => entry.form?.toUpperCase() || '-')
+
+      console.log('Extracted form values in chronological order:', recentForm)
+      return recentForm.join('')
+    }
+  }
+
+  // If formData is a different kind of array or has a data property that's an array
+  const formArray = Array.isArray(formData)
+    ? formData
+    : formData?.data && Array.isArray(formData.data)
+      ? formData.data
+      : null
+
+  if (formArray && formArray.length > 0) {
+    console.log('Processing formArray with length:', formArray.length)
+    console.log('First item in formArray:', JSON.stringify(formArray[0]))
+
+    // Check if we're dealing with the format where the array contains objects with form and sort_order
+    if (typeof formArray[0]?.form === 'string' && 'sort_order' in formArray[0]) {
+      console.log(
+        'Processing form.data array with form property structure. Items:',
+        formArray.length,
+      )
+
+      // Sort by sort_order in ascending order (oldest to newest)
+      const sortedFormArray = [...formArray].sort((a, b) => {
+        const orderA = typeof a.sort_order === 'number' ? a.sort_order : 0
+        const orderB = typeof b.sort_order === 'number' ? b.sort_order : 0
+        return orderA - orderB // Ascending order
+      })
+
+      // Log the sort orders
+      console.log(
+        'Sort orders after sorting:',
+        sortedFormArray.map((item) => item.sort_order),
+      )
+
+      // Take the 5 most recent matches (last 5 in the sorted array)
+      const lastFiveMatches = sortedFormArray.slice(Math.max(0, sortedFormArray.length - 5))
+
+      // Extract form values
+      const recentForm = lastFiveMatches.map((entry) => entry.form?.toUpperCase() || '-')
+
+      console.log('Extracted form values from data array in chronological order:', recentForm)
+      return recentForm.join('')
+    }
+
+    // Handle other array formats as before - assume newest entries are first in array
+    console.log('Processing formArray as generic array, assuming newest entries are first')
+
+    // We reverse the final result to make most recent match appear on the right
+    const formValues = formArray.slice(0, 5).map((entry: any) => {
+      // If entry is a string, assume it's already a result code
+      if (typeof entry === 'string') {
+        if (entry.toLowerCase() === 'w' || entry.toLowerCase() === 'win') return 'W'
+        if (entry.toLowerCase() === 'd' || entry.toLowerCase() === 'draw') return 'D'
+        if (entry.toLowerCase() === 'l' || entry.toLowerCase() === 'loss') return 'L'
+        return entry.toUpperCase().charAt(0) || '-'
+      }
+
+      // If entry is an object with a result property
+      if (entry && typeof entry === 'object') {
+        if (typeof entry.form === 'string') {
+          return entry.form.toUpperCase()
+        }
+
+        const result = typeof entry.result === 'string' ? entry.result.toLowerCase() : ''
+
+        if (result === 'w' || result === 'win') return 'W'
+        if (result === 'd' || result === 'draw') return 'D'
+        if (result === 'l' || result === 'loss') return 'L'
+
+        // Try other possible properties if result is not found
+        if (entry.outcome) {
+          const outcome = entry.outcome.toLowerCase()
+          if (outcome.includes('win')) return 'W'
+          if (outcome.includes('draw')) return 'D'
+          if (outcome.includes('loss') || outcome.includes('lose')) return 'L'
+        }
+
+        return result.charAt(0).toUpperCase() || '-'
+      }
+
+      return '-' // Default if we can't determine the result
+    })
+
+    // Reverse to have most recent match on the right
+    const formString = formValues.reverse().join('')
+    console.log('Generated form string from generic array:', formString)
+    return formString
+  }
+
+  // If we couldn't find any form data
+  console.log('Could not extract form data from the provided input')
+  return undefined
+}
+
 export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
   if (!rawTeam?.id || !rawTeam?.name) {
     throw new Error('Invalid team data: missing required fields')
@@ -55,68 +217,46 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
 
 export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
   console.log('transformTeamTable called with:', {
-    hasId: !!rawTeam?.id,
-    hasName: !!rawTeam?.name,
-    hasStandings: !!rawTeam?.standings,
-    standingsType: rawTeam?.standings ? typeof rawTeam.standings : 'N/A',
-    standingsKeyCount: rawTeam?.standings ? Object.keys(rawTeam.standings).length : 0,
+    hasStandings: !!rawTeam.standings,
+    standingsType: rawTeam.standings ? typeof rawTeam.standings : 'N/A',
+    standingsKeyCount: rawTeam.standings ? Object.keys(rawTeam.standings).length : 0,
   })
 
-  const transformedStandings: Record<string, StandingsData> = {}
+  const transformedStandings: TeamTableResponse = {}
 
-  if (rawTeam?.standings && typeof rawTeam.standings === 'object') {
-    const seasonIds = Object.keys(rawTeam.standings)
-    console.log(`Processing ${seasonIds.length} seasons:`, seasonIds)
+  if (
+    rawTeam.standings &&
+    typeof rawTeam.standings === 'object' &&
+    Object.keys(rawTeam.standings).length > 0
+  ) {
+    console.log('Processing standings data with seasons:', Object.keys(rawTeam.standings))
 
     Object.entries(rawTeam.standings).forEach(([seasonId, standingsData]) => {
       console.log(`Processing season ${seasonId}:`, {
-        hasData: !!standingsData,
-        dataType: standingsData ? typeof standingsData : 'N/A',
+        type: typeof standingsData,
         isArray: Array.isArray(standingsData),
-        objectKeys:
-          typeof standingsData === 'object' ? Object.keys(standingsData).slice(0, 5) : 'N/A',
+        keys:
+          typeof standingsData === 'object' && !Array.isArray(standingsData)
+            ? Object.keys(standingsData)
+            : 'N/A',
       })
 
-      // Handle different data structure
       try {
-        // Check if this is an array or an array-like object with numeric keys (0, 1, 2, ...)
-        const isArrayOrArrayLike =
-          Array.isArray(standingsData) ||
-          (typeof standingsData === 'object' &&
-            !Array.isArray(standingsData) &&
-            Object.keys(standingsData).every((key) => !isNaN(Number(key))))
+        // Try the array processing path
+        if (Array.isArray(standingsData) && standingsData.length > 0) {
+          console.log(`Season ${seasonId} has array data with ${standingsData.length} items`)
 
-        if (isArrayOrArrayLike) {
-          console.log(
-            `Season ${seasonId} appears to be an ${Array.isArray(standingsData) ? 'array' : 'array-like object'} with ${Array.isArray(standingsData) ? standingsData.length : Object.keys(standingsData).length} items`,
-          )
-
-          // Convert to array if it's not already one
-          const standingsArray = Array.isArray(standingsData)
-            ? standingsData
-            : Object.values(standingsData)
-
-          // Filter out any non-objects
-          const validItems = standingsArray.filter((item) => item && typeof item === 'object')
+          // Filter for valid standing items
+          const validItems = standingsData.filter((item) => {
+            return (
+              item &&
+              typeof item === 'object' &&
+              (typeof item.participant_id === 'number' || typeof item.team_id === 'number')
+            )
+          })
 
           if (validItems.length > 0) {
-            // Sample the first item to understand structure
-            const sampleItem = validItems[0]
-            console.log(
-              'Sample standings item structure:',
-              typeof sampleItem === 'object' && sampleItem !== null
-                ? Object.keys(sampleItem)
-                : 'Not an object',
-            )
-
-            // Log a few field values to help with debugging
-            if (typeof sampleItem === 'object' && sampleItem !== null) {
-              console.log('Sample data preview:')
-              console.log('  position:', sampleItem.position)
-              console.log('  participant_id:', sampleItem.participant_id)
-              console.log('  team_name:', sampleItem.team_name)
-              console.log('  points:', sampleItem.points)
-            }
+            console.log(`Found ${validItems.length} valid standings items for season ${seasonId}`)
 
             // Create a simplified standings table structure
             const standingRows = validItems.map((row) => {
@@ -125,52 +265,65 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
                 console.log('Row missing participant_id:', row)
               }
 
+              // Use the participant data for team information when available
+              const participant = row.participant || {}
+
+              // Format form data (if available) into WDLWL format
+              const formattedForm = formatTeamForm(row.form)
+              if (formattedForm) {
+                console.log(`Team ${row.participant_id} processed form:`, formattedForm)
+              }
+
+              // Extract and process details
+              const detailValues = extractStandingDetails(row.details)
+
+              // Get raw values from the row, then fall back to calculated values from details
               return {
                 position: typeof row.position === 'number' ? row.position : 0,
                 team_id: typeof row.participant_id === 'number' ? row.participant_id : 0,
-                team_name: row.team_name || row.participant?.name || `Team ${row.participant_id}`,
+                team_name: row.team_name || participant?.name || `Team ${row.participant_id}`,
+                team_logo_path: participant?.image_path || null,
                 points: typeof row.points === 'number' ? row.points : 0,
                 played:
                   typeof row.games === 'number'
                     ? row.games
                     : typeof row.played === 'number'
                       ? row.played
-                      : 0,
-                won:
-                  typeof row.wins === 'number'
-                    ? row.wins
-                    : typeof row.won === 'number'
-                      ? row.won
-                      : 0,
-                draw:
-                  typeof row.draws === 'number'
-                    ? row.draws
-                    : typeof row.draw === 'number'
-                      ? row.draw
-                      : 0,
-                lost:
-                  typeof row.losses === 'number'
-                    ? row.losses
-                    : typeof row.lost === 'number'
-                      ? row.lost
-                      : 0,
+                      : detailValues.played > 0
+                        ? detailValues.played
+                        : detailValues.won + detailValues.draw + detailValues.lost,
+                won: typeof row.won === 'number' ? row.won : detailValues.won,
+                draw: typeof row.draw === 'number' ? row.draw : detailValues.draw,
+                lost: typeof row.lost === 'number' ? row.lost : detailValues.lost,
                 goals_for:
                   typeof row.goals_scored === 'number'
                     ? row.goals_scored
                     : typeof row.goals_for === 'number'
                       ? row.goals_for
-                      : 0,
-                goals_against: typeof row.goals_against === 'number' ? row.goals_against : 0,
-                goal_difference: typeof row.goal_difference === 'number' ? row.goal_difference : 0,
-                form: typeof row.form === 'string' ? row.form : undefined,
+                      : detailValues.goals_for,
+                goals_against:
+                  typeof row.goals_against === 'number'
+                    ? row.goals_against
+                    : detailValues.goals_against,
+                goal_difference:
+                  typeof row.goal_difference === 'number'
+                    ? row.goal_difference
+                    : detailValues.goals_for - detailValues.goals_against,
+                form: formattedForm,
                 current_streak:
                   typeof row.status === 'string'
                     ? row.status
                     : typeof row.current_streak === 'string'
                       ? row.current_streak
                       : undefined,
-                clean_sheets: typeof row.clean_sheets === 'number' ? row.clean_sheets : undefined,
-                failed_to_score: undefined, // This field might not exist in the data
+                clean_sheets:
+                  typeof row.clean_sheets === 'number'
+                    ? row.clean_sheets
+                    : detailValues.clean_sheets,
+                failed_to_score:
+                  typeof row.failed_to_score === 'number'
+                    ? row.failed_to_score
+                    : detailValues.failed_to_score,
               }
             })
 
@@ -202,8 +355,9 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
           } else {
             console.log(`No valid standings items found for season ${seasonId}`)
           }
-        } else if (standingsData && typeof standingsData === 'object') {
-          // Try the original expected structure
+        }
+        // Try the original expected structure
+        else {
           const data = standingsData as any
 
           console.log(`Season ${seasonId} data structure:`, {
@@ -236,27 +390,55 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
                       console.log('Row missing participant_id:', row)
                     }
 
+                    // Use participant data for enhanced team information
+                    const participant = row.participant || {}
+
+                    // Format form data (if available) into WDLWL format
+                    const formattedForm = formatTeamForm(row.form)
+                    if (formattedForm) {
+                      console.log(`Team ${row.participant_id} processed form:`, formattedForm)
+                    }
+
+                    // Extract and process details
+                    const detailValues = extractStandingDetails(row.details)
+
+                    // Get raw values from the row, then fall back to calculated values from details
                     return {
                       position: typeof row.position === 'number' ? row.position : 0,
                       team_id: typeof row.participant_id === 'number' ? row.participant_id : 0,
-                      team_name:
-                        row.team_name || row.participant?.name || `Team ${row.participant_id}`,
+                      team_name: row.team_name || participant?.name || `Team ${row.participant_id}`,
+                      team_logo_path: participant?.image_path || null,
                       points: typeof row.points === 'number' ? row.points : 0,
-                      played: typeof row.played === 'number' ? row.played : 0,
-                      won: typeof row.won === 'number' ? row.won : 0,
-                      draw: typeof row.draw === 'number' ? row.draw : 0,
-                      lost: typeof row.lost === 'number' ? row.lost : 0,
-                      goals_for: typeof row.goals_for === 'number' ? row.goals_for : 0,
-                      goals_against: typeof row.goals_against === 'number' ? row.goals_against : 0,
+                      played:
+                        typeof row.played === 'number'
+                          ? row.played
+                          : detailValues.played > 0
+                            ? detailValues.played
+                            : detailValues.won + detailValues.draw + detailValues.lost,
+                      won: typeof row.won === 'number' ? row.won : detailValues.won,
+                      draw: typeof row.draw === 'number' ? row.draw : detailValues.draw,
+                      lost: typeof row.lost === 'number' ? row.lost : detailValues.lost,
+                      goals_for:
+                        typeof row.goals_for === 'number' ? row.goals_for : detailValues.goals_for,
+                      goals_against:
+                        typeof row.goals_against === 'number'
+                          ? row.goals_against
+                          : detailValues.goals_against,
                       goal_difference:
-                        typeof row.goal_difference === 'number' ? row.goal_difference : 0,
-                      form: typeof row.form === 'string' ? row.form : undefined,
+                        typeof row.goal_difference === 'number'
+                          ? row.goal_difference
+                          : detailValues.goals_for - detailValues.goals_against,
+                      form: formattedForm,
                       current_streak:
                         typeof row.current_streak === 'string' ? row.current_streak : undefined,
                       clean_sheets:
-                        typeof row.clean_sheets === 'number' ? row.clean_sheets : undefined,
+                        typeof row.clean_sheets === 'number'
+                          ? row.clean_sheets
+                          : detailValues.clean_sheets,
                       failed_to_score:
-                        typeof row.failed_to_score === 'number' ? row.failed_to_score : undefined,
+                        typeof row.failed_to_score === 'number'
+                          ? row.failed_to_score
+                          : detailValues.failed_to_score,
                     }
                   })
 
@@ -303,6 +485,334 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
   })
 
   return transformedStandings
+}
+
+/**
+ * Helper function to extract standing details from the details array
+ */
+function extractStandingDetails(details: any[]): {
+  played: number
+  won: number
+  draw: number
+  lost: number
+  goals_for: number
+  goals_against: number
+  clean_sheets: number | undefined
+  failed_to_score: number | undefined
+} {
+  // Default values
+  let played = 0
+  let won = 0
+  let draw = 0
+  let lost = 0
+  let goals_for = 0
+  let goals_against = 0
+  let clean_sheets: number | undefined = undefined
+  let failed_to_score: number | undefined = undefined
+
+  // Process details array if it exists
+  if (Array.isArray(details) && details.length > 0) {
+    console.log(`Processing ${details.length} detail items`)
+
+    // First, extract all values into a map for easier lookup
+    const detailsMap = new Map<number, number>()
+    const detailsNameMap = new Map<string, number>()
+    const allTypeIds: number[] = []
+
+    // Debug: log all detail items and collect all type IDs
+    details.forEach((detail: any) => {
+      if (typeof detail.value === 'number' && detail.type_id) {
+        const value = detail.value
+        const typeId = detail.type_id
+        const typeName = detail.type?.name || 'Unknown'
+
+        console.log(`Detail: ID=${typeId}, Name="${typeName}", Value=${value}`)
+
+        detailsMap.set(typeId, value)
+        allTypeIds.push(typeId)
+        if (detail.type?.name) {
+          detailsNameMap.set(typeName.toLowerCase(), value)
+        }
+      }
+    })
+
+    // Log all found type IDs for debugging
+    console.log('All type IDs found:', allTypeIds)
+
+    // Process by both ID and name pattern for maximum coverage
+
+    // 1. Process by ID first (more reliable)
+
+    // Matches played - priority for overall
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_MATCHES_PLAYED)) {
+      played = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_MATCHES_PLAYED) || 0
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_MATCHES_PLAYED) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_MATCHES_PLAYED)
+    ) {
+      // If we have both home and away, sum them
+      const homePlayed = detailsMap.get(STANDING_DETAIL_TYPES.HOME_MATCHES_PLAYED) || 0
+      const awayPlayed = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_MATCHES_PLAYED) || 0
+      played = homePlayed + awayPlayed
+    }
+
+    // Wins - Check both standard and alternative IDs
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_WON)) {
+      won = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_WON) || 0
+      console.log('Found won using standard ID:', won)
+    } else if (detailsMap.has(STANDING_DETAIL_TYPES.ALT_OVERALL_WON)) {
+      won = detailsMap.get(STANDING_DETAIL_TYPES.ALT_OVERALL_WON) || 0
+      console.log('Found won using alternative ID:', won)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_WON) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_WON)
+    ) {
+      const homeWon = detailsMap.get(STANDING_DETAIL_TYPES.HOME_WON) || 0
+      const awayWon = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_WON) || 0
+      won = homeWon + awayWon
+      console.log('Calculated won from home + away:', won)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_HOME_WON) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_AWAY_WON)
+    ) {
+      const homeWon = detailsMap.get(STANDING_DETAIL_TYPES.ALT_HOME_WON) || 0
+      const awayWon = detailsMap.get(STANDING_DETAIL_TYPES.ALT_AWAY_WON) || 0
+      won = homeWon + awayWon
+      console.log('Calculated won from alternative home + away:', won)
+    }
+
+    // Draws - Check both standard and alternative IDs
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_DRAW)) {
+      draw = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_DRAW) || 0
+      console.log('Found draw using standard ID:', draw)
+    } else if (detailsMap.has(STANDING_DETAIL_TYPES.ALT_OVERALL_DRAW)) {
+      draw = detailsMap.get(STANDING_DETAIL_TYPES.ALT_OVERALL_DRAW) || 0
+      console.log('Found draw using alternative ID:', draw)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_DRAW) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_DRAW)
+    ) {
+      const homeDraw = detailsMap.get(STANDING_DETAIL_TYPES.HOME_DRAW) || 0
+      const awayDraw = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_DRAW) || 0
+      draw = homeDraw + awayDraw
+      console.log('Calculated draw from home + away:', draw)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_HOME_DRAW) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_AWAY_DRAW)
+    ) {
+      const homeDraw = detailsMap.get(STANDING_DETAIL_TYPES.ALT_HOME_DRAW) || 0
+      const awayDraw = detailsMap.get(STANDING_DETAIL_TYPES.ALT_AWAY_DRAW) || 0
+      draw = homeDraw + awayDraw
+      console.log('Calculated draw from alternative home + away:', draw)
+    }
+
+    // Losses - Check both standard and alternative IDs
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_LOST)) {
+      lost = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_LOST) || 0
+      console.log('Found lost using standard ID:', lost)
+    } else if (detailsMap.has(STANDING_DETAIL_TYPES.ALT_OVERALL_LOST)) {
+      lost = detailsMap.get(STANDING_DETAIL_TYPES.ALT_OVERALL_LOST) || 0
+      console.log('Found lost using alternative ID:', lost)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_LOST) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_LOST)
+    ) {
+      const homeLost = detailsMap.get(STANDING_DETAIL_TYPES.HOME_LOST) || 0
+      const awayLost = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_LOST) || 0
+      lost = homeLost + awayLost
+      console.log('Calculated lost from home + away:', lost)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_HOME_LOST) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.ALT_AWAY_LOST)
+    ) {
+      const homeLost = detailsMap.get(STANDING_DETAIL_TYPES.ALT_HOME_LOST) || 0
+      const awayLost = detailsMap.get(STANDING_DETAIL_TYPES.ALT_AWAY_LOST) || 0
+      lost = homeLost + awayLost
+      console.log('Calculated lost from alternative home + away:', lost)
+    }
+
+    // Look for wins/draws/losses in name-based details if still not found
+    if (won === 0 || draw === 0 || lost === 0) {
+      // Try finding by text pattern matching if ID matching failed
+      details.forEach((detail: any) => {
+        if (typeof detail.value !== 'number' || !detail.type?.name) {
+          return
+        }
+
+        const value = detail.value
+        const typeName = detail.type.name.toLowerCase()
+
+        // Check for wins
+        if (won === 0 && matchesDetailPattern(typeName, STANDING_DETAIL_NAME_PATTERNS.WON)) {
+          won = value
+          console.log('Found won using name pattern match:', typeName, value)
+        }
+
+        // Check for draws
+        if (draw === 0 && matchesDetailPattern(typeName, STANDING_DETAIL_NAME_PATTERNS.DRAW)) {
+          draw = value
+          console.log('Found draw using name pattern match:', typeName, value)
+        }
+
+        // Check for losses
+        if (lost === 0 && matchesDetailPattern(typeName, STANDING_DETAIL_NAME_PATTERNS.LOST)) {
+          lost = value
+          console.log('Found lost using name pattern match:', typeName, value)
+        }
+      })
+    }
+
+    // Goals for - priority for overall
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_GOALS_FOR)) {
+      goals_for = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_GOALS_FOR) || 0
+      console.log('Found goals_for using ID:', goals_for)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_GOALS_FOR) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_GOALS_FOR)
+    ) {
+      // If we have both home and away, sum them
+      const homeGoalsFor = detailsMap.get(STANDING_DETAIL_TYPES.HOME_GOALS_FOR) || 0
+      const awayGoalsFor = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_GOALS_FOR) || 0
+      goals_for = homeGoalsFor + awayGoalsFor
+      console.log('Calculated goals_for from home + away:', goals_for)
+    }
+
+    // Goals against - priority for overall
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_GOALS_AGAINST)) {
+      goals_against = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_GOALS_AGAINST) || 0
+      console.log('Found goals_against using ID:', goals_against)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_GOALS_AGAINST) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_GOALS_AGAINST)
+    ) {
+      // If we have both home and away, sum them
+      const homeGoalsAgainst = detailsMap.get(STANDING_DETAIL_TYPES.HOME_GOALS_AGAINST) || 0
+      const awayGoalsAgainst = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_GOALS_AGAINST) || 0
+      goals_against = homeGoalsAgainst + awayGoalsAgainst
+      console.log('Calculated goals_against from home + away:', goals_against)
+    }
+
+    // If no direct detail values found for w/d/l, use played and points to infer
+    if (played > 0 && (won === 0 || draw === 0 || lost === 0)) {
+      // If we found played, but not wins, draws or losses, let's try a different approach
+      // Look for a value with a name like "Wins" or "Won"
+      console.log('Attempting to infer missing W/D/L values...')
+
+      // For each detail, check for naming patterns
+      for (const detail of details) {
+        if (typeof detail.value !== 'number' || !detail.type?.name) continue
+
+        const typeName = detail.type.name.toLowerCase()
+        const value = detail.value
+
+        if (won === 0 && /\b(win|won|victory)\b/.test(typeName)) {
+          won = value
+          console.log('Inferred won value from name match:', typeName, value)
+        } else if (draw === 0 && /\b(draw|drawn|tie|tied)\b/.test(typeName)) {
+          draw = value
+          console.log('Inferred draw value from name match:', typeName, value)
+        } else if (lost === 0 && /\b(lost|loss|losses|defeat)\b/.test(typeName)) {
+          lost = value
+          console.log('Inferred lost value from name match:', typeName, value)
+        }
+      }
+
+      // If we still couldn't find all values, calculate the missing one
+      if (played > 0) {
+        if (won > 0 && draw > 0 && lost === 0) {
+          lost = played - won - draw
+          console.log('Calculated lost from played - won - draw:', lost)
+        } else if (won > 0 && lost > 0 && draw === 0) {
+          draw = played - won - lost
+          console.log('Calculated draw from played - won - lost:', draw)
+        } else if (draw > 0 && lost > 0 && won === 0) {
+          won = played - draw - lost
+          console.log('Calculated won from played - draw - lost:', won)
+        }
+      }
+    }
+
+    // Clean sheets - priority for overall
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_CLEAN_SHEETS)) {
+      clean_sheets = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_CLEAN_SHEETS)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_CLEAN_SHEETS) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_CLEAN_SHEETS)
+    ) {
+      // If we have both home and away, sum them
+      const homeCleanSheets = detailsMap.get(STANDING_DETAIL_TYPES.HOME_CLEAN_SHEETS) || 0
+      const awayCleanSheets = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_CLEAN_SHEETS) || 0
+      clean_sheets = homeCleanSheets + awayCleanSheets
+    } else {
+      // Try finding by name
+      details.forEach((detail: any) => {
+        if (typeof detail.value !== 'number' || !detail.type?.name) return
+
+        const typeName = detail.type.name.toLowerCase()
+        if (
+          clean_sheets === undefined &&
+          matchesDetailPattern(typeName, STANDING_DETAIL_NAME_PATTERNS.CLEAN_SHEETS)
+        ) {
+          clean_sheets = detail.value
+        }
+      })
+    }
+
+    // Failed to score - priority for overall
+    if (detailsMap.has(STANDING_DETAIL_TYPES.OVERALL_FAILED_TO_SCORE)) {
+      failed_to_score = detailsMap.get(STANDING_DETAIL_TYPES.OVERALL_FAILED_TO_SCORE)
+    } else if (
+      detailsMap.has(STANDING_DETAIL_TYPES.HOME_FAILED_TO_SCORE) &&
+      detailsMap.has(STANDING_DETAIL_TYPES.AWAY_FAILED_TO_SCORE)
+    ) {
+      // If we have both home and away, sum them
+      const homeFailedToScore = detailsMap.get(STANDING_DETAIL_TYPES.HOME_FAILED_TO_SCORE) || 0
+      const awayFailedToScore = detailsMap.get(STANDING_DETAIL_TYPES.AWAY_FAILED_TO_SCORE) || 0
+      failed_to_score = homeFailedToScore + awayFailedToScore
+    } else {
+      // Try finding by name
+      details.forEach((detail: any) => {
+        if (typeof detail.value !== 'number' || !detail.type?.name) return
+
+        const typeName = detail.type.name.toLowerCase()
+        if (
+          failed_to_score === undefined &&
+          matchesDetailPattern(typeName, STANDING_DETAIL_NAME_PATTERNS.FAILED_TO_SCORE)
+        ) {
+          failed_to_score = detail.value
+        }
+      })
+    }
+
+    // If played is still 0 but we have results data, calculate from those
+    if (played === 0 && (won > 0 || draw > 0 || lost > 0)) {
+      played = won + draw + lost
+      console.log('Calculated played from won + draw + lost:', played)
+    }
+
+    // Log the final values we'll use
+    console.log('Final calculated standing values:', {
+      played,
+      won,
+      draw,
+      lost,
+      goals_for,
+      goals_against,
+      clean_sheets,
+      failed_to_score,
+    })
+  }
+
+  return {
+    played,
+    won,
+    draw,
+    lost,
+    goals_for,
+    goals_against,
+    clean_sheets,
+    failed_to_score,
+  }
 }
 
 export function transformFixture(rawFixture: any): TeamFixture {

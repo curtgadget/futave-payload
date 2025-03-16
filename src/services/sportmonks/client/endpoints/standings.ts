@@ -1,5 +1,5 @@
 import { createSportmonksClient } from '../index'
-import { FetchParams, SportmonksConfig, SportmonksStandings } from '../types'
+import { FetchParams, SportmonksConfig, SportmonksStandings, SportmonksResponse } from '../types'
 
 export function createStandingsEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient(config)
@@ -7,10 +7,15 @@ export function createStandingsEndpoint(config: SportmonksConfig) {
   async function getBySeasonId(
     seasonId: number,
     params: FetchParams = {},
-  ): Promise<SportmonksStandings> {
+  ): Promise<SportmonksStandings[]> {
+    const includesParams = {
+      ...params,
+      include: 'participant;details;form;rule;group',
+    }
+
     const response = await client.fetchFromApi<SportmonksStandings>(
       `/standings/seasons/${seasonId}`,
-      params,
+      includesParams,
     )
     return response.data
   }

@@ -16,6 +16,7 @@ export type StandingTableRow = {
   position: number
   team_id: number // This is mapped from participant_id in the transformer
   team_name: string // May need to be derived from other fields
+  team_logo_path?: string // Team logo image URL from participant.image_path
   points: number
   played: number
   won: number
