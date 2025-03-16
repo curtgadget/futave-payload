@@ -80,7 +80,6 @@ export const teamDataFetcher: TabDataFetcher = {
 
   async getTable(teamId: string): Promise<TeamTableResponse> {
     try {
-      console.log('Fetching team table for ID:', teamId)
       const numericId = validateTeamId(teamId)
 
       const payload = await getPayload({ config })
@@ -100,60 +99,6 @@ export const teamDataFetcher: TabDataFetcher = {
 
       const team = teamResult.docs[0]
 
-      // Add diagnostic logging for the team data
-      console.log('Team found:', {
-        id: team.id,
-        name: team.name,
-        hasStandings: !!team.standings,
-        standingsType: team.standings ? typeof team.standings : 'N/A',
-        standingsIsArray: Array.isArray(team.standings),
-        standingsIsEmpty:
-          team.standings && typeof team.standings === 'object'
-            ? Object.keys(team.standings).length === 0
-            : 'N/A',
-        standingsKeys:
-          team.standings && typeof team.standings === 'object'
-            ? Object.keys(team.standings)
-            : 'N/A',
-      })
-
-      // Log a snippet of the actual standings data if it exists
-      if (team.standings && typeof team.standings === 'object') {
-        const standingsObject = team.standings as Record<string, any>
-        if (Object.keys(standingsObject).length > 0) {
-          const sampleSeasonId = Object.keys(standingsObject)[0]
-          console.log(`Sample standings data for season ${sampleSeasonId}:`, {
-            dataType: typeof standingsObject[sampleSeasonId],
-            hasData: !!standingsObject[sampleSeasonId],
-            keys: standingsObject[sampleSeasonId]
-              ? Object.keys(standingsObject[sampleSeasonId])
-              : 'N/A',
-          })
-
-          // Log sample item fields to understand the exact data structure
-          if (
-            typeof standingsObject[sampleSeasonId] === 'object' &&
-            standingsObject[sampleSeasonId]
-          ) {
-            // This logs the complete structure for debugging
-            console.log('FULL RAW STANDINGS DATA STRUCTURE:')
-            console.dir(standingsObject, { depth: 10 })
-
-            const sampleItem = standingsObject[sampleSeasonId][0]
-            if (sampleItem && typeof sampleItem === 'object') {
-              console.log('Sample standing item fields:')
-              Object.entries(sampleItem).forEach(([key, value]) => {
-                console.log(
-                  `  ${key}: ${typeof value} = ${JSON.stringify(value).substring(0, 100)}`,
-                )
-              })
-            }
-          }
-        } else {
-          console.log('Standings object exists but has no keys')
-        }
-      }
-
       // Create a properly structured raw team object to avoid type issues
       const rawTeam = {
         id: team.id as number,
@@ -162,19 +107,7 @@ export const teamDataFetcher: TabDataFetcher = {
           typeof team.standings === 'object' ? (team.standings as Record<string, any>) : null,
       }
 
-      console.log('Before transformTeamTable call - rawTeam.standings:', {
-        exists: !!rawTeam.standings,
-        type: rawTeam.standings ? typeof rawTeam.standings : 'N/A',
-        keyCount: rawTeam.standings ? Object.keys(rawTeam.standings).length : 0,
-      })
-
       const transformedStandings = transformTeamTable(rawTeam)
-
-      console.log('After transformTeamTable call - result:', {
-        type: typeof transformedStandings,
-        keyCount: Object.keys(transformedStandings).length,
-        keys: Object.keys(transformedStandings),
-      })
 
       return transformedStandings
     } catch (error) {
@@ -189,7 +122,6 @@ export const teamDataFetcher: TabDataFetcher = {
 
   async getFixtures(teamId: string): Promise<TeamFixturesResponse> {
     try {
-      console.log('Fetching team fixtures for ID:', teamId)
       const numericId = validateTeamId(teamId)
 
       const payload = await getPayload({ config })
@@ -289,7 +221,6 @@ export const teamDataFetcher: TabDataFetcher = {
     const playerIds = team.players.map((player) => player.player_id)
 
     if (playerIds.length === 0) {
-      console.log('No player IDs found')
       return {
         players: {
           goalkeepers: [],
