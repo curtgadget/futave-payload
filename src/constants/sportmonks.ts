@@ -71,8 +71,265 @@ export const STANDING_DETAIL_NAME_PATTERNS = {
   FAILED_TO_SCORE: ['failed to score', 'scoreless', 'overall failed to score'],
 }
 
-// Helper function to check if a name contains any of the patterns
-export function matchesDetailPattern(name: string, patterns: string[]): boolean {
-  const lowerName = name.toLowerCase()
-  return patterns.some((pattern) => lowerName.includes(pattern))
+// Helper function to check if a standing detail type name matches any of the patterns
+export function matchesDetailPattern(typeName: string, patterns: string[]): boolean {
+  return patterns.some((pattern) => typeName.toLowerCase().includes(pattern.toLowerCase()))
+}
+
+/**
+ * Mapping of Sportmonks rule type IDs to qualification status types
+ * Based on confirmed values from the metadata database:
+ * - 180: UEFA Champions League
+ * - 181: UEFA Europa League
+ * - 182: Relegation
+ * - 183: Championship Round (top half after league split)
+ * - 184: Relegation Round (bottom half after league split)
+ */
+export const RULE_TYPE_ID_MAP: Record<number, { type: string; name: string; color: string }> = {
+  // Official UEFA competition qualifications
+  180: {
+    type: 'champions_league',
+    name: 'Champions League',
+    color: '#1E74D3', // UEFA Champions League blue
+  },
+  181: {
+    type: 'europa_league',
+    name: 'Europa League',
+    color: '#FF5733', // UEFA Europa League orange
+  },
+
+  // Official relegation status
+  182: {
+    type: 'relegation',
+    name: 'Relegation',
+    color: '#FF0000', // Red
+  },
+
+  // League split rounds (used in Scottish Premiership and some other leagues)
+  183: {
+    type: 'championship_round',
+    name: 'Championship Round',
+    color: '#5C97DB', // Light blue
+  },
+  184: {
+    type: 'relegation_round',
+    name: 'Relegation Round',
+    color: '#FFA500', // Orange
+  },
+
+  // Keep any speculative IDs that might still be useful
+  187: {
+    type: 'conference_league',
+    name: 'Conference League',
+    color: '#24B71E', // Green
+  },
+}
+
+// League-specific qualification rules (for when API doesn't provide this info)
+export interface QualificationRule {
+  type: string
+  name: string
+  color: string
+  positions: number[] // Array of positions this rule applies to
+}
+
+export interface LeagueQualificationRules {
+  [leagueId: string]: QualificationRule[]
+}
+
+export const LEAGUE_QUALIFICATION_RULES: LeagueQualificationRules = {
+  // Premier League (England)
+  '8': [
+    {
+      type: 'champions_league',
+      name: 'Champions League',
+      color: '#1e74d3', // UEFA Champions League blue
+      positions: [1, 2, 3, 4],
+    },
+    {
+      type: 'europa_league',
+      name: 'Europa League',
+      color: '#f58c20', // UEFA Europa League orange
+      positions: [5],
+    },
+    {
+      type: 'conference_league',
+      name: 'Conference League',
+      color: '#15b050', // UEFA Conference League green
+      positions: [6],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f', // Red for relegation
+      positions: [18, 19, 20],
+    },
+  ],
+
+  // Scottish Premiership (Scotland)
+  '501': [
+    {
+      type: 'champions_league_qualifying',
+      name: 'Champions League Qualifying',
+      color: '#1e74d3', // UEFA Champions League blue
+      positions: [1],
+    },
+    {
+      type: 'europa_league_qualifying',
+      name: 'Europa League Qualifying',
+      color: '#f58c20', // UEFA Europa League orange
+      positions: [2, 3],
+    },
+    {
+      type: 'conference_league_qualifying',
+      name: 'Conference League Qualifying',
+      color: '#15b050', // UEFA Conference League green
+      positions: [4],
+    },
+    {
+      type: 'championship_round',
+      name: 'Championship Round',
+      color: '#5C97DB', // Light blue
+      positions: [5, 6],
+    },
+    {
+      type: 'relegation_round',
+      name: 'Relegation Round',
+      color: '#FFA500', // Orange
+      positions: [7, 8, 9, 10],
+    },
+    {
+      type: 'relegation_playoff',
+      name: 'Relegation Playoff',
+      color: '#ff9800', // Orange
+      positions: [11],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f', // Red
+      positions: [12],
+    },
+  ],
+
+  // La Liga (Spain)
+  '564': [
+    {
+      type: 'champions_league',
+      name: 'Champions League',
+      color: '#1e74d3',
+      positions: [1, 2, 3, 4],
+    },
+    {
+      type: 'europa_league',
+      name: 'Europa League',
+      color: '#f58c20',
+      positions: [5, 6],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f',
+      positions: [18, 19, 20],
+    },
+  ],
+  // Bundesliga (Germany)
+  '82': [
+    {
+      type: 'champions_league',
+      name: 'Champions League',
+      color: '#1e74d3',
+      positions: [1, 2, 3, 4],
+    },
+    {
+      type: 'europa_league',
+      name: 'Europa League',
+      color: '#f58c20',
+      positions: [5, 6],
+    },
+    {
+      type: 'conference_league',
+      name: 'Conference League',
+      color: '#15b050',
+      positions: [7],
+    },
+    {
+      type: 'relegation_playoff',
+      name: 'Relegation Playoff',
+      color: '#ff9800', // Orange for playoff
+      positions: [16],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f',
+      positions: [17, 18],
+    },
+  ],
+  // Serie A (Italy)
+  '384': [
+    {
+      type: 'champions_league',
+      name: 'Champions League',
+      color: '#1e74d3',
+      positions: [1, 2, 3, 4],
+    },
+    {
+      type: 'europa_league',
+      name: 'Europa League',
+      color: '#f58c20',
+      positions: [5, 6],
+    },
+    {
+      type: 'conference_league',
+      name: 'Conference League',
+      color: '#15b050',
+      positions: [7],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f',
+      positions: [18, 19, 20],
+    },
+  ],
+  // Ligue 1 (France)
+  '301': [
+    {
+      type: 'champions_league',
+      name: 'Champions League',
+      color: '#1e74d3',
+      positions: [1, 2, 3],
+    },
+    {
+      type: 'champions_league_qualifying',
+      name: 'Champions League Qualifying',
+      color: '#5c97db', // Lighter blue
+      positions: [4],
+    },
+    {
+      type: 'europa_league',
+      name: 'Europa League',
+      color: '#f58c20',
+      positions: [5],
+    },
+    {
+      type: 'conference_league',
+      name: 'Conference League',
+      color: '#15b050',
+      positions: [6],
+    },
+    {
+      type: 'relegation_playoff',
+      name: 'Relegation Playoff',
+      color: '#ff9800',
+      positions: [16],
+    },
+    {
+      type: 'relegation',
+      name: 'Relegation',
+      color: '#d32f2f',
+      positions: [17, 18],
+    },
+  ],
 }

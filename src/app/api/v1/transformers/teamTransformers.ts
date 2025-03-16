@@ -3,6 +3,9 @@ import {
   STANDING_DETAIL_TYPES,
   STANDING_DETAIL_NAME_PATTERNS,
   matchesDetailPattern,
+  LEAGUE_QUALIFICATION_RULES,
+  QualificationRule,
+  RULE_TYPE_ID_MAP,
 } from '@/constants/sportmonks'
 import type {
   TeamCoach,
@@ -34,6 +37,19 @@ interface RawTeam {
   coaches?: any[] | null
   statistics?: any | null
   standings?: Record<string, any> | null
+}
+
+// Add the missing type definitions
+type QualificationStatus = {
+  type: string
+  name: string
+  color: string
+}
+
+type SportmonksStandingRow = {
+  position: number
+  rule?: any
+  // Add other properties as needed
 }
 
 /**
@@ -141,6 +157,214 @@ function formatTeamForm(formData: any): string | undefined {
   return undefined
 }
 
+/**
+ * Determines the qualification status of a team based on its position and league rules
+ */
+function determineQualificationStatus(
+  row: SportmonksStandingRow,
+  leagueId?: number,
+  table?: any,
+): { type: string; name: string; color?: string } | undefined {
+  // No rule data available
+  if (!row.rule) {
+    return undefined
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`Rule data for position ${row.position}:`, row.rule)
+  }
+
+  // Check for type_id field (the approach observed in the logs)
+  if (typeof row.rule.type_id === 'number') {
+    const typeId = row.rule.type_id
+
+    // Before using our direct mapping, handle special cases for specific leagues
+
+    // Handle Scottish Premiership (league ID 501)
+    // Their API just gives us Championship/Relegation round info, but we want to show specific qualifications
+    if (leagueId === 501) {
+      if (typeId === 183) {
+        // Championship Round (top 6)
+        // Based on position, determine the specific European qualification
+        if (row.position === 1) {
+          return {
+            type: 'champions_league_qualifying',
+            name: 'Champions League Qualifying',
+            color: '#1E74D3',
+          }
+        } else if (row.position === 2 || row.position === 3) {
+          return {
+            type: 'europa_league_qualifying',
+            name: 'Europa League Qualifying',
+            color: '#FF5733',
+          }
+        } else if (row.position === 4) {
+          return {
+            type: 'conference_league_qualifying',
+            name: 'Conference League Qualifying',
+            color: '#24B71E',
+          }
+        } else {
+          // Positions 5-6 get the general "Championship Round" status
+          return RULE_TYPE_ID_MAP[typeId]
+        }
+      } else if (typeId === 184) {
+        // Relegation Round (bottom 6)
+        // Based on position, determine specific relegation statuses
+        if (row.position === 12) {
+          return {
+            type: 'relegation',
+            name: 'Relegation',
+            color: '#FF0000',
+          }
+        } else if (row.position === 11) {
+          return {
+            type: 'relegation_playoff',
+            name: 'Relegation Playoff',
+            color: '#FFA500',
+          }
+        } else {
+          // Positions 7-10 get the general "Relegation Round" status
+          return RULE_TYPE_ID_MAP[typeId]
+        }
+      }
+    }
+
+    // For direct UEFA competition or relegation status, use the mapping directly
+    if (typeId === 180 || typeId === 181 || typeId === 182) {
+      return RULE_TYPE_ID_MAP[typeId]
+    }
+
+    // For all other type IDs that we have mappings for
+    if (RULE_TYPE_ID_MAP[typeId]) {
+      return RULE_TYPE_ID_MAP[typeId]
+    }
+
+    // If we don't have a mapping but it's a new type ID, log it in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Unknown rule type_id: ${typeId} for position ${row.position}`)
+    }
+  }
+
+  // Check for type field (this was our original expectation, keeping as fallback)
+  if (row.rule.type) {
+    const ruleType = row.rule.type?.toLowerCase()
+
+    // Set up qualification type and color based on rule type
+    if (ruleType.includes('champions league')) {
+      return {
+        type: 'champions_league',
+        name: 'Champions League Qualification',
+        color: '#2A44FF',
+      }
+    }
+
+    if (ruleType.includes('europa league')) {
+      return {
+        type: 'europa_league',
+        name: 'Europa League Qualification',
+        color: '#FF5733',
+      }
+    }
+
+    if (ruleType.includes('conference league')) {
+      return {
+        type: 'conference_league',
+        name: 'Conference League Qualification',
+        color: '#24B71E',
+      }
+    }
+
+    if (ruleType.includes('relegation')) {
+      // Check if it's relegation playoff
+      if (ruleType.includes('playoff')) {
+        return {
+          type: 'relegation_risk',
+          name: 'Relegation Playoff',
+          color: '#FFA500',
+        }
+      }
+
+      // Direct relegation
+      return {
+        type: 'relegation',
+        name: 'Relegation',
+        color: '#FF0000',
+      }
+    }
+  }
+
+  // If we have position and leagueId, look for league-specific qualification rules
+  if (row.position && leagueId) {
+    // Check if we have specific rules for this league
+    const leagueRules = LEAGUE_QUALIFICATION_RULES[leagueId]
+    if (leagueRules) {
+      // Find the rule that matches this position
+      for (const rule of leagueRules) {
+        if (rule.positions.includes(row.position)) {
+          return {
+            type: rule.type,
+            name: rule.name,
+            color: rule.color,
+          }
+        }
+      }
+    }
+
+    // If no league-specific rule is found, use generic position-based logic
+    // as a last resort
+    const totalTeams = table?.standings?.length || 20 // Default to 20 if unknown
+
+    // Top 4 are typically Champions League in major leagues
+    if (row.position <= 4) {
+      return {
+        type: 'champions_league',
+        name: 'Champions League',
+        color: '#1E74D3',
+      }
+    }
+
+    // 5-6 are typically Europa League
+    if (row.position === 5 || row.position === 6) {
+      return {
+        type: 'europa_league',
+        name: 'Europa League',
+        color: '#FF5733',
+      }
+    }
+
+    // Conference League often for position 7
+    if (row.position === 7) {
+      return {
+        type: 'conference_league',
+        name: 'Conference League',
+        color: '#24B71E',
+      }
+    }
+
+    // Bottom 3 teams are typically relegated
+    if (row.position > totalTeams - 3) {
+      return {
+        type: 'relegation',
+        name: 'Relegation',
+        color: '#FF0000',
+      }
+    }
+
+    // Team just above relegation might be in a playoff
+    if (row.position === totalTeams - 3) {
+      return {
+        type: 'relegation_risk',
+        name: 'Relegation Playoff',
+        color: '#FFA500',
+      }
+    }
+  }
+
+  // No qualification status could be determined
+  return undefined
+}
+
 export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
   if (!rawTeam?.id || !rawTeam?.name) {
     throw new Error('Invalid team data: missing required fields')
@@ -177,7 +401,7 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
   /**
    * Helper function to create a standard standing row from any standing object format
    */
-  const createStandingRow = (row: any): StandingTableRow => {
+  const createStandingRow = (row: any, table: any = null): StandingTableRow => {
     // Use the participant data for team information when available
     const participant = row.participant || {}
 
@@ -186,6 +410,10 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
 
     // Extract and process details
     const detailValues = extractStandingDetails(row.details)
+
+    // Determine qualification status (Champions League, relegation, etc.)
+    const leagueId = table?.league_id || (rawTeam as any).league_id
+    const qualificationStatus = determineQualificationStatus(row, leagueId, table)
 
     // Get raw values from the row, then fall back to calculated values from details
     return {
@@ -230,6 +458,7 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
         typeof row.failed_to_score === 'number'
           ? row.failed_to_score
           : detailValues.failed_to_score,
+      qualification_status: qualificationStatus,
     }
   }
 
@@ -248,7 +477,7 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
 
         if (validItems.length > 0) {
           // Create a simplified standings table structure
-          const standingRows = validItems.map(createStandingRow)
+          const standingRows = validItems.map((item: any) => createStandingRow(item))
 
           // If we have valid rows, add them to the result
           if (standingRows.length > 0) {
@@ -282,7 +511,9 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
               (table: any) => table?.id && table?.name && Array.isArray(table?.standings?.data),
             )
             .map((table: any) => {
-              const rows = table.standings.data.filter((row: any) => row).map(createStandingRow)
+              const rows = table.standings.data
+                .filter((row: any) => row)
+                .map((item: any) => createStandingRow(item, table))
 
               return {
                 id: table.id,

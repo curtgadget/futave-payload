@@ -29,6 +29,11 @@ export type StandingTableRow = {
   current_streak?: string
   clean_sheets?: number
   failed_to_score?: number
+  qualification_status?: {
+    type: string // e.g., 'champions_league', 'europa_league', 'relegation', 'promotion', etc.
+    name: string // Human-readable name e.g., "Champions League Qualification"
+    color?: string // Optional color for UI display
+  }
   // Add comment about the mapping from Sportmonks API
   // team_id is mapped from participant_id in the API
   // team_name might need to be derived from related data

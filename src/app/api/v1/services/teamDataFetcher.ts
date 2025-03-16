@@ -109,6 +109,48 @@ export const teamDataFetcher: TabDataFetcher = {
 
       const transformedStandings = transformTeamTable(rawTeam)
 
+      // In development, check if qualification statuses were found
+      if (process.env.NODE_ENV === 'development') {
+        // Check for qualification statuses
+        Object.entries(transformedStandings).forEach(([seasonId, standingsData]) => {
+          standingsData.standings.forEach((table) => {
+            const teamsWithQualification = table.standings.filter((row) => row.qualification_status)
+
+            if (teamsWithQualification.length > 0) {
+              console.log(
+                `Found ${teamsWithQualification.length} teams with qualification status in season ${seasonId}, table ${table.name}`,
+              )
+
+              // Group teams by qualification type for more helpful debugging
+              const qualificationGroups: Record<string, any[]> = {}
+
+              teamsWithQualification.forEach((team) => {
+                const status = team.qualification_status!.type
+                if (!qualificationGroups[status]) {
+                  qualificationGroups[status] = []
+                }
+                qualificationGroups[status].push({
+                  position: team.position,
+                  name: team.team_name,
+                  qualification: team.qualification_status!.name,
+                })
+              })
+
+              // Log each qualification group
+              Object.entries(qualificationGroups).forEach(([type, teams]) => {
+                console.log(
+                  `  - ${type} (${teams.length} teams):`,
+                  teams.map((t) => `${t.position}. ${t.name}`).join(', '),
+                )
+              })
+            }
+          })
+        })
+
+        // Discover and log all rule type IDs for future reference
+        logAllRuleTypeIds(rawTeam)
+      }
+
       return transformedStandings
     } catch (error) {
       console.error('Error in getTable:', {
@@ -341,4 +383,64 @@ export const teamDataFetcher: TabDataFetcher = {
       throw error
     }
   },
+}
+
+/**
+ * Logs all unique rule type IDs found in the standings data
+ * This is used for development only to help discover new rule types
+ */
+function logAllRuleTypeIds(rawTeam: any): void {
+  if (process.env.NODE_ENV !== 'development') return
+
+  try {
+    const typeIdMap: Record<string, Set<number>> = {}
+    const leagueInfo: Record<string, number> = {}
+
+    // Handle the structure from the team standings data
+    const standings = rawTeam?.standings || {}
+
+    // Iterate through each season in the standings
+    Object.entries(standings).forEach(([seasonId, seasonData]: [string, any]) => {
+      // Access the standings array from the season data
+      const standingsData = seasonData?.standings?.data || []
+
+      standingsData.forEach((table: any) => {
+        // Get league ID if available
+        const leagueId = table?.league_id
+
+        // Access rows from each table
+        const rows = table?.standings?.data || []
+
+        rows.forEach((row: any) => {
+          if (row?.rule?.type_id) {
+            const typeId = row.rule.type_id
+            const key = `${typeId}`
+
+            if (!typeIdMap[key]) {
+              typeIdMap[key] = new Set()
+              if (leagueId) {
+                leagueInfo[key] = leagueId
+              }
+            }
+            typeIdMap[key].add(row.position)
+          }
+        })
+      })
+    })
+
+    // Log the discovered type IDs
+    if (Object.keys(typeIdMap).length > 0) {
+      console.log(`\n--- RULE TYPE ID DISCOVERY FOR TEAM ${rawTeam.name} (ID: ${rawTeam.id}) ---`)
+      Object.entries(typeIdMap).forEach(([typeId, positions]) => {
+        const posArray = Array.from(positions).sort((a, b) => a - b)
+        const leagueId = leagueInfo[typeId] ? ` (League ID: ${leagueInfo[typeId]})` : ''
+        console.log(`Rule type_id ${typeId}${leagueId} found in positions: ${posArray.join(', ')}`)
+      })
+      console.log('--------------------------------\n')
+    } else {
+      console.log(`\n--- NO RULE TYPE IDS FOUND FOR TEAM ${rawTeam.name} (ID: ${rawTeam.id}) ---\n`)
+    }
+  } catch (error) {
+    console.error('Error in logAllRuleTypeIds:', error)
+  }
 }
