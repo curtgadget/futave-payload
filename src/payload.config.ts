@@ -8,6 +8,7 @@ import sharp from 'sharp'
 import { fileURLToPath } from 'url'
 
 import { syncAllHandler } from '@/app/api/queue-jobs/sync/route'
+import { previewHandler } from '@/app/api/queue-jobs/preview/route'
 import { Leagues } from './collections/Leagues'
 import { Matches } from './collections/Matches'
 import { Media } from './collections/Media'
@@ -55,6 +56,11 @@ export default buildConfig({
       path: '/api/queue-jobs/sync',
       method: 'get',
       handler: syncAllHandler,
+    },
+    {
+      path: '/api/queue-jobs/preview',
+      method: 'get',
+      handler: previewHandler,
     },
     ...apiV1,
   ],
