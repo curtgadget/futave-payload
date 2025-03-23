@@ -116,6 +116,11 @@ export const Matches: CollectionConfig = {
       type: 'number',
       required: true,
     },
+    {
+      name: 'starting_at',
+      type: 'date',
+      required: true,
+    },
     // JSON fields for includes
     {
       name: 'participants',

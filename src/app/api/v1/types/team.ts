@@ -101,8 +101,48 @@ export type TeamStatistics = {
 
 export type TeamFixture = {
   id: string
-  date: string
-  // Add other fixture fields here
+  starting_at: string
+  state: {
+    id: number
+    state: string
+    name: string
+    short_name: string
+  }
+  league: {
+    id: number
+    name: string
+    short_code: string | null
+    image_path: string | null
+  }
+  season: {
+    id: number
+    name: string
+  }
+  participants: Array<{
+    id: number
+    name: string
+    short_code: string | null
+    image_path: string | null
+    meta: {
+      location: 'home' | 'away'
+      winner: boolean | null
+      position: number | null
+    }
+  }>
+  scores: Array<{
+    id: number
+    type_id: number
+    participant_id: number
+    score: {
+      goals: number
+      participant: 'home' | 'away'
+    }
+    description: string
+  }>
+  final_score: {
+    home: number
+    away: number
+  }
 }
 
 export type TeamOverviewResponse = TeamBase & {
@@ -113,7 +153,23 @@ export type TeamOverviewResponse = TeamBase & {
   stats: TeamStatsResponse
 }
 
-export type TeamFixturesResponse = TeamFixture[]
+export type PaginationMetadata = {
+  totalDocs: number
+  totalPages: number
+  page: number
+  hasNextPage: boolean
+  hasPrevPage: boolean
+  nextPage: number | null
+  prevPage: number | null
+  nextPageUrl: string | null
+  prevPageUrl: string | null
+}
+
+export type TeamFixturesResponse = {
+  docs: TeamFixture[]
+  pagination: PaginationMetadata
+}
+
 export type TeamResultsResponse = TeamFixture[]
 export type TeamSquadResponse = {
   players: TeamSquadByPosition
@@ -124,7 +180,7 @@ export type TeamStatsResponse = TeamStatistics
 export type TabDataFetcher = {
   getOverview: (teamId: string) => Promise<TeamOverviewResponse>
   getTable: (teamId: string) => Promise<TeamTableResponse>
-  getFixtures: (teamId: string) => Promise<TeamFixturesResponse>
+  getFixtures: (teamId: string, page?: number, limit?: number) => Promise<TeamFixturesResponse>
   getResults: (teamId: string) => Promise<TeamResultsResponse>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>
   getStats: (teamId: string) => Promise<TeamStatsResponse>

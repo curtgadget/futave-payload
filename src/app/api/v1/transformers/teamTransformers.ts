@@ -766,14 +766,91 @@ function extractStandingDetails(details: any[]): {
   }
 }
 
+/**
+ * Helper function to calculate the final score from the scores array
+ * Only uses CURRENT scores (type_id: 1525) for the final result
+ */
+function calculateFinalScore(
+  scores: Array<{
+    id: number
+    type_id: number
+    participant_id: number
+    score: {
+      goals: number
+      participant: 'home' | 'away'
+    }
+    description: string
+  }>,
+): { home: number; away: number } {
+  return scores
+    .filter((score) => score.type_id === 1525) // Only use CURRENT scores
+    .reduce(
+      (acc, score) => {
+        if (score.score.participant === 'home') {
+          acc.home += score.score.goals
+        } else {
+          acc.away += score.score.goals
+        }
+        return acc
+      },
+      { home: 0, away: 0 },
+    )
+}
+
 export function transformFixture(rawFixture: any): TeamFixture {
-  if (!rawFixture?.id || !rawFixture?.date) {
+  if (!rawFixture?.id || !rawFixture?.starting_at) {
     throw new Error('Invalid fixture data: missing required fields')
   }
 
+  const scores = Array.isArray(rawFixture.scores)
+    ? rawFixture.scores.map((score: any) => ({
+        id: score.id || 0,
+        type_id: score.type_id || 0,
+        participant_id: score.participant_id || 0,
+        score: {
+          goals: score.score?.goals || 0,
+          participant: score.score?.participant || 'home',
+        },
+        description: score.description || '',
+      }))
+    : []
+
+  const finalScore = calculateFinalScore(scores)
+
   return {
     id: String(rawFixture.id),
-    date: rawFixture.date,
+    starting_at: rawFixture.starting_at,
+    state: {
+      id: rawFixture.state?.id || 0,
+      state: rawFixture.state?.state || '',
+      name: rawFixture.state?.name || '',
+      short_name: rawFixture.state?.short_name || '',
+    },
+    league: {
+      id: rawFixture.league?.id || 0,
+      name: rawFixture.league?.name || '',
+      short_code: rawFixture.league?.short_code || null,
+      image_path: rawFixture.league?.image_path || null,
+    },
+    season: {
+      id: rawFixture.season?.id || 0,
+      name: rawFixture.season?.name || '',
+    },
+    participants: Array.isArray(rawFixture.participants)
+      ? rawFixture.participants.map((participant: any) => ({
+          id: participant.id || 0,
+          name: participant.name || '',
+          short_code: participant.short_code || null,
+          image_path: participant.image_path || null,
+          meta: {
+            location: participant.meta?.location || 'home',
+            winner: participant.meta?.winner || null,
+            position: participant.meta?.position || null,
+          },
+        }))
+      : [],
+    scores,
+    final_score: finalScore,
   }
 }
 

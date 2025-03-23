@@ -208,6 +208,7 @@ export interface Match {
   season_id: number;
   stage_id: number;
   state_id: number;
+  starting_at: string;
   participants?:
     | {
         [k: string]: unknown;
@@ -864,6 +865,7 @@ export interface MatchesSelect<T extends boolean = true> {
   season_id?: T;
   stage_id?: T;
   state_id?: T;
+  starting_at?: T;
   participants?: T;
   scores?: T;
   venue?: T;

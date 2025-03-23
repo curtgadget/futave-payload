@@ -12,6 +12,8 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
   const url = new URL(req.url)
   const id = url.pathname.split('/').pop()
   const tab = url.searchParams.get('tab') as TeamTab | null
+  const page = parseInt(url.searchParams.get('page') || '1', 10)
+  const limit = parseInt(url.searchParams.get('limit') || '50', 10)
 
   if (!id) {
     return Response.json({ error: 'Team ID is required' }, { status: 400 })
@@ -26,12 +28,19 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       return Response.json({ error: 'Invalid tab specified' }, { status: 400 })
     }
 
-    const data = await teamDataFetcher[fetcherName](id)
+    // Pass pagination parameters only for fixtures endpoint
+    const data = await teamDataFetcher[fetcherName](
+      id,
+      tabName === 'fixtures' ? page : undefined,
+      tabName === 'fixtures' ? limit : undefined,
+    )
     return Response.json(data)
   } catch (error) {
     console.error('Error in team data handler:', {
       id,
       tab,
+      page,
+      limit,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     })

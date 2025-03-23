@@ -4,11 +4,11 @@ import { getPayload } from 'payload'
 import { getPositionGroup } from '@/constants/team'
 import {
   transformPlayer,
-  transformTeamFixtures,
   transformTeamOverview,
   transformTeamResults,
   transformTeamStats,
   transformTeamTable,
+  transformFixture,
 } from '../transformers/teamTransformers'
 import type {
   TabDataFetcher,
@@ -162,35 +162,77 @@ export const teamDataFetcher: TabDataFetcher = {
     }
   },
 
-  async getFixtures(teamId: string): Promise<TeamFixturesResponse> {
+  async getFixtures(
+    teamId: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<TeamFixturesResponse> {
     try {
       const numericId = validateTeamId(teamId)
-
       const payload = await getPayload({ config })
+
       const result = await payload.find({
-        collection: 'teams',
+        collection: 'matches',
         where: {
-          id: {
+          'participants.id': {
             equals: numericId,
           },
         },
-        depth: 0,
+        sort: '-starting_at',
+        depth: 1,
+        page,
+        limit,
       })
 
       if (!result.docs.length) {
-        throw new Error(`No team found with ID: ${teamId}`)
+        return {
+          docs: [],
+          pagination: {
+            totalDocs: 0,
+            totalPages: 0,
+            page: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+            nextPage: null,
+            prevPage: null,
+            nextPageUrl: null,
+            prevPageUrl: null,
+          },
+        }
       }
 
-      const team = result.docs[0]
-      return transformTeamFixtures({
-        id: team.id,
-        name: team.name,
-        upcoming: Array.isArray(team.upcoming) ? team.upcoming : null,
-      })
+      const matches = result.docs.map(transformFixture)
+
+      // Create the next and previous page URLs
+      const nextPageUrl = result.hasNextPage
+        ? `/api/v1/team/${teamId}?tab=fixtures&page=${page + 1}&limit=${limit}`
+        : null
+
+      const prevPageUrl = result.hasPrevPage
+        ? `/api/v1/team/${teamId}?tab=fixtures&page=${page - 1}&limit=${limit}`
+        : null
+
+      return {
+        docs: matches,
+        pagination: {
+          totalDocs: result.totalDocs || 0,
+          totalPages: result.totalPages || 0,
+          page: result.page || 1,
+          hasNextPage: result.hasNextPage || false,
+          hasPrevPage: result.hasPrevPage || false,
+          nextPage: result.nextPage || null,
+          prevPage: result.prevPage || null,
+          nextPageUrl,
+          prevPageUrl,
+        },
+      }
     } catch (error) {
       console.error('Error in getFixtures:', {
         teamId,
+        page,
+        limit,
         error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
       })
       throw error
     }
