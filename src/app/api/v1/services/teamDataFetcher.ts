@@ -171,6 +171,7 @@ export const teamDataFetcher: TabDataFetcher = {
       const numericId = validateTeamId(teamId)
       const payload = await getPayload({ config })
 
+      // First get all matches for this team
       const result = await payload.find({
         collection: 'matches',
         where: {
@@ -198,6 +199,7 @@ export const teamDataFetcher: TabDataFetcher = {
             nextPageUrl: null,
             prevPageUrl: null,
           },
+          nextMatch: null,
         }
       }
 
@@ -212,6 +214,36 @@ export const teamDataFetcher: TabDataFetcher = {
         ? `/api/v1/team/${teamId}?tab=fixtures&page=${page - 1}&limit=${limit}`
         : null
 
+      // Find the next upcoming match
+      const now = new Date()
+
+      // Separately find the next upcoming match (regardless of pagination)
+      // We need to use a different query to ensure we get the next match regardless of current page
+      const nextMatchResult = await payload.find({
+        collection: 'matches',
+        where: {
+          and: [
+            {
+              'participants.id': {
+                equals: numericId,
+              },
+            },
+            {
+              starting_at: {
+                greater_than: now.toISOString(),
+              },
+            },
+          ],
+        },
+        sort: 'starting_at', // Ascending to get the soonest match
+        limit: 1,
+        depth: 1,
+      })
+
+      // Transform the next match if found
+      const nextMatch =
+        nextMatchResult.docs.length > 0 ? transformFixture(nextMatchResult.docs[0]) : null
+
       return {
         docs: matches,
         pagination: {
@@ -225,6 +257,7 @@ export const teamDataFetcher: TabDataFetcher = {
           nextPageUrl,
           prevPageUrl,
         },
+        nextMatch,
       }
     } catch (error) {
       console.error('Error in getFixtures:', {

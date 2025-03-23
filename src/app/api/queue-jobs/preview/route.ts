@@ -19,6 +19,17 @@ type SyncJob = {
   queue?: PayloadQueueSlug
 }
 
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(minutes / 60)
+
+  const remainingMinutes = minutes % 60
+  const remainingSeconds = seconds % 60
+
+  return `${hours.toString().padStart(2, '0')}:${remainingMinutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+}
+
 const syncJobs: SyncJob[] = [
   { task: 'syncLeagues' },
   { task: 'syncTeams' },
@@ -76,6 +87,7 @@ export async function previewHandler() {
       task: job.taskSlug,
       queue: job.queue,
       startedAt: job.createdAt,
+      duration: formatDuration(Date.now() - new Date(job.createdAt).getTime()),
     })),
     queuedJobs: queuedJobs.map((job) => ({
       task: job.taskSlug,

@@ -168,6 +168,7 @@ export type PaginationMetadata = {
 export type TeamFixturesResponse = {
   docs: TeamFixture[]
   pagination: PaginationMetadata
+  nextMatch: TeamFixture | null
 }
 
 export type TeamResultsResponse = TeamFixture[]
