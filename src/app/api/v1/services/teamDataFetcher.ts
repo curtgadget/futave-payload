@@ -298,7 +298,7 @@ export const teamDataFetcher: TabDataFetcher = {
   async getSquad(teamId: string): Promise<TeamSquadResponse> {
     const payload = await getPayload({ config })
 
-    interface RawTeam {
+    type RawTeam = {
       id: number
       players?: Array<{
         player_id: number

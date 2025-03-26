@@ -126,14 +126,14 @@ export const RULE_TYPE_ID_MAP: Record<number, { type: string; name: string; colo
 }
 
 // League-specific qualification rules (for when API doesn't provide this info)
-export interface QualificationRule {
+export type QualificationRule = {
   type: string
   name: string
   color: string
   positions: number[] // Array of positions this rule applies to
 }
 
-export interface LeagueQualificationRules {
+export type LeagueQualificationRules = {
   [leagueId: string]: QualificationRule[]
 }
 

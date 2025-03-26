@@ -1,6 +1,16 @@
 import { SportmonksMetadataType } from '../client/types'
 
-export function transformMetadataType(type: SportmonksMetadataType) {
+export type TransformedMetadataType = {
+  id: number
+  parent_id: number | null
+  name: string
+  code: string
+  developer_name: string | null
+  group: string | null
+  description: string | null
+}
+
+export function transformMetadataType(type: SportmonksMetadataType): TransformedMetadataType {
   return {
     id: type.id,
     parent_id: type.parent_id,

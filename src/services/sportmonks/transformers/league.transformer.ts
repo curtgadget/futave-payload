@@ -1,6 +1,6 @@
 import { SportmonksLeague } from '../client/types'
 
-export interface TransformedLeague {
+export type TransformedLeague = {
   id: number
   name: string
   logo_path: string

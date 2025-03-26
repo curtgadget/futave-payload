@@ -26,7 +26,7 @@ import type {
   StandingTableRow,
 } from '../types/team'
 
-interface RawTeam {
+type RawTeam = {
   id: number
   name: string
   activeseasons?: any[] | null

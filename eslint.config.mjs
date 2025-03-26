@@ -28,6 +28,33 @@ const eslintConfig = [
           caughtErrorsIgnorePattern: '^(_|ignore)',
         },
       ],
+      // TypeScript-specific rules
+      '@typescript-eslint/consistent-type-definitions': ['warn', 'type'],
+      '@typescript-eslint/explicit-function-return-type': [
+        'warn',
+        {
+          allowExpressions: true,
+          allowTypedFunctionExpressions: true,
+          allowHigherOrderFunctions: true,
+        },
+      ],
+      '@typescript-eslint/naming-convention': [
+        'warn',
+        {
+          selector: 'typeLike',
+          format: ['PascalCase'],
+        },
+        {
+          selector: 'typeParameter',
+          format: ['PascalCase'],
+          prefix: ['T'],
+        },
+      ],
+      '@typescript-eslint/prefer-includes': 'warn',
+      '@typescript-eslint/prefer-as-const': 'warn',
+      '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
+      '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
+      '@typescript-eslint/prefer-function-type': 'warn',
     },
   },
 ]

@@ -1,6 +1,6 @@
 import { SportmonksMatch } from '../client/types'
 
-export interface TransformedMatch {
+export type TransformedMatch = {
   id: number
   sport_id: number
   league_id: number

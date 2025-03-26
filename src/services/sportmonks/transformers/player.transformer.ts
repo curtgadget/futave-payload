@@ -1,6 +1,6 @@
 import { SportmonksPlayer } from '../client/types/football/index'
 
-export interface TransformedPlayer {
+export type TransformedPlayer = {
   id: number
   sport_id: number
   country_id: number | null
