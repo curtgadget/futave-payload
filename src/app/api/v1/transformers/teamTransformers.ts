@@ -966,5 +966,42 @@ export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
 }
 
 export function transformTeamStats(rawTeam: RawTeam): TeamStatsResponse {
+  /*
+  TODO: Implement the following stats in the following categories:
+  Attack:
+  - goals_scored
+  - goals_against
+  - goal_difference
+  - penalty_goals
+  - penalty_misses
+  - big_chances_created
+  - big_chances_missed
+  - corners_won
+  Defence:
+  - clean_sheets
+  - failed_to_score
+  - clearances
+  - blocks
+  - interceptions
+  - tackles
+  - tackles_won
+  - aerial_duels_won
+  - aerial_duels_lost
+  Passing:
+  - passes
+  - pass_accuracy
+  - key_passes
+  - pass_length
+  - cross_accuracy
+  - cross_length
+  - through_balls
+  - tackles
+  - tackles_won
+  - aerial_duels_won
+  - aerial_duels_lost
+  - aerial_duels_won_percentage
+
+
+  */
   return rawTeam?.statistics || {}
 }
