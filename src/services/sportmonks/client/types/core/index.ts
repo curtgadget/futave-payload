@@ -6,6 +6,7 @@ export type SportmonksConfig = {
 export type FetchParams = {
   include?: string
   filters?: Record<string, string | number>
+  filterString?: string
   page?: number
 }
 

@@ -29,6 +29,7 @@ export function createSportmonksClient(config: SportmonksConfig) {
       api_token: apiKey,
       ...(params.include && { include: params.include }),
       ...(params.page && { page: params.page.toString() }),
+      ...(params.filterString && { filters: params.filterString }),
       ...Object.entries(params.filters || {}).reduce(
         (acc, [key, value]) => ({ ...acc, [key]: value.toString() }),
         {},

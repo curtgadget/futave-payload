@@ -12,7 +12,7 @@ export function createTeamSync(config: SportmonksConfig) {
   const standingsEndpoint = createStandingsEndpoint(config)
 
   async function fetchTeamsWithStandings(): Promise<SportmonksTeam[]> {
-    const teams = await teamsEndpoint.getAll()
+    const teams = await teamsEndpoint.getByAllStats()
     const payload = await getPayload({ config: payloadConfig })
 
     payload.logger.info({
