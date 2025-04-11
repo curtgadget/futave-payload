@@ -77,5 +77,10 @@ export const Teams: CollectionConfig = {
       type: 'json',
       required: false,
     },
+    {
+      name: 'season_map',
+      type: 'json',
+      required: false,
+    },
   ],
 }

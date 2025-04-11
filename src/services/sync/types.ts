@@ -20,6 +20,6 @@ export type SyncResult = {
 export type SyncOptions<T> = {
   collection: string
   fetchData: () => Promise<T[]>
-  transformData: (item: T) => Record<string, any>
+  transformData: (item: T) => Record<string, any> | Promise<Record<string, any>>
   validateData?: (item: T) => void
 }

@@ -37,6 +37,7 @@ type RawTeam = {
   coaches?: any[] | null
   statistics?: any | null
   standings?: Record<string, any> | null
+  season_map?: any[] | null
 }
 
 // Add the missing type definitions
@@ -379,6 +380,10 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
+    season_map: rawTeam.season_map?.map((season) => ({
+      id: String(season.id),
+      name: season.name,
+    })),
     squad: squadData,
     table: tableData,
     fixtures: fixturesData,
@@ -855,8 +860,41 @@ export function transformFixture(rawFixture: any): TeamFixture {
 }
 
 export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
-  if (!rawTeam?.upcoming) return []
-  return Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
+  if (!rawTeam?.upcoming) {
+    return {
+      docs: [],
+      pagination: {
+        totalDocs: 0,
+        totalPages: 0,
+        page: 1,
+        hasNextPage: false,
+        hasPrevPage: false,
+        nextPage: null,
+        prevPage: null,
+        nextPageUrl: null,
+        prevPageUrl: null,
+      },
+      nextMatch: null,
+    }
+  }
+
+  const fixtures = Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
+
+  return {
+    docs: fixtures,
+    pagination: {
+      totalDocs: fixtures.length,
+      totalPages: 1,
+      page: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+      nextPage: null,
+      prevPage: null,
+      nextPageUrl: null,
+      prevPageUrl: null,
+    },
+    nextMatch: fixtures.length > 0 ? fixtures[0] : null,
+  }
 }
 
 export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {

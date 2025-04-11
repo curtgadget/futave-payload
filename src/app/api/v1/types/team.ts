@@ -3,6 +3,7 @@ export type TeamTab = 'overview' | 'table' | 'fixtures' | 'results' | 'squad' | 
 export type TeamBase = {
   id: string
   name: string
+  season_map?: { id: string; name: string }[]
   // Add other base team fields here
 }
 

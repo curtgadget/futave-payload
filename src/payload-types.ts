@@ -464,6 +464,15 @@ export interface Team {
     | number
     | boolean
     | null;
+  season_map?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -905,6 +914,7 @@ export interface TeamsSelect<T extends boolean = true> {
   socials?: T;
   rankings?: T;
   standings?: T;
+  season_map?: T;
   updatedAt?: T;
   createdAt?: T;
 }

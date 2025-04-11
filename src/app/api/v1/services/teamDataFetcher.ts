@@ -65,6 +65,7 @@ export const teamDataFetcher: TabDataFetcher = {
         players: Array.isArray(team.players) ? team.players : null,
         coaches: Array.isArray(team.coaches) ? team.coaches : null,
         statistics: team.statistics || null,
+        season_map: Array.isArray(team.season_map) ? team.season_map : null,
       }
 
       return transformTeamOverview(rawTeam)

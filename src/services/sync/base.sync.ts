@@ -68,7 +68,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
       await Promise.all(
         items.map(async (item) => {
           try {
-            const transformedData = syncOptions.transformData(item)
+            const transformedData = await syncOptions.transformData(item)
             const existing = await payload.find({
               collection: syncOptions.collection as any,
               where: { id: { equals: item.id } },
