@@ -27,7 +27,7 @@ String-based filters can be created and used with our utility functions:
 
 ```typescript
 import { createFilterString } from '../services/sportmonks/client/utils';
-import { TeamStatisticTypeIds } from '../services/sportmonks/client/constants';
+import { TeamStatisticTypeIds } from '../constants/team';
 
 // Create a filter string using constants
 const filter = createFilterString('teamStatisticDetailTypes', [
@@ -65,7 +65,7 @@ To combine multiple string-based filters, use the `combineFilterStrings` utility
 
 ```typescript
 import { createFilterString, combineFilterStrings } from '../services/sportmonks/client/utils';
-import { TeamStatisticTypeIds } from '../services/sportmonks/client/constants';
+import { TeamStatisticTypeIds } from '../constants/team';
 
 const statsFilter = createFilterString('teamStatisticDetailTypes', [
   TeamStatisticTypeIds.GOALS_FOR,

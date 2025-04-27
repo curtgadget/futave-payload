@@ -5,7 +5,7 @@ import {
   TeamStatisticTypeId,
   TeamStatisticTypeIds,
   ALL_TEAM_STATISTIC_TYPE_IDS,
-} from '../constants'
+} from '@/constants/team'
 
 const DEFAULT_INCLUDE =
   'coaches;players;latest;upcoming;seasons;activeseasons.league;trophies;trophies.trophy;trophies.season;trophies.league;socials;rankings;statistics.season;statistics.details'

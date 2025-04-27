@@ -1,12 +1,12 @@
-import { getPositionGroup } from '@/constants/team'
 import {
+  getPositionGroup,
   STANDING_DETAIL_TYPES,
   STANDING_DETAIL_NAME_PATTERNS,
   matchesDetailPattern,
   LEAGUE_QUALIFICATION_RULES,
   QualificationRule,
   RULE_TYPE_ID_MAP,
-} from '@/constants/sportmonks'
+} from '@/constants/team'
 import type {
   TeamCoach,
   TeamFixture,

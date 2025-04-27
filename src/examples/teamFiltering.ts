@@ -1,6 +1,6 @@
 import { createTeamsEndpoint } from '../services/sportmonks/client/endpoints/teams'
 import { createFilterString, combineFilterStrings } from '../services/sportmonks/client/utils'
-import { TeamStatisticTypeIds } from '../services/sportmonks/client/constants'
+import { TeamStatisticTypeIds } from '../constants/team'
 
 async function exampleTeamFiltering() {
   // Initialize the teams endpoint
