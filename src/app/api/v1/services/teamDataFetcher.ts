@@ -423,7 +423,7 @@ export const teamDataFetcher: TabDataFetcher = {
     }
   },
 
-  async getStats(teamId: string): Promise<TeamStatsResponse> {
+  async getStats(teamId: string, seasonId?: string): Promise<TeamStatsResponse> {
     try {
       const numericId = validateTeamId(teamId)
       const payload = await getPayload({ config })
@@ -448,13 +448,15 @@ export const teamDataFetcher: TabDataFetcher = {
         id: team.id as number,
         name: team.name as string,
         statistics: team.statistics || null,
+        season_map: Array.isArray(team.season_map) ? team.season_map : null,
       }
 
-      return transformTeamStats(rawTeam)
+      return transformTeamStats(rawTeam, seasonId)
     } catch (error) {
       console.error('Error in getStats:', {
         teamId,
         error: error instanceof Error ? error.message : 'Unknown error',
+        seasonId,
       })
       throw error
     }

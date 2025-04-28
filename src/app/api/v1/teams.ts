@@ -14,6 +14,7 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
   const tab = url.searchParams.get('tab') as TeamTab | null
   const page = parseInt(url.searchParams.get('page') || '1', 10)
   const limit = parseInt(url.searchParams.get('limit') || '50', 10)
+  const season = url.searchParams.get('season')
 
   if (!id) {
     return Response.json({ error: 'Team ID is required' }, { status: 400 })
@@ -28,12 +29,21 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       return Response.json({ error: 'Invalid tab specified' }, { status: 400 })
     }
 
-    // Pass pagination parameters only for fixtures endpoint
-    const data = await teamDataFetcher[fetcherName](
-      id,
-      tabName === 'fixtures' ? page : undefined,
-      tabName === 'fixtures' ? limit : undefined,
-    )
+    // Determine which parameters to pass based on the tab
+    let data
+    if (tabName === 'fixtures') {
+      // Cast to the correct function type for fixtures
+      const getFixtures = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getFixtures
+      data = await getFixtures(id, page, limit)
+    } else if (tabName === 'stats') {
+      // Cast to the correct function type for stats
+      const getStats = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getStats
+      data = await getStats(id, season || undefined)
+    } else {
+      // For other tabs, just pass the team ID
+      data = await teamDataFetcher[fetcherName](id)
+    }
+
     return Response.json(data)
   } catch (error) {
     console.error('Error in team data handler:', {
@@ -41,6 +51,7 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       tab,
       page,
       limit,
+      season,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     })

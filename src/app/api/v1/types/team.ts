@@ -96,8 +96,74 @@ export type TeamCoach = {
   // Add other coach fields here
 }
 
+export type PlayerSeasonStats = {
+  player_id: string
+  name: string
+  position?: string
+  position_id?: number
+  jersey_number?: number
+  image_path?: string
+  appearances: number
+  minutes_played: number
+  goals?: number
+  assists?: number
+  shots?: {
+    total: number
+    on_target: number
+  }
+  passes?: {
+    total: number
+    accuracy: number
+  }
+  cards?: {
+    yellow: number
+    red: number
+  }
+  rating?: number
+}
+
+export type TeamSeasonStats = {
+  // Team performance stats
+  matches_played: number
+  wins: number
+  draws: number
+  losses: number
+  goals_for: number
+  goals_against: number
+  goal_difference: number
+  clean_sheets?: number
+  failed_to_score?: number
+  avg_goals_scored?: number
+  avg_goals_conceded?: number
+
+  // Additional team stats
+  yellow_cards?: number
+  red_cards?: number
+  fouls?: number
+  possession?: number
+
+  // Match patterns
+  home_record?: {
+    wins: number
+    draws: number
+    losses: number
+    goals_for: number
+    goals_against: number
+  }
+  away_record?: {
+    wins: number
+    draws: number
+    losses: number
+    goals_for: number
+    goals_against: number
+  }
+}
+
 export type TeamStatistics = {
-  // Add statistics fields here
+  player_stats: PlayerSeasonStats[]
+  team_stats: TeamSeasonStats
+  season_id: number
+  seasons: TeamSeason[] // Available seasons for dropdown selection
 }
 
 export type TeamFixture = {
@@ -185,5 +251,5 @@ export type TabDataFetcher = {
   getFixtures: (teamId: string, page?: number, limit?: number) => Promise<TeamFixturesResponse>
   getResults: (teamId: string) => Promise<TeamResultsResponse>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>
-  getStats: (teamId: string) => Promise<TeamStatsResponse>
+  getStats: (teamId: string, seasonId?: string) => Promise<TeamStatsResponse>
 }

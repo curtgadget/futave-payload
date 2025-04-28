@@ -6,6 +6,7 @@ import {
   LEAGUE_QUALIFICATION_RULES,
   QualificationRule,
   RULE_TYPE_ID_MAP,
+  TeamStatisticTypeIds,
 } from '@/constants/team'
 import type {
   TeamCoach,
@@ -24,6 +25,8 @@ import type {
   StandingsData,
   StandingTable,
   StandingTableRow,
+  TeamSeasonStats,
+  PlayerSeasonStats,
 } from '../types/team'
 
 type RawTeam = {
@@ -486,6 +489,9 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
 
           // If we have valid rows, add them to the result
           if (standingRows.length > 0) {
+            // Deduplicate standing rows by team_id, keeping the one with the most played matches
+            const uniqueStandingRows = deduplicateStandingRows(standingRows)
+
             transformedStandings[seasonId] = {
               id: parseInt(seasonId),
               name: `Season ${seasonId}`,
@@ -499,7 +505,7 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
                   id: 1, // Generate a placeholder ID
                   name: 'League Table',
                   type: 'total',
-                  standings: standingRows,
+                  standings: uniqueStandingRows,
                 },
               ],
             }
@@ -520,11 +526,14 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
                 .filter((row: any) => row)
                 .map((item: any) => createStandingRow(item, table))
 
+              // Deduplicate the rows
+              const uniqueRows = deduplicateStandingRows(rows)
+
               return {
                 id: table.id,
                 name: table.name,
                 type: table.type || '',
-                standings: rows,
+                standings: uniqueRows,
               }
             })
 
@@ -548,6 +557,66 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
   })
 
   return transformedStandings
+}
+
+/**
+ * Helper function to deduplicate standing rows by team_id
+ * When multiple entries for the same team exist:
+ * 1. Keep the entry with more games played (more up-to-date)
+ * 2. If tied, keep the one with higher points (more accurate)
+ * 3. Fix positions after removing duplicates
+ */
+function deduplicateStandingRows(rows: StandingTableRow[]): StandingTableRow[] {
+  // Group by team_id
+  const teamGroups = new Map<number, StandingTableRow[]>()
+
+  // Group rows by team ID
+  rows.forEach((row) => {
+    if (!teamGroups.has(row.team_id)) {
+      teamGroups.set(row.team_id, [])
+    }
+    teamGroups.get(row.team_id)!.push(row)
+  })
+
+  // For each team, select the entry with the highest games played (most recent)
+  // If tied, select the one with most points
+  const uniqueRows: StandingTableRow[] = []
+  teamGroups.forEach((teamRows) => {
+    // Sort by played (descending), then by points (descending)
+    teamRows.sort((a, b) => {
+      // Prioritize entries with qualification_status
+      if (a.qualification_status && !b.qualification_status) return -1
+      if (!a.qualification_status && b.qualification_status) return 1
+
+      // Then prioritize by played matches (most played first)
+      if (a.played !== b.played) return b.played - a.played
+
+      // If played matches are equal, prioritize by points
+      return b.points - a.points
+    })
+
+    // Take the first (best) entry
+    uniqueRows.push(teamRows[0])
+  })
+
+  // Sort by points (descending) to recreate league table positions
+  uniqueRows.sort((a, b) => {
+    // First by points (descending)
+    if (b.points !== a.points) return b.points - a.points
+
+    // If points are equal, by goal difference (descending)
+    if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference
+
+    // If goal difference is equal, by goals scored (descending)
+    return b.goals_for - a.goals_for
+  })
+
+  // Reassign positions based on the sorted order
+  uniqueRows.forEach((row, index) => {
+    row.position = index + 1
+  })
+
+  return uniqueRows
 }
 
 /**
@@ -1003,43 +1072,373 @@ export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
   }
 }
 
-export function transformTeamStats(rawTeam: RawTeam): TeamStatsResponse {
-  /*
-  TODO: Implement the following stats in the following categories:
-  Attack:
-  - goals_scored
-  - goals_against
-  - goal_difference
-  - penalty_goals
-  - penalty_misses
-  - big_chances_created
-  - big_chances_missed
-  - corners_won
-  Defence:
-  - clean_sheets
-  - failed_to_score
-  - clearances
-  - blocks
-  - interceptions
-  - tackles
-  - tackles_won
-  - aerial_duels_won
-  - aerial_duels_lost
-  Passing:
-  - passes
-  - pass_accuracy
-  - key_passes
-  - pass_length
-  - cross_accuracy
-  - cross_length
-  - through_balls
-  - tackles
-  - tackles_won
-  - aerial_duels_won
-  - aerial_duels_lost
-  - aerial_duels_won_percentage
+export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamStatsResponse {
+  if (!rawTeam?.id || !rawTeam?.name) {
+    throw new Error('Invalid team data: missing required fields')
+  }
 
+  // Initialize the result structure
+  const result: TeamStatsResponse = {
+    player_stats: [],
+    team_stats: {
+      matches_played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goals_for: 0,
+      goals_against: 0,
+      goal_difference: 0,
+    },
+    season_id: seasonId ? parseInt(seasonId) : 0,
+    seasons: [],
+  }
 
-  */
-  return rawTeam?.statistics || {}
+  // If no statistics data available, return empty result
+  if (!rawTeam.statistics || typeof rawTeam.statistics !== 'object') {
+    console.warn(`No statistics found for team: ${rawTeam.id}`)
+
+    // Still populate seasons from season_map if available
+    if (Array.isArray(rawTeam.season_map)) {
+      result.seasons = rawTeam.season_map.map((season) => ({
+        id: String(season.id),
+        name: season.name,
+      }))
+    }
+
+    return result
+  }
+
+  // Extract available seasons from statistics data
+  const availableSeasons: { id: string; name: string }[] = []
+  const statisticsData = rawTeam.statistics as Record<string, any>
+
+  // Process statistics by season
+  for (const [key, value] of Object.entries(statisticsData)) {
+    // Skip if this is not a valid season entry
+    if (typeof value !== 'object' || !value) continue
+
+    // Add to available seasons for the dropdown
+    if (value.season?.id && value.season?.name) {
+      availableSeasons.push({
+        id: String(value.season.id),
+        name: value.season.name,
+      })
+    }
+
+    // If seasonId is provided, only process the matching season
+    if (seasonId && String(value.season?.id) !== seasonId) {
+      continue
+    }
+
+    // If we've found a matching season or no seasonId was specified and this is the first entry,
+    // process the statistics
+    if (
+      (seasonId && String(value.season?.id) === seasonId) ||
+      (!seasonId && availableSeasons.length === 1)
+    ) {
+      // Set the season_id in the result
+      result.season_id = value.season?.id || 0
+
+      // Process team statistics
+      if (value.details && Array.isArray(value.details)) {
+        // Initialize team stats object with defaults
+        const teamStats: TeamSeasonStats = {
+          matches_played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goals_for: 0,
+          goals_against: 0,
+          goal_difference: 0,
+          clean_sheets: 0,
+          failed_to_score: 0,
+          yellow_cards: 0,
+          red_cards: 0,
+          home_record: {
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goals_for: 0,
+            goals_against: 0,
+          },
+          away_record: {
+            wins: 0,
+            draws: 0,
+            losses: 0,
+            goals_for: 0,
+            goals_against: 0,
+          },
+        }
+
+        // Process each statistics detail
+        value.details.forEach((detail: any) => {
+          if (!detail || typeof detail !== 'object' || !detail.value) {
+            return
+          }
+
+          const typeId = detail.type_id
+          const detailValue = detail.value
+          let statValue = 0
+
+          // Extract the main count value from the detail
+          // Different stats may have different value structures
+          if (detailValue.all && typeof detailValue.all.count === 'number') {
+            statValue = detailValue.all.count
+          } else if (typeof detailValue.count === 'number') {
+            statValue = detailValue.count
+          }
+
+          // Match the statistic type to our known constants
+          // Using constants from TeamStatisticTypeIds in /constants/team.ts
+          switch (typeId) {
+            case TeamStatisticTypeIds.CLEAN_SHEETS:
+              teamStats.clean_sheets = statValue
+              break
+            case TeamStatisticTypeIds.WINS:
+              teamStats.wins = statValue
+              // Add home/away breakdown if available
+              if (detailValue.home && typeof detailValue.home.count === 'number') {
+                if (!teamStats.home_record) {
+                  teamStats.home_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.home_record.wins = detailValue.home.count
+              }
+              if (detailValue.away && typeof detailValue.away.count === 'number') {
+                if (!teamStats.away_record) {
+                  teamStats.away_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.away_record.wins = detailValue.away.count
+              }
+              break
+            case TeamStatisticTypeIds.DRAWS:
+              teamStats.draws = statValue
+              // Add home/away breakdown if available
+              if (detailValue.home && typeof detailValue.home.count === 'number') {
+                if (!teamStats.home_record) {
+                  teamStats.home_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.home_record.draws = detailValue.home.count
+              }
+              if (detailValue.away && typeof detailValue.away.count === 'number') {
+                if (!teamStats.away_record) {
+                  teamStats.away_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.away_record.draws = detailValue.away.count
+              }
+              break
+            case TeamStatisticTypeIds.LOSSES:
+              teamStats.losses = statValue
+              // Add home/away breakdown if available
+              if (detailValue.home && typeof detailValue.home.count === 'number') {
+                if (!teamStats.home_record) {
+                  teamStats.home_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.home_record.losses = detailValue.home.count
+              }
+              if (detailValue.away && typeof detailValue.away.count === 'number') {
+                if (!teamStats.away_record) {
+                  teamStats.away_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.away_record.losses = detailValue.away.count
+              }
+              break
+            case TeamStatisticTypeIds.GOALS_FOR:
+              teamStats.goals_for = statValue
+              // Also check if we have any avg values
+              if (detailValue.all && typeof detailValue.all.average === 'number') {
+                teamStats.avg_goals_scored = detailValue.all.average
+              }
+              // Add home/away breakdown if available
+              if (detailValue.home && typeof detailValue.home.count === 'number') {
+                if (!teamStats.home_record) {
+                  teamStats.home_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.home_record.goals_for = detailValue.home.count
+              }
+              if (detailValue.away && typeof detailValue.away.count === 'number') {
+                if (!teamStats.away_record) {
+                  teamStats.away_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.away_record.goals_for = detailValue.away.count
+              }
+              break
+            case TeamStatisticTypeIds.GOALS_AGAINST:
+              teamStats.goals_against = statValue
+              // Also check if we have any avg values
+              if (detailValue.all && typeof detailValue.all.average === 'number') {
+                teamStats.avg_goals_conceded = detailValue.all.average
+              }
+              // Add home/away breakdown if available
+              if (detailValue.home && typeof detailValue.home.count === 'number') {
+                if (!teamStats.home_record) {
+                  teamStats.home_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.home_record.goals_against = detailValue.home.count
+              }
+              if (detailValue.away && typeof detailValue.away.count === 'number') {
+                if (!teamStats.away_record) {
+                  teamStats.away_record = {
+                    wins: 0,
+                    draws: 0,
+                    losses: 0,
+                    goals_for: 0,
+                    goals_against: 0,
+                  }
+                }
+                teamStats.away_record.goals_against = detailValue.away.count
+              }
+              break
+            case TeamStatisticTypeIds.RED_CARDS:
+              teamStats.red_cards = statValue
+              break
+            case TeamStatisticTypeIds.YELLOW_CARDS:
+              teamStats.yellow_cards = statValue
+              break
+            // Add more cases for other statistics as needed
+          }
+        })
+
+        // Calculate derived statistics
+        teamStats.matches_played = teamStats.wins + teamStats.draws + teamStats.losses
+        teamStats.goal_difference = teamStats.goals_for - teamStats.goals_against
+
+        if (teamStats.matches_played > 0) {
+          teamStats.avg_goals_scored = teamStats.goals_for / teamStats.matches_played
+          teamStats.avg_goals_conceded = teamStats.goals_against / teamStats.matches_played
+        }
+
+        result.team_stats = teamStats
+      }
+
+      // Process player statistics if available
+      if (value.players && Array.isArray(value.players)) {
+        result.player_stats = value.players.map((player: any) => {
+          const playerStats: PlayerSeasonStats = {
+            player_id: String(player.player_id || player.id || 0),
+            name: player.player_name || player.name || 'Unknown Player',
+            appearances: player.appearances || 0,
+            minutes_played: player.minutes || player.minutes_played || 0,
+          }
+
+          // Add optional fields if they exist
+          if (player.position) {
+            playerStats.position = player.position
+          }
+          if (typeof player.position_id === 'number') {
+            playerStats.position_id = player.position_id
+          }
+          if (typeof player.jersey_number === 'number') {
+            playerStats.jersey_number = player.jersey_number
+          }
+          if (player.image_path) {
+            playerStats.image_path = player.image_path
+          }
+          if (typeof player.goals === 'number') {
+            playerStats.goals = player.goals
+          }
+          if (typeof player.assists === 'number') {
+            playerStats.assists = player.assists
+          }
+          if (player.shots) {
+            playerStats.shots = {
+              total: player.shots.total || 0,
+              on_target: player.shots.on_target || 0,
+            }
+          }
+          if (player.passes) {
+            playerStats.passes = {
+              total: player.passes.total || 0,
+              accuracy: player.passes.accuracy || 0,
+            }
+          }
+          if (player.rating) {
+            playerStats.rating = player.rating
+          }
+          if (player.cards) {
+            playerStats.cards = {
+              yellow: player.cards.yellow || 0,
+              red: player.cards.red || 0,
+            }
+          }
+
+          return playerStats
+        })
+      }
+
+      // We've processed the requested season, so break out of the loop
+      if (seasonId) {
+        break
+      }
+    }
+  }
+
+  // Set available seasons for dropdown selection
+  result.seasons = availableSeasons
+
+  // Default to first season if no seasonId was specified or matching season was found
+  if ((!seasonId || result.season_id === 0) && availableSeasons.length > 0) {
+    const firstSeason = availableSeasons[0]
+    result.season_id = parseInt(firstSeason.id)
+
+    // If we defaulted to the first season, we need to process its statistics
+    if (result.team_stats.matches_played === 0) {
+      return transformTeamStats(rawTeam, firstSeason.id)
+    }
+  }
+
+  return result
 }
