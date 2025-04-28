@@ -107,6 +107,7 @@ export type PlayerSeasonStats = {
   minutes_played: number
   goals?: number
   assists?: number
+  clean_sheets?: number
   shots?: {
     total: number
     on_target: number
@@ -159,11 +160,33 @@ export type TeamSeasonStats = {
   }
 }
 
+export type TopStatCategory =
+  | 'goals'
+  | 'assists'
+  | 'minutes_played'
+  | 'cards'
+  | 'rating'
+  | 'goal_contributions'
+  | 'appearances'
+  | 'squad_numbers'
+
+export type TopPlayerStatItem = {
+  player_id: string
+  name: string
+  value: number
+}
+
+export type TopPlayersStat = {
+  category: TopStatCategory
+  players: TopPlayerStatItem[]
+}
+
 export type TeamStatistics = {
   player_stats: PlayerSeasonStats[]
   team_stats: TeamSeasonStats
   season_id: number
   seasons: TeamSeason[] // Available seasons for dropdown selection
+  top_stats: TopPlayersStat[] // Top performing players in different categories
 }
 
 export type TeamFixture = {

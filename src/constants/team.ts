@@ -35,6 +35,28 @@ export const ALL_TEAM_STATISTIC_TYPE_IDS: TeamStatisticTypeId[] =
   Object.values(TeamStatisticTypeIds)
 
 /**
+ * Player Statistics Constants
+ */
+export const PlayerStatisticTypeIds = {
+  GOALS: 52, // Same as GOALS_FOR in team stats
+  YELLOW_CARDS: 84, // Same as team stats
+  GOALS_AGAINST: 88, // Same as team stats
+  MINUTES_PLAYED: 119,
+  CLEAN_SHEETS: 194, // Same as team stats
+  WINS: 214, // Same as team stats
+  DRAWS: 215, // Same as team stats
+  LOSSES: 216, // Same as team stats
+  ASSISTS: 79,
+  APPEARANCES: 322,
+} as const
+
+export type PlayerStatisticTypeId =
+  (typeof PlayerStatisticTypeIds)[keyof typeof PlayerStatisticTypeIds]
+
+export const ALL_PLAYER_STATISTIC_TYPE_IDS: PlayerStatisticTypeId[] =
+  Object.values(PlayerStatisticTypeIds)
+
+/**
  * Standing Detail Constants
  */
 export const STANDING_DETAIL_TYPES = {

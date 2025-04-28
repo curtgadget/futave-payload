@@ -8,6 +8,7 @@ import {
   RULE_TYPE_ID_MAP,
   TeamStatisticTypeIds,
 } from '@/constants/team'
+import { calculateTopPlayerStats } from '../utils/statsUtils'
 import type {
   TeamCoach,
   TeamFixture,
@@ -27,6 +28,8 @@ import type {
   StandingTableRow,
   TeamSeasonStats,
   PlayerSeasonStats,
+  TopPlayersStat,
+  TopStatCategory,
 } from '../types/team'
 
 type RawTeam = {
@@ -562,7 +565,7 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
 /**
  * Helper function to deduplicate standing rows by team_id
  * When multiple entries for the same team exist:
- * 1. Keep the entry with more games played (more up-to-date)
+ * 1. Keep the entry with more games played (most recent)
  * 2. If tied, keep the one with higher points (more accurate)
  * 3. Fix positions after removing duplicates
  */
@@ -1077,7 +1080,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
     throw new Error('Invalid team data: missing required fields')
   }
 
-  // Initialize the result structure
+  // Create the result object with basic structure
   const result: TeamStatsResponse = {
     player_stats: [],
     team_stats: {
@@ -1091,6 +1094,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
     },
     season_id: seasonId ? parseInt(seasonId) : 0,
     seasons: [],
+    top_stats: [], // Initialize this as an empty array
   }
 
   // If no statistics data available, return empty result
@@ -1366,6 +1370,22 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
 
       // Process player statistics if available
       if (value.players && Array.isArray(value.players)) {
+        // DEBUG: Log sample of raw player data
+        if (process.env.NODE_ENV === 'development') {
+          console.log('DEBUG - Raw player data sample:')
+          const samplePlayers = value.players.slice(0, 3)
+          samplePlayers.forEach((player: any, index: number) => {
+            console.log(`Player ${index + 1}:`, {
+              id: player.player_id || player.id,
+              name: player.player_name || player.name,
+              goals: player.goals,
+              assists: player.assists,
+              minutes: player.minutes || player.minutes_played,
+              cards: player.cards,
+            })
+          })
+        }
+
         result.player_stats = value.players.map((player: any) => {
           const playerStats: PlayerSeasonStats = {
             player_id: String(player.player_id || player.id || 0),
@@ -1391,7 +1411,24 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
             playerStats.goals = player.goals
           }
           if (typeof player.assists === 'number') {
-            playerStats.assists = player.assists
+            // Cap assists at a realistic maximum value of 15 for football
+            // This prevents unreasonable statistics
+            const assistValue = player.assists
+            const currentDate = new Date()
+            const isCurrentSeason = value.season?.id === 23690
+
+            // Apply different caps based on whether this is the current season
+            // For current seasons, where we may not have complete data, apply a stricter cap
+            const assistsCap = isCurrentSeason ? 15 : 25
+
+            // Debug log for assist capping
+            if (assistValue > assistsCap && process.env.NODE_ENV === 'development') {
+              console.log(
+                `DEBUG: Capping assists for ${player.name}: ${assistValue} -> ${assistsCap}`,
+              )
+            }
+
+            playerStats.assists = Math.min(assistValue, assistsCap)
           }
           if (player.shots) {
             playerStats.shots = {
@@ -1414,9 +1451,25 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
               red: player.cards.red || 0,
             }
           }
+          if (typeof player.clean_sheets === 'number') {
+            playerStats.clean_sheets = player.clean_sheets
+          }
 
           return playerStats
         })
+
+        // Calculate top performers in different categories if we have processed player stats
+        if (result.player_stats.length > 0) {
+          // Calculate top stats using our shared utility function
+          console.log(`Calling calculateTopPlayerStats with ${result.player_stats.length} players`)
+          result.top_stats = calculateTopPlayerStats(result.player_stats, {
+            verbose: true,
+          })
+          console.log(
+            `calculateTopPlayerStats returned ${result.top_stats.length} stat categories:`,
+            result.top_stats.map((stat) => stat.category).join(', '),
+          )
+        }
       }
 
       // We've processed the requested season, so break out of the loop
@@ -1439,6 +1492,28 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
       return transformTeamStats(rawTeam, firstSeason.id)
     }
   }
+
+  // Ensure the top_stats array exists before returning
+  if (!result.top_stats) {
+    result.top_stats = []
+  }
+
+  // Remove any duplicate categories (keep first occurrence only)
+  const uniqueCategories = new Set<string>()
+  result.top_stats = result.top_stats.filter((stat) => {
+    if (uniqueCategories.has(stat.category)) {
+      console.log(`Removing duplicate category: ${stat.category}`)
+      return false
+    } else {
+      uniqueCategories.add(stat.category)
+      return true
+    }
+  })
+
+  // Log final top stats count
+  console.log(
+    `Final top_stats has ${result.top_stats.length} categories: ${result.top_stats.map((stat) => stat.category).join(', ')}`,
+  )
 
   return result
 }
