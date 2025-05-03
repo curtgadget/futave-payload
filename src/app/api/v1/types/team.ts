@@ -274,5 +274,9 @@ export type TabDataFetcher = {
   getFixtures: (teamId: string, page?: number, limit?: number) => Promise<TeamFixturesResponse>
   getResults: (teamId: string) => Promise<TeamResultsResponse>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>
-  getStats: (teamId: string, seasonId?: string) => Promise<TeamStatsResponse>
+  getStats: (
+    teamId: string,
+    seasonId?: string,
+    includeAllPlayers?: boolean,
+  ) => Promise<TeamStatsResponse>
 }

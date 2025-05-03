@@ -428,7 +428,11 @@ export const teamDataFetcher: TabDataFetcher = {
     }
   },
 
-  async getStats(teamId: string, seasonId?: string): Promise<TeamStatsResponse> {
+  async getStats(
+    teamId: string,
+    seasonId?: string,
+    includeAllPlayers: boolean = false,
+  ): Promise<TeamStatsResponse> {
     try {
       const numericId = validateTeamId(teamId)
       const payload = await getPayload({ config })
@@ -443,6 +447,32 @@ export const teamDataFetcher: TabDataFetcher = {
         },
         depth: 1,
       })
+
+      // For comparison, get the squad data
+      try {
+        const squadResponse = await this.getSquad(teamId)
+        console.log('SQUAD INFO:')
+
+        // Count total players in all positions
+        let totalPlayers = 0
+        Object.values(squadResponse.players).forEach((positionGroup) => {
+          totalPlayers += positionGroup.length
+        })
+
+        console.log(`Squad has ${totalPlayers} total players`)
+
+        // Log each position group
+        Object.entries(squadResponse.players).forEach(([position, players]) => {
+          console.log(`${position}: ${players.length} players`)
+          players.forEach((player) => {
+            console.log(
+              `- ${player.name} (ID: ${player.id}, Jersey: ${player.jersey_number || 'none'})`,
+            )
+          })
+        })
+      } catch (err) {
+        console.error('Error fetching squad for comparison:', err)
+      }
 
       if (!teamResult.docs.length) {
         throw new Error(`No team found with ID: ${teamId}`)
@@ -469,48 +499,135 @@ export const teamDataFetcher: TabDataFetcher = {
         console.log(`Team ${team.name} has ${team.players.length} players in the team data`)
 
         try {
-          // Extract player IDs from the team, with better error handling
-          const playerIds = team.players
-            .filter(
-              (p: any) =>
-                p &&
-                // Accept different formats of player IDs
-                (typeof p.player_id === 'number' ||
-                  typeof p.id === 'number' ||
-                  (p.player && typeof p.player.id === 'number')),
-            )
-            .map((p: any) => {
-              // Extract the ID based on where it's found
-              if (typeof p.player_id === 'number') return p.player_id
-              if (typeof p.id === 'number') return p.id
-              if (p.player && typeof p.player.id === 'number') return p.player.id
-              return null
+          // 1. Get player IDs from the team data using multiple extraction methods
+          const playerIdsFromTeamData = new Set<number>()
+
+          // Extract using original method (specific object structures)
+          team.players.forEach((p: any) => {
+            if (!p) return
+
+            // Try all possible locations where player ID might be stored
+            if (typeof p.player_id === 'number') {
+              playerIdsFromTeamData.add(p.player_id)
+            }
+            if (typeof p.id === 'number') {
+              playerIdsFromTeamData.add(p.id)
+            }
+            if (p.player && typeof p.player.id === 'number') {
+              playerIdsFromTeamData.add(p.player.id)
+            }
+
+            // Try additional formats that might appear in different data structures
+            if (p.player_identifier && typeof p.player_identifier === 'number') {
+              playerIdsFromTeamData.add(p.player_identifier)
+            }
+            if (p.player_ref && typeof p.player_ref === 'number') {
+              playerIdsFromTeamData.add(p.player_ref)
+            }
+
+            // Try to extract from nested objects generically
+            Object.entries(p).forEach(([key, value]) => {
+              // If the key contains "player" and value is a number, it might be an ID
+              if (key.toLowerCase().includes('player') && typeof value === 'number') {
+                playerIdsFromTeamData.add(value as number)
+              }
+
+              // If value is an object with an id property, extract it
+              if (
+                value &&
+                typeof value === 'object' &&
+                'id' in value &&
+                typeof value.id === 'number'
+              ) {
+                playerIdsFromTeamData.add(value.id as number)
+              }
             })
-            .filter(Boolean) // Remove any null values
+          })
 
-          console.log(`Found ${playerIds.length} valid player IDs to look up`)
+          console.log(`Found ${playerIdsFromTeamData.size} player IDs from team data`)
 
-          if (playerIds.length > 0) {
-            // Fetch player data with statistics - disable pagination to get all results
+          // 2. Get player IDs from the squad data as a backup source
+          let playerIdsFromSquad = new Set<number>()
+          try {
+            const squadResponse = await this.getSquad(teamId)
+
+            // Extract player IDs from each position group
+            Object.values(squadResponse.players).forEach((positionGroup) => {
+              positionGroup.forEach((player) => {
+                if (player.id) {
+                  playerIdsFromSquad.add(parseInt(player.id, 10))
+                }
+              })
+            })
+
+            console.log(`Found ${playerIdsFromSquad.size} player IDs from squad data`)
+          } catch (error) {
+            console.error('Error fetching squad data:', error)
+          }
+
+          // 3. Combine player IDs from both sources
+          const allPlayerIds = [
+            ...Array.from(playerIdsFromTeamData),
+            ...Array.from(playerIdsFromSquad),
+          ]
+          console.log(`Combined ${allPlayerIds.length} unique player IDs from all sources`)
+
+          if (allPlayerIds.length > 0) {
+            // 4. Fetch player data for all IDs
             const playersResult = await payload.find({
               collection: 'players',
               where: {
                 id: {
-                  in: playerIds,
+                  in: allPlayerIds,
                 },
               },
               depth: 1,
               pagination: false,
-              limit: 100, // Set a high limit to avoid pagination issues
+              // Increase limit to ensure we get all players
+              limit: Math.max(100, allPlayerIds.length),
             })
 
             console.log(
               `Retrieved ${playersResult.docs.length} players from the players collection`,
             )
 
-            // Process player statistics for the selected season
+            // Log detailed information about retrieved player data
+            console.log('PLAYERS DATA QUALITY CHECK:')
+            console.log('-----------------------------------------------------')
+            playersResult.docs.slice(0, 2).forEach((player: any, index) => {
+              console.log(
+                `Player ${index + 1}: ${player.name || player.display_name || 'Unknown'} (ID: ${player.id})`,
+              )
+
+              // Check for statistics structure
+              if (player.statistics && typeof player.statistics === 'object') {
+                const statKeys = Object.keys(player.statistics)
+                console.log(`  Has statistics object with ${statKeys.length} entries`)
+
+                // Check for the season we're looking for
+                const seasonStats = findPlayerSeasonStats(player.statistics, seasonIdNumber)
+
+                if (seasonStats) {
+                  console.log(
+                    `  FOUND STATS FOR SEASON ${seasonIdNumber}:`,
+                    JSON.stringify(seasonStats).substring(0, 100) + '...',
+                  )
+                } else {
+                  console.log(`  NO STATS FOR SEASON ${seasonIdNumber} found`)
+                }
+              } else {
+                console.log('  NO STATISTICS FOUND for this player')
+              }
+              console.log('-----------------------------------------------------')
+            })
+
+            // 5. Process player statistics for the selected season
             if (playersResult.docs.length > 0) {
-              const playerStats = processPlayerStats(playersResult.docs, seasonIdNumber)
+              const playerStats = processPlayerStats(
+                playersResult.docs,
+                seasonIdNumber,
+                includeAllPlayers,
+              )
 
               // Add player statistics to the response
               teamStatsResponse.player_stats = playerStats
@@ -518,9 +635,9 @@ export const teamDataFetcher: TabDataFetcher = {
                 `Processed ${playerStats.length} players with statistics for season ${seasonIdNumber}`,
               )
 
-              // DIRECT IMPLEMENTATION: Add top_stats manually after all processing
+              // 6. Calculate top stats using the complete player stats data
               if (playerStats.length > 0) {
-                console.log(`Creating top_stats with shared utility function`)
+                console.log(`Creating top_stats with ${playerStats.length} players`)
 
                 // Calculate top_stats using the shared utility function
                 teamStatsResponse.top_stats = calculateTopPlayerStats(playerStats, {
@@ -546,31 +663,10 @@ export const teamDataFetcher: TabDataFetcher = {
         }
       }
 
-      // Final check before returning
-      if (!teamStatsResponse.top_stats) {
-        teamStatsResponse.top_stats = []
-        console.log('Created top_stats array because it was undefined')
-      }
+      // Final verification
+      console.log(`FINAL CHECK - top_stats after last resort:`, teamStatsResponse.top_stats.length)
 
-      if (teamStatsResponse.top_stats && teamStatsResponse.top_stats.length === 0) {
-        console.log('WARNING: top_stats is still empty after all processing!')
-      }
-
-      // Explicitly verify the shape of the object right before returning
-      console.log(
-        `FINAL CHECK - teamStatsResponse has these fields:`,
-        Object.keys(teamStatsResponse),
-      )
-      console.log(
-        `FINAL CHECK - top_stats in teamStatsResponse is array:`,
-        Array.isArray(teamStatsResponse.top_stats),
-      )
-      console.log(`FINAL CHECK - top_stats length:`, teamStatsResponse.top_stats.length)
-
-      // Check if player_stats is available
-      console.log(`FINAL CHECK - player_stats length:`, teamStatsResponse.player_stats.length)
-
-      // Last attempt - force a known good value directly onto the object
+      // Last attempt - force a known good value directly onto the object if there are no top_stats
       if (
         teamStatsResponse.player_stats.length > 0 &&
         (!teamStatsResponse.top_stats || teamStatsResponse.top_stats.length === 0)
@@ -599,8 +695,105 @@ export const teamDataFetcher: TabDataFetcher = {
         teamStatsResponse.top_stats = testTopStats
       }
 
-      // Final verification
-      console.log(`FINAL CHECK - top_stats after last resort:`, teamStatsResponse.top_stats.length)
+      // LAST RESORT: Directly override the assists category if we detect missing data
+      if (teamStatsResponse.player_stats && teamStatsResponse.player_stats.length > 0) {
+        // Sort players by assists (highest first)
+        const playersByAssists = [...teamStatsResponse.player_stats]
+          .filter((p) => p.assists !== undefined && p.assists > 0)
+          .sort((a, b) => (b.assists || 0) - (a.assists || 0))
+
+        if (playersByAssists.length > 0) {
+          console.log('CRITICAL OVERRIDE: Manually fixing assists data')
+          console.log('Top assist players found:')
+          playersByAssists.slice(0, 3).forEach((p) => {
+            console.log(`- ${p.name}: ${p.assists} assists`)
+          })
+
+          // Find the assists category in top_stats
+          const assistsIndex = teamStatsResponse.top_stats.findIndex(
+            (s) => s.category === 'assists',
+          )
+
+          // Create corrected assists category
+          const correctedAssists = {
+            category: 'assists' as TopStatCategory,
+            players: playersByAssists.slice(0, 3).map((p) => ({
+              player_id: p.player_id,
+              name: p.name,
+              value: p.assists || 0,
+            })),
+          }
+
+          // Replace or add the category
+          if (assistsIndex >= 0) {
+            teamStatsResponse.top_stats[assistsIndex] = correctedAssists
+          } else {
+            teamStatsResponse.top_stats.push(correctedAssists)
+          }
+
+          console.log('CRITICAL OVERRIDE: Assists category fixed/added')
+        } else {
+          console.log('No players with assists found for direct override')
+        }
+      }
+
+      // Final check before returning
+      if (!teamStatsResponse.top_stats) {
+        teamStatsResponse.top_stats = []
+        console.log('Created top_stats array because it was undefined')
+      }
+
+      if (teamStatsResponse.top_stats && teamStatsResponse.top_stats.length === 0) {
+        console.log('WARNING: top_stats is still empty after all processing!')
+      }
+
+      // Explicitly verify the shape of the object right before returning
+      console.log(
+        `FINAL CHECK - teamStatsResponse has these fields:`,
+        Object.keys(teamStatsResponse),
+      )
+      console.log(
+        `FINAL CHECK - top_stats in teamStatsResponse is array:`,
+        Array.isArray(teamStatsResponse.top_stats),
+      )
+      console.log(`FINAL CHECK - top_stats length:`, teamStatsResponse.top_stats.length)
+
+      // Check if player_stats is available
+      console.log(`FINAL CHECK - player_stats length:`, teamStatsResponse.player_stats.length)
+
+      // LAST RESORT FOR ASSISTS: Override the assists category
+      if (teamStatsResponse.player_stats && teamStatsResponse.player_stats.length > 0) {
+        // Sort players by assists (highest first)
+        const playersByAssists = [...teamStatsResponse.player_stats]
+          .filter((p) => p.assists !== undefined && p.assists > 0)
+          .sort((a, b) => (b.assists || 0) - (a.assists || 0))
+
+        if (playersByAssists.length > 0) {
+          console.log('CRITICAL OVERRIDE: Manually fixing assists data')
+
+          // Create corrected assists category
+          const correctedAssists = {
+            category: 'assists' as TopStatCategory,
+            players: playersByAssists.slice(0, 3).map((p) => ({
+              player_id: p.player_id,
+              name: p.name,
+              value: p.assists || 0,
+            })),
+          }
+
+          // Find and replace or add the assists category
+          const assistsIndex = teamStatsResponse.top_stats.findIndex(
+            (s) => s.category === 'assists',
+          )
+          if (assistsIndex >= 0) {
+            teamStatsResponse.top_stats[assistsIndex] = correctedAssists
+          } else {
+            teamStatsResponse.top_stats.push(correctedAssists)
+          }
+
+          console.log('ASSISTS OVERRIDE APPLIED')
+        }
+      }
 
       return teamStatsResponse
     } catch (error) {
@@ -676,13 +869,27 @@ function logAllRuleTypeIds(rawTeam: any): void {
 
 /**
  * Process player statistics data for a specific season
+ * @param players Array of player objects
+ * @param seasonId Season ID to find statistics for
+ * @param includeAllPlayers If true, include all players regardless of whether they have stats
  */
-function processPlayerStats(players: any[], seasonId: number): PlayerSeasonStats[] {
+function processPlayerStats(
+  players: any[],
+  seasonId: number,
+  includeAllPlayers: boolean = false,
+): PlayerSeasonStats[] {
   const playerStats: PlayerSeasonStats[] = []
 
   // For debugging
   const playerIdsWithStats: Set<string> = new Set()
   const playerIdsWithoutStats: Set<string> = new Set()
+
+  // Create a map of player IDs to player data for better debugging
+  const playerMap = new Map(players.map((p) => [String(p.id), p]))
+
+  // Log total available players
+  console.log(`Processing ${players.length} players for season ${seasonId}`)
+  console.log(`Player IDs available: ${Array.from(playerMap.keys()).join(', ')}`)
 
   // Debug: Log the raw players data
   console.log(
@@ -724,6 +931,7 @@ function processPlayerStats(players: any[], seasonId: number): PlayerSeasonStats
     if (playerSeasonStats && Array.isArray(playerSeasonStats.details)) {
       playerIdsWithStats.add(String(player.id))
 
+      // Primary scan - process standard statistic types
       playerSeasonStats.details.forEach((detail: any) => {
         if (!detail || !detail.type_id || !detail.value) {
           return
@@ -763,11 +971,26 @@ function processPlayerStats(players: any[], seasonId: number): PlayerSeasonStats
             break
 
           case PlayerStatisticTypeIds.ASSISTS:
-            // Assists might be stored directly or in a total field
+            // Assists might be stored in various formats
             if (typeof value === 'number') {
               playerStat.assists = value
-            } else if (value.total && typeof value.total === 'number') {
-              playerStat.assists = value.total
+            } else if (value && typeof value === 'object') {
+              // Check multiple possible locations for assist data
+              if (typeof value.total === 'number') {
+                playerStat.assists = value.total
+              } else if (typeof value.assists === 'number') {
+                playerStat.assists = value.assists
+              } else if (typeof value.value === 'number') {
+                playerStat.assists = value.value
+              } else if (Array.isArray(value.data) && value.data.length > 0) {
+                // Some APIs store assists in a data array
+                const assistData = value.data.find(
+                  (d: any) => d && (d.type === 'assist' || d.type === 'assists'),
+                )
+                if (assistData && typeof assistData.value === 'number') {
+                  playerStat.assists = assistData.value
+                }
+              }
             }
             break
 
@@ -795,15 +1018,147 @@ function processPlayerStats(players: any[], seasonId: number): PlayerSeasonStats
           // Add more statistic types as needed
         }
       })
+
+      // Secondary scan - look for alternative statistic formats
+      if (playerStat.assists === undefined) {
+        // Look for assists that might be stored under different type IDs
+        const alternateAssistIds = [
+          102,
+          103,
+          104,
+          1001,
+          1002,
+          1003,
+          'assistances',
+          'assist',
+          'total_assist',
+          'passing_assists',
+        ]
+
+        // Try the known alternate IDs
+        const assistStat = playerSeasonStats.details.find((detail: any) => {
+          if (!detail) return false
+
+          // Check if type_id matches any alternate assist IDs
+          if (alternateAssistIds.includes(detail.type_id)) {
+            return true
+          }
+
+          // Check if the type name contains 'assist'
+          if (
+            detail.type &&
+            typeof detail.type === 'string' &&
+            detail.type.toLowerCase().includes('assist')
+          ) {
+            return true
+          }
+
+          return false
+        })
+
+        if (assistStat && assistStat.value) {
+          console.log(
+            `Found alternate assist stat for player ${player.name} (ID: ${player.id}):`,
+            assistStat,
+          )
+
+          // Extract the assist value
+          if (typeof assistStat.value === 'number') {
+            playerStat.assists = assistStat.value
+          } else if (assistStat.value && typeof assistStat.value === 'object') {
+            if (typeof assistStat.value.total === 'number') {
+              playerStat.assists = assistStat.value.total
+            } else if (typeof assistStat.value.value === 'number') {
+              playerStat.assists = assistStat.value.value
+            }
+          }
+        }
+      }
+
+      // Tertiary scan - deep search in entire player statistics object
+      if (playerStat.assists === undefined && player.statistics) {
+        console.log(`Deep scanning player ${player.name} (ID: ${player.id}) for assist statistics`)
+
+        // Define a recursive function to search the stats object
+        const findAssistValue = (obj: any): number | undefined => {
+          if (!obj || typeof obj !== 'object') return undefined
+
+          // Check direct properties that might contain assist data
+          if (obj.assists && typeof obj.assists === 'number') {
+            return obj.assists
+          }
+
+          // Search for properties named with assist variations
+          for (const key of Object.keys(obj)) {
+            const lowerKey = key.toLowerCase()
+
+            // Check for assist keywords
+            if (lowerKey.includes('assist')) {
+              const value = obj[key]
+
+              // Handle direct number
+              if (typeof value === 'number') {
+                return value
+              }
+
+              // Handle object with total or value property
+              if (value && typeof value === 'object') {
+                if (typeof value.total === 'number') return value.total
+                if (typeof value.value === 'number') return value.value
+              }
+            }
+
+            // Recursively search nested objects
+            if (obj[key] && typeof obj[key] === 'object') {
+              // Skip circular references
+              if (key === 'parent' || key === 'root') continue
+
+              const nestedValue = findAssistValue(obj[key])
+              if (nestedValue !== undefined) {
+                return nestedValue
+              }
+            }
+          }
+
+          // Check arrays
+          if (Array.isArray(obj)) {
+            for (const item of obj) {
+              const arrayValue = findAssistValue(item)
+              if (arrayValue !== undefined) {
+                return arrayValue
+              }
+            }
+          }
+
+          return undefined
+        }
+
+        // Try to find assist data in the player statistics
+        const assistValue = findAssistValue(player.statistics)
+        if (assistValue !== undefined) {
+          console.log(`Found deep-scan assist value for player ${player.name}: ${assistValue}`)
+          playerStat.assists = assistValue
+        }
+      }
     } else {
       // Track players without statistics
       playerIdsWithoutStats.add(String(player.id))
     }
 
-    // Include all players with meaningful information, not just those with stats
-    // This ensures squad players who haven't played are still included
-    if (playerStat.appearances > 0 || playerStat.minutes_played > 0 || playerStat.jersey_number) {
-      playerStats.push(playerStat)
+    // Always include all players, no filtering
+    playerStats.push(playerStat)
+
+    // Log if player has no stats for debugging purposes
+    if (
+      !(
+        playerStat.appearances > 0 ||
+        playerStat.minutes_played > 0 ||
+        playerStat.jersey_number !== undefined
+      )
+    ) {
+      console.log(
+        `INCLUDED WITHOUT STATS: Player ${playerStat.name} (${playerStat.player_id}) has no stats or jersey number`,
+      )
     }
   })
 
@@ -843,20 +1198,80 @@ function getPlayerJerseyNumber(player: any): number | undefined {
 }
 
 /**
- * Find player statistics for a specific season
+ * Find player statistics for a specific season - improved to handle more data formats
  */
-function findPlayerSeasonStats(statistics: Record<string, any>, seasonId: number): any {
-  if (!statistics || typeof statistics !== 'object') {
+function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: number): any {
+  // Handle missing statistics
+  if (!statistics) {
     return null
   }
 
-  // Look through all statistics entries to find the matching season
-  for (const key in statistics) {
-    const stat = statistics[key]
-    if (stat && typeof stat === 'object' && stat.season_id === seasonId) {
-      return stat
+  // Convert to object if it's not already
+  const statsObj = typeof statistics === 'object' ? statistics : { default: statistics }
+
+  // Method 1: Direct season_id match in top-level stat objects
+  for (const key in statsObj) {
+    const stat = statsObj[key]
+    if (stat && typeof stat === 'object') {
+      // Direct match on season_id
+      if (stat.season_id === seasonId) {
+        return stat
+      }
+
+      // Look for season ID in a "season" property
+      if (stat.season && stat.season.id === seasonId) {
+        return stat
+      }
     }
   }
 
+  // Method 2: Look for a "seasons" array containing our season
+  if (statsObj.seasons && Array.isArray(statsObj.seasons)) {
+    const seasonStat = statsObj.seasons.find(
+      (s: any) => s && (s.id === seasonId || s.season_id === seasonId),
+    )
+    if (seasonStat) {
+      return seasonStat
+    }
+  }
+
+  // Method 3: Look inside nested structures
+  for (const key in statsObj) {
+    const stat = statsObj[key]
+    if (stat && typeof stat === 'object') {
+      // Check for details array that might contain season-specific stats
+      if (Array.isArray(stat.details)) {
+        // If we have a details array with season info
+        const seasonDetail = stat.details.find((d: any) => d && d.season_id === seasonId)
+        if (seasonDetail) {
+          return { ...stat, details: [seasonDetail] }
+        }
+      }
+
+      // Check for a nested data object
+      if (stat.data && typeof stat.data === 'object') {
+        // Check if this data object has our season
+        if (stat.data.season_id === seasonId) {
+          return stat.data
+        }
+
+        // Some data might be stored in a 'statistics' field
+        if (stat.data.statistics && typeof stat.data.statistics === 'object') {
+          return findPlayerSeasonStats(stat.data.statistics, seasonId)
+        }
+      }
+    }
+  }
+
+  // Method 4: Look for specially-named fields that could contain our season
+  const possibleSeasonKeys = [`season_${seasonId}`, `${seasonId}`, `s${seasonId}`]
+
+  for (const seasonKey of possibleSeasonKeys) {
+    if (statsObj[seasonKey] && typeof statsObj[seasonKey] === 'object') {
+      return statsObj[seasonKey]
+    }
+  }
+
+  // Nothing found
   return null
 }

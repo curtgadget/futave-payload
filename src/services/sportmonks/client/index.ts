@@ -96,9 +96,9 @@ export function createSportmonksClient(config: SportmonksConfig) {
         // Move to the next page
         currentPage++
 
-        // Safety limit
-        if (currentPage > 100) {
-          console.warn(`Reached maximum page limit (100)`)
+        // Safety limit - increased to allow more player data
+        if (currentPage > 1000) {
+          console.warn(`Reached maximum page limit (1000)`)
           break
         }
       } catch (error) {
@@ -108,6 +108,26 @@ export function createSportmonksClient(config: SportmonksConfig) {
     }
 
     console.log(`Total items fetched: ${results.length}`)
+
+    // If this is the players endpoint, log detailed stats about the result
+    if (endpoint === '/players') {
+      console.log('===============================')
+      console.log('PLAYER FETCH STATS:')
+      console.log(`Total pages processed: ${currentPage}`)
+      console.log(`Total players fetched: ${results.length}`)
+      console.log(
+        `API reported total count: ${results.length > 0 ? 'at least ' + results.length : 'unknown'}`,
+      )
+
+      // Log unique IDs to check for duplicates
+      const uniqueIds = new Set(results.map((item: any) => item.id))
+      console.log(`Unique player IDs: ${uniqueIds.size}`)
+      if (uniqueIds.size !== results.length) {
+        console.warn(`WARNING: Found ${results.length - uniqueIds.size} duplicate player records!`)
+      }
+      console.log('===============================')
+    }
+
     return results
   }
 

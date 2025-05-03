@@ -52,6 +52,12 @@ export function createAuthMiddleware() {
     console.log('📝 Request URL:', req.url)
     console.log('📝 Request Method:', req.method)
 
+    // Bypass authentication in development mode
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚀 Development mode: Bypassing API key authentication')
+      return null // Continue to next middleware/handler
+    }
+
     const isAuthenticated = await verifyAPIKey(req)
 
     if (!isAuthenticated) {

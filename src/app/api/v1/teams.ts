@@ -15,6 +15,7 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
   const page = parseInt(url.searchParams.get('page') || '1', 10)
   const limit = parseInt(url.searchParams.get('limit') || '50', 10)
   const season = url.searchParams.get('season')
+  const includeAllPlayers = url.searchParams.get('include_all_players') === 'true'
 
   if (!id) {
     return Response.json({ error: 'Team ID is required' }, { status: 400 })
@@ -38,7 +39,7 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
     } else if (tabName === 'stats') {
       // Cast to the correct function type for stats
       const getStats = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getStats
-      data = await getStats(id, season || undefined)
+      data = await getStats(id, season || undefined, includeAllPlayers)
     } else {
       // For other tabs, just pass the team ID
       data = await teamDataFetcher[fetcherName](id)
