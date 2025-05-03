@@ -29,6 +29,7 @@ export function createSportmonksClient(config: SportmonksConfig) {
       api_token: apiKey,
       ...(params.include && { include: params.include }),
       ...(params.page && { page: params.page.toString() }),
+      ...(params.per_page && { per_page: params.per_page.toString() }),
       ...(params.filterString && { filters: params.filterString }),
       ...Object.entries(params.filters || {}).reduce(
         (acc, [key, value]) => ({ ...acc, [key]: value.toString() }),
@@ -37,6 +38,7 @@ export function createSportmonksClient(config: SportmonksConfig) {
     })
 
     const url = `${baseUrl}${endpoint}?${queryParams}`
+    console.log(`API Request: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`)
 
     try {
       const response = await fetch(url)
@@ -62,31 +64,50 @@ export function createSportmonksClient(config: SportmonksConfig) {
 
   async function fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
     const results: T[] = []
+    console.log(`Starting fetchAllPages for endpoint: ${endpoint} with params:`, params)
+
+    // Set default per_page to 25 to match the API's actual behavior
+    const fetchParams = {
+      ...params,
+      per_page: params.per_page || 25, // API consistently returns 25 items per page
+    }
+
     let currentPage = 1
 
     while (true) {
-      const response = await fetchFromApi<T>(endpoint, { ...params, page: currentPage })
-      results.push(...response.data)
-
-      if (!response.pagination?.has_more || !response.pagination?.next_page) {
-        break
-      }
-
       try {
-        // Extract page number from next_page URL string
-        const nextPageUrl = new URL(response.pagination.next_page.toString())
-        const nextPage = nextPageUrl.searchParams.get('page')
-        if (!nextPage) {
+        console.log(`Fetching page ${currentPage}...`)
+        const response = await fetchFromApi<T>(endpoint, { ...fetchParams, page: currentPage })
+
+        if (!Array.isArray(response.data)) {
+          console.error(`Page ${currentPage} data is not an array`, response)
           break
         }
 
-        currentPage = parseInt(nextPage, 10)
-      } catch (_error) {
-        // If we can't parse the next_page URL, stop pagination
+        console.log(`Page ${currentPage} fetched with ${response.data.length} items`)
+        results.push(...response.data)
+
+        // Check if more pages exist
+        if (!response.pagination?.has_more) {
+          console.log(`No more pages indicated by API (has_more=false)`)
+          break
+        }
+
+        // Move to the next page
+        currentPage++
+
+        // Safety limit
+        if (currentPage > 100) {
+          console.warn(`Reached maximum page limit (100)`)
+          break
+        }
+      } catch (error) {
+        console.error(`Error fetching page ${currentPage}:`, error)
         break
       }
     }
 
+    console.log(`Total items fetched: ${results.length}`)
     return results
   }
 

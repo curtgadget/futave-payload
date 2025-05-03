@@ -5,6 +5,7 @@ export const syncPlayersHandler: TaskHandler<'syncPlayers'> = async () => {
   const playerSync = createPlayerSync({
     apiKey: process.env.SPORTMONKS_API_KEY || '',
     baseUrl: process.env.SPORTMONKS_BASE_URL,
+    concurrencyLimit: 5, // Control API request concurrency
   })
 
   try {

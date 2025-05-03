@@ -8,14 +8,22 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
   const client = createSportmonksClient(config)
 
   async function getAll(params: FetchParams = {}): Promise<SportmonksPlayer[]> {
-    return client.fetchAllPages<SportmonksPlayer>('/players', {
+    // Use the direct endpoint string without any path manipulation
+    const endpoint = '/players'
+    console.log('Calling getAll with endpoint:', endpoint)
+
+    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
     })
   }
 
   async function getById(id: number, params: FetchParams = {}): Promise<SportmonksPlayer> {
-    const response = await client.fetchFromApi<SportmonksPlayer>(`/players/${id}`, {
+    const endpoint = `/players/${id}`
+    console.log('Calling getById with endpoint:', endpoint)
+
+    const response = await client.fetchFromApi<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
     })
@@ -26,7 +34,11 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
     countryId: number,
     params: FetchParams = {},
   ): Promise<SportmonksPlayer[]> {
-    return client.fetchAllPages<SportmonksPlayer>('/players', {
+    const endpoint = '/players'
+    console.log('Calling getByCountry with endpoint:', endpoint)
+
+    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
       filters: {
@@ -37,7 +49,11 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
   }
 
   async function getByName(name: string, params: FetchParams = {}): Promise<SportmonksPlayer[]> {
-    return client.fetchAllPages<SportmonksPlayer>(`/players/search/${name}`, {
+    const endpoint = `/players/search/${name}`
+    console.log('Calling getByName with endpoint:', endpoint)
+
+    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
     })

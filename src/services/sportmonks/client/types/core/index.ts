@@ -1,6 +1,7 @@
 export type SportmonksConfig = {
   apiKey: string
   baseUrl?: string
+  concurrencyLimit?: number // Maximum number of concurrent API requests
 }
 
 export type FetchParams = {
@@ -8,6 +9,7 @@ export type FetchParams = {
   filters?: Record<string, string | number>
   filterString?: string
   page?: number
+  per_page?: number
 }
 
 export type SportmonksResponse<T> = {
@@ -18,6 +20,7 @@ export type SportmonksResponse<T> = {
     current_page: number
     next_page?: number
     has_more: boolean
+    total_pages?: number // Total number of pages available
   }
 }
 

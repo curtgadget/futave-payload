@@ -22,4 +22,6 @@ export type SyncOptions<T> = {
   fetchData: () => Promise<T[]>
   transformData: (item: T) => Record<string, any> | Promise<Record<string, any>>
   validateData?: (item: T) => void
+  batchSize?: number // Size of batches for processing
+  concurrency?: number // Number of concurrent operations
 }
