@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 8. Validate API documentation against actual implementation
 
 # Subtasks:
-## 1. Design API Route Structure and Authentication Flow [in-progress]
+## 1. Design API Route Structure and Authentication Flow [done]
 ### Dependencies: None
 ### Description: Define the complete API route structure for all entities (leagues, teams, players, matches, countries, Wave Detector, Memory Avenues) and design the authentication flow for securing these endpoints.
 ### Details:
@@ -90,6 +90,26 @@ Remaining tasks include:
 5. Ensure the authentication utility in utilities/auth.js properly integrates with all planned endpoints
 6. Prepare for handoff to the Core Entity Controllers implementation team
 </info added on 2025-05-04T03:07:25.931Z>
+<info added on 2025-05-04T03:15:59.843Z>
+The comprehensive API route map has been successfully created and stored in `src/app/api/v1/documentation/api-route-map.md`. This document provides a complete specification of all API endpoints required for the application, including:
+
+1. Core entity endpoints (teams, leagues, players, matches) with detailed HTTP methods, parameters, and response formats
+2. Specialized feature endpoints for Wave Detector and Memory Avenues functionality
+3. User preference management endpoints to handle personalization features
+4. Reference data endpoints for supporting information like countries and other static data
+5. Detailed request/response format examples in JSON
+6. Implementation guidelines for maintaining consistency when adding new endpoints
+
+The authentication approach has been standardized using the `createAuthMiddleware` function from `src/utilities/auth.ts`, with clear documentation on which endpoints require authentication and what permission levels are needed.
+
+The next implementation phase will follow this sequence:
+1. Leagues endpoint implementation (following the teams endpoint pattern)
+2. Players endpoint implementation
+3. Matches endpoint implementation
+4. Specialized feature endpoints implementation
+
+This API route map document will serve as the definitive reference for the Core Entity Controllers implementation team to ensure consistent API design across all endpoints.
+</info added on 2025-05-04T03:15:59.843Z>
 
 ## 2. Implement Core Entity Controllers (Teams, Leagues, Players) [in-progress]
 ### Dependencies: 5.1
