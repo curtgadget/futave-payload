@@ -45,3 +45,24 @@ next-env.d.ts
 # Sentry Config File
 .env.sentry-build-plugin
 /.cursor
+
+# Added by Claude Task Master
+# Logs
+logs
+*.log
+dev-debug.log
+# Environment variables
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+# OS specific
+# Task files
+.roo
+.roomodes
+.taskmasterconfig
+.windsurfrules

@@ -1,0 +1,126 @@
+# Task ID: 7
+# Title: Develop Memory Avenues Feature
+# Status: pending
+# Dependencies: 3, 4
+# Priority: medium
+# Description: Create the Memory Avenues feature that transforms match data into connected pathways through key moments and narratives, creating a storytelling experience around matches.
+# Details:
+1. Design data structure for match narratives
+2. Implement moment identification algorithm
+3. Create thematic route generation (tactical, emotional, statistical)
+4. Develop pivotal moment highlighting
+5. Implement quick journey navigation
+6. Create avenue sharing capabilities
+7. Add personalization based on user preferences
+
+```typescript
+// services/memoryAvenues.ts
+
+interface MatchMoment {
+  id: string;
+  timestamp: number;
+  type: 'goal' | 'card' | 'substitution' | 'chance' | 'tactical' | 'other';
+  description: string;
+  importance: number; // 1-10
+  teams: { home: boolean, away: boolean }; // Which team(s) this moment relates to
+  players: string[]; // Player IDs involved
+  media?: string; // Media asset ID if available
+}
+
+interface Avenue {
+  id: string;
+  matchId: string;
+  type: 'main' | 'tactical' | 'emotional' | 'statistical';
+  title: string;
+  description: string;
+  moments: MatchMoment[];
+  estimatedReadTime: number; // in minutes
+}
+
+export async function generateMatchAvenues(matchId: string): Promise<Avenue[]> {
+  // Fetch match data
+  const match = await fetchMatchWithEvents(matchId);
+  
+  // Generate different avenue types
+  const avenues: Avenue[] = [
+    await generateMainAvenue(match),
+    await generateTacticalAvenue(match),
+    await generateEmotionalAvenue(match),
+    await generateStatisticalAvenue(match),
+  ];
+  
+  return avenues;
+}
+
+async function generateMainAvenue(match: any): Promise<Avenue> {
+  // Identify key moments
+  const moments = identifyKeyMoments(match);
+  
+  // Sort by importance and timestamp
+  const sortedMoments = moments
+    .sort((a, b) => b.importance - a.importance || a.timestamp - b.timestamp)
+    .slice(0, 10); // Limit to top 10 moments
+  
+  // Calculate read time (30 seconds per moment)
+  const estimatedReadTime = Math.ceil(sortedMoments.length * 0.5);
+  
+  return {
+    id: `main-${match.id}`,
+    matchId: match.id,
+    type: 'main',
+    title: `${match.homeTeam.name} vs ${match.awayTeam.name} Story`,
+    description: generateMatchDescription(match),
+    moments: sortedMoments,
+    estimatedReadTime,
+  };
+}
+
+function identifyKeyMoments(match: any): MatchMoment[] {
+  const moments: MatchMoment[] = [];
+  
+  // Process goals
+  match.events
+    .filter(event => event.type === 'goal')
+    .forEach(goal => {
+      moments.push({
+        id: `goal-${goal.id}`,
+        timestamp: goal.minute,
+        type: 'goal',
+        description: generateGoalDescription(goal, match),
+        importance: calculateGoalImportance(goal, match),
+        teams: { 
+          home: goal.team_id === match.homeTeam.id,
+          away: goal.team_id === match.awayTeam.id
+        },
+        players: [goal.player_id],
+        media: goal.media_id,
+      });
+    });
+  
+  // Process other event types similarly
+  // ...
+  
+  return moments;
+}
+
+// Helper functions for avenue generation
+function generateMatchDescription(match: any): string {
+  // Implementation
+}
+
+function calculateGoalImportance(goal: any, match: any): number {
+  // Implementation
+}
+
+// Other helper functions and avenue generators
+```
+
+# Test Strategy:
+1. Test avenue generation with various match types
+2. Verify moment identification works correctly
+3. Test thematic route generation
+4. Validate pivotal moment highlighting
+5. Test journey navigation functionality
+6. Verify avenue sharing capabilities
+7. Test personalization based on user preferences
+8. Validate estimated read times

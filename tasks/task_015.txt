@@ -1,0 +1,165 @@
+# Task ID: 15
+# Title: Implement App Testing and Performance Optimization
+# Status: pending
+# Dependencies: 11, 12, 13, 14
+# Priority: high
+# Description: Develop comprehensive testing for the application and implement performance optimizations to ensure the app meets the specified performance requirements.
+# Details:
+1. Implement unit tests for core functionality
+2. Create integration tests for key user flows
+3. Set up end-to-end testing
+4. Implement performance monitoring
+5. Optimize API request caching
+6. Implement image optimization
+7. Add error tracking and reporting
+8. Optimize animations and transitions
+9. Implement memory usage optimization
+10. Create automated testing pipeline
+
+```javascript
+// tests/unit/waveDetector.test.js
+import { calculateWaveScore } from '../../src/services/waveDetector';
+
+describe('Wave Detector', () => {
+  test('should calculate correct wave score for close match in late game', () => {
+    const match = {
+      homeScore: 1,
+      awayScore: 1,
+      minute: 85,
+      league: 'premier-league',
+      homeTeam: { id: 'team1' },
+      awayTeam: { id: 'team2' },
+      events: [],
+    };
+    
+    const score = calculateWaveScore(match);
+    expect(score).toBeGreaterThan(50); // Close match in late game should have high score
+  });
+  
+  test('should boost score for user favorite teams', () => {
+    const match = {
+      homeScore: 1,
+      awayScore: 0,
+      minute: 70,
+      league: 'premier-league',
+      homeTeam: { id: 'team1' },
+      awayTeam: { id: 'team2' },
+      events: [],
+    };
+    
+    const userPreferences = {
+      favoriteTeams: ['team1'],
+      favoriteLeagues: [],
+    };
+    
+    const baseScore = calculateWaveScore(match);
+    const personalizedScore = calculateWaveScore(match, userPreferences);
+    
+    expect(personalizedScore).toBeGreaterThan(baseScore);
+  });
+});
+
+// src/utils/performance.js
+import { InteractionManager } from 'react-native';
+
+// Run heavy tasks after animations complete
+export function runAfterInteractions(task) {
+  InteractionManager.runAfterInteractions(() => {
+    task();
+  });
+}
+
+// Debounce function to limit frequent calls
+export function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    const context = this;
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(context, args), wait);
+  };
+}
+
+// Memoize expensive calculations
+export function memoize(func) {
+  const cache = new Map();
+  return function(...args) {
+    const key = JSON.stringify(args);
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    const result = func.apply(this, args);
+    cache.set(key, result);
+    return result;
+  };
+}
+
+// API request caching
+export class ApiCache {
+  constructor(ttl = 60000) { // Default TTL: 1 minute
+    this.cache = new Map();
+    this.ttl = ttl;
+  }
+  
+  async get(key, fetchFunc) {
+    const now = Date.now();
+    const cached = this.cache.get(key);
+    
+    if (cached && now - cached.timestamp < this.ttl) {
+      return cached.data;
+    }
+    
+    const data = await fetchFunc();
+    this.cache.set(key, { data, timestamp: now });
+    return data;
+  }
+  
+  invalidate(key) {
+    this.cache.delete(key);
+  }
+  
+  clear() {
+    this.cache.clear();
+  }
+}
+
+// Usage in API client
+import { ApiCache } from '../utils/performance';
+
+const apiCache = new ApiCache();
+
+export async function fetchMatches(leagueId, status, silent = false) {
+  const cacheKey = `matches_${leagueId}_${status}`;
+  
+  // Only use cache for non-live data or silent updates
+  if (status !== 'live' || silent) {
+    return apiCache.get(cacheKey, async () => {
+      const response = await apiClient.get(`/matches`, {
+        params: { league: leagueId, status },
+      });
+      return response.data;
+    });
+  }
+  
+  // For live data, always fetch fresh
+  const response = await apiClient.get(`/matches`, {
+    params: { league: leagueId, status },
+  });
+  return response.data;
+}
+```
+
+# Test Strategy:
+1. Run unit tests for all core services
+2. Execute integration tests for key user flows
+3. Perform end-to-end testing on multiple devices
+4. Measure and verify performance metrics:
+   - App launch time < 2 seconds
+   - Score updates < 3 seconds
+   - Smooth scrolling at 60fps
+   - Memory usage within acceptable limits
+5. Test API request caching
+6. Verify image optimization
+7. Test error tracking and reporting
+8. Validate animations and transitions
+9. Monitor memory usage during extended use
+10. Run automated testing pipeline before deployment

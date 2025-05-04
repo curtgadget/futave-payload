@@ -1,0 +1,254 @@
+# Task ID: 14
+# Title: Implement User Preferences and Personalization
+# Status: pending
+# Dependencies: 8, 10
+# Priority: medium
+# Description: Develop the user interface and functionality for managing user preferences, favorites, and personalization settings to provide a customized experience.
+# Details:
+1. Create user profile screen
+2. Implement favorite teams, leagues, and players management
+3. Develop notification preferences UI
+4. Add Wave Score personalization settings
+5. Implement account management
+6. Create onboarding flow for new users
+7. Add preference sync with backend
+
+```javascript
+// src/screens/ProfileScreen.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import { 
+  updateNotificationPreferences, 
+  updateWaveScorePreferences,
+  logout,
+  deleteAccount
+} from '../store/actions/userActions';
+import { fetchUserProfile } from '../store/actions/userActions';
+import FavoritesList from '../components/FavoritesList';
+import PreferenceSlider from '../components/PreferenceSlider';
+import LoadingIndicator from '../components/LoadingIndicator';
+
+const ProfileScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const { user, loading, error } = useSelector(state => state.user);
+  const [notificationPrefs, setNotificationPrefs] = useState({
+    goals: true,
+    matchStart: true,
+    highWaveScore: true,
+    waveScoreThreshold: 70,
+  });
+  const [wavePrefs, setWavePrefs] = useState({
+    favoriteTeamBoost: 1.2,
+    favoriteLeagueBoost: 1.1,
+    rivalryImportance: 0.8,
+    tableImpactImportance: 0.7,
+  });
+  
+  useEffect(() => {
+    dispatch(fetchUserProfile());
+  }, [dispatch]);
+  
+  useEffect(() => {
+    if (user?.notificationPreferences) {
+      setNotificationPrefs(user.notificationPreferences);
+    }
+    if (user?.waveScorePreferences) {
+      setWavePrefs(user.waveScorePreferences);
+    }
+  }, [user]);
+  
+  const handleNotificationToggle = (key) => {
+    const updatedPrefs = { ...notificationPrefs, [key]: !notificationPrefs[key] };
+    setNotificationPrefs(updatedPrefs);
+    dispatch(updateNotificationPreferences(updatedPrefs));
+  };
+  
+  const handleWaveScoreThresholdChange = (value) => {
+    const updatedPrefs = { ...notificationPrefs, waveScoreThreshold: value };
+    setNotificationPrefs(updatedPrefs);
+    dispatch(updateNotificationPreferences(updatedPrefs));
+  };
+  
+  const handleWavePrefChange = (key, value) => {
+    const updatedPrefs = { ...wavePrefs, [key]: value };
+    setWavePrefs(updatedPrefs);
+    dispatch(updateWaveScorePreferences(updatedPrefs));
+  };
+  
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: () => dispatch(logout()) },
+      ]
+    );
+  };
+  
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive', 
+          onPress: () => {
+            dispatch(deleteAccount());
+          } 
+        },
+      ]
+    );
+  };
+  
+  if (loading) {
+    return <LoadingIndicator />;
+  }
+  
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Icon name="account-circle" size={80} color="#4285F4" />
+        <Text style={styles.username}>{user?.email || 'Guest User'}</Text>
+      </View>
+      
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Favorites</Text>
+        <FavoritesList 
+          type="teams" 
+          favorites={user?.favoriteTeams || []} 
+          onManageFavorites={() => navigation.navigate('ManageFavorites', { type: 'teams' })}
+        />
+        <FavoritesList 
+          type="leagues" 
+          favorites={user?.favoriteLeagues || []} 
+          onManageFavorites={() => navigation.navigate('ManageFavorites', { type: 'leagues' })}
+        />
+        <FavoritesList 
+          type="players" 
+          favorites={user?.favoritePlayers || []} 
+          onManageFavorites={() => navigation.navigate('ManageFavorites', { type: 'players' })}
+        />
+      </View>
+      
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        
+        <View style={styles.preferenceItem}>
+          <Text style={styles.preferenceLabel}>Goal Alerts</Text>
+          <Switch
+            value={notificationPrefs.goals}
+            onValueChange={() => handleNotificationToggle('goals')}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={notificationPrefs.goals ? '#4285F4' : '#f4f3f4'}
+          />
+        </View>
+        
+        <View style={styles.preferenceItem}>
+          <Text style={styles.preferenceLabel}>Match Start</Text>
+          <Switch
+            value={notificationPrefs.matchStart}
+            onValueChange={() => handleNotificationToggle('matchStart')}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={notificationPrefs.matchStart ? '#4285F4' : '#f4f3f4'}
+          />
+        </View>
+        
+        <View style={styles.preferenceItem}>
+          <Text style={styles.preferenceLabel}>High Wave Score</Text>
+          <Switch
+            value={notificationPrefs.highWaveScore}
+            onValueChange={() => handleNotificationToggle('highWaveScore')}
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+            thumbColor={notificationPrefs.highWaveScore ? '#4285F4' : '#f4f3f4'}
+          />
+        </View>
+        
+        {notificationPrefs.highWaveScore && (
+          <View style={styles.sliderContainer}>
+            <Text style={styles.sliderLabel}>
+              Wave Score Threshold: {notificationPrefs.waveScoreThreshold}
+            </Text>
+            <PreferenceSlider
+              value={notificationPrefs.waveScoreThreshold}
+              onValueChange={handleWaveScoreThresholdChange}
+              minimumValue={50}
+              maximumValue={90}
+              step={5}
+            />
+          </View>
+        )}
+      </View>
+      
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Wave Score Personalization</Text>
+        
+        <View style={styles.sliderContainer}>
+          <Text style={styles.sliderLabel}>
+            Favorite Team Boost: {wavePrefs.favoriteTeamBoost.toFixed(1)}x
+          </Text>
+          <PreferenceSlider
+            value={wavePrefs.favoriteTeamBoost}
+            onValueChange={(value) => handleWavePrefChange('favoriteTeamBoost', value)}
+            minimumValue={1.0}
+            maximumValue={2.0}
+            step={0.1}
+          />
+        </View>
+        
+        <View style={styles.sliderContainer}>
+          <Text style={styles.sliderLabel}>
+            Favorite League Boost: {wavePrefs.favoriteLeagueBoost.toFixed(1)}x
+          </Text>
+          <PreferenceSlider
+            value={wavePrefs.favoriteLeagueBoost}
+            onValueChange={(value) => handleWavePrefChange('favoriteLeagueBoost', value)}
+            minimumValue={1.0}
+            maximumValue={2.0}
+            step={0.1}
+          />
+        </View>
+        
+        {/* Other wave preferences */}
+      </View>
+      
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Account</Text>
+        
+        <TouchableOpacity style={styles.button} onPress={handleLogout}>
+          <Icon name="logout" size={20} color="#4285F4" />
+          <Text style={styles.buttonText}>Logout</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAccount}>
+          <Icon name="delete" size={20} color="#FF4500" />
+          <Text style={styles.dangerButtonText}>Delete Account</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+};
+
+const styles = StyleSheet.create({
+  // Styles implementation
+});
+
+export default ProfileScreen;
+```
+
+# Test Strategy:
+1. Test user profile screen
+2. Verify favorites management
+3. Test notification preferences
+4. Validate Wave Score personalization
+5. Test account management
+6. Verify onboarding flow
+7. Test preference sync with backend
+8. Validate data persistence
+9. Test UI on different screen sizes
+10. Verify accessibility features

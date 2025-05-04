@@ -1,0 +1,86 @@
+# Task ID: 1
+# Title: Setup Backend Infrastructure with Payload CMS and Next.js
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Initialize the backend infrastructure using Payload CMS running on Next.js v15.1.0 with MongoDB integration as specified in the technical requirements.
+# Details:
+1. Initialize a new Next.js v15.1.0 project
+2. Install and configure Payload CMS
+3. Set up MongoDB connection
+4. Configure environment variables for sensitive data
+5. Implement basic authentication system
+6. Set up Docker containerization
+7. Implement Sentry for error tracking
+8. Create basic API structure
+
+Code structure:
+```javascript
+// next.config.js
+const { withPayload } = require('@payloadcms/next-payload');
+
+module.exports = withPayload({
+  // Next.js config
+  reactStrictMode: true,
+  env: {
+    MONGODB_URI: process.env.MONGODB_URI,
+    PAYLOAD_SECRET: process.env.PAYLOAD_SECRET,
+    // other env variables
+  },
+});
+
+// payload.config.ts
+import { buildConfig } from 'payload/config';
+import Users from './collections/Users';
+// import other collections
+
+export default buildConfig({
+  serverURL: process.env.SERVER_URL,
+  collections: [
+    Users,
+    // other collections
+  ],
+  // other Payload config
+});
+```
+
+# Test Strategy:
+1. Verify Next.js server starts correctly
+2. Confirm Payload CMS admin panel is accessible
+3. Test MongoDB connection
+4. Validate environment variables are properly loaded
+5. Verify Docker container builds and runs
+6. Test Sentry integration by triggering test errors
+7. Ensure basic API endpoints return expected responses
+
+# Subtasks:
+## 1. Initialize Next.js v15.1.0 Project with Payload CMS Integration [done]
+### Dependencies: None
+### Description: Set up a new Next.js v15.1.0 project and integrate Payload CMS as the headless CMS solution
+### Details:
+Create a new Next.js project using 'npx create-next-app@15.1.0'. Install Payload CMS with 'npm install @payloadcms/next-payload payload'. Configure next.config.js with the withPayload wrapper to enable Payload integration. Create the initial payload.config.ts file with basic configuration settings.
+
+## 2. Configure MongoDB Connection and Environment Variables [done]
+### Dependencies: 1.1
+### Description: Set up MongoDB connection for Payload CMS and configure necessary environment variables for secure operation
+### Details:
+Create a .env file with MONGODB_URI, PAYLOAD_SECRET, and SERVER_URL variables. Configure MongoDB adapter in payload.config.ts. Set up environment variable handling in next.config.js. Create a .env.example file for documentation. Implement secure handling of sensitive data using environment variables.
+
+## 3. Implement User Authentication System [done]
+### Dependencies: 1.2
+### Description: Create the user authentication system with Payload CMS including user collection, authentication strategies, and access control
+### Details:
+Create a Users collection in /collections/Users.ts with appropriate fields and authentication configuration. Implement login, register, and password reset functionality. Configure access control policies for different user roles. Set up JWT authentication with appropriate token expiration and security settings.
+
+## 4. Set Up Docker Containerization [done]
+### Dependencies: 1.3
+### Description: Implement Docker containerization for the application to ensure consistent deployment environments
+### Details:
+Create a Dockerfile that includes Node.js, MongoDB dependencies, and application code. Configure Docker Compose with services for the Next.js application and MongoDB. Set up volume mapping for persistent data storage. Configure environment variable injection for Docker environments. Implement health checks and container restart policies.
+
+## 5. Integrate Sentry for Error Tracking and Create API Structure [done]
+### Dependencies: 1.4
+### Description: Set up Sentry for error monitoring and establish the basic API structure for the application
+### Details:
+Install Sentry SDK with 'npm install @sentry/nextjs'. Configure Sentry in next.config.js and create sentry.client.config.js and sentry.server.config.js files. Set up API routes under /pages/api/ or /app/api/ depending on the Next.js routing strategy. Implement error boundary components to capture and report frontend errors. Create API documentation using comments or a dedicated documentation tool.
+

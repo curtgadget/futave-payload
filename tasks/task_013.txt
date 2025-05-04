@@ -1,0 +1,231 @@
+# Task ID: 13
+# Title: Implement Memory Avenues UI
+# Status: pending
+# Dependencies: 7, 11
+# Priority: medium
+# Description: Develop the user interface for the Memory Avenues feature, including visual pathways, thematic routes, pivotal moment highlighting, and avenue sharing capabilities.
+# Details:
+1. Create avenue visualization component
+2. Implement thematic route selection
+3. Develop pivotal moment highlighting
+4. Add quick journey navigation
+5. Implement avenue sharing
+6. Create personalized avenue views
+7. Add animations for pathway navigation
+
+```javascript
+// src/screens/MemoryAvenueScreen.js
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Share, Animated } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import { fetchMatchAvenues } from '../store/actions/avenueActions';
+import MomentCard from '../components/MomentCard';
+import RouteSelector from '../components/RouteSelector';
+import LoadingIndicator from '../components/LoadingIndicator';
+
+const MemoryAvenueScreen = ({ route, navigation }) => {
+  const { matchId } = route.params;
+  const [selectedRoute, setSelectedRoute] = useState('main');
+  const [expandedMoment, setExpandedMoment] = useState(null);
+  const scrollViewRef = useRef(null);
+  
+  const dispatch = useDispatch();
+  const { avenues, loading, error } = useSelector(state => state.avenues);
+  const { match } = useSelector(state => state.matches.matches.find(m => m.id === matchId) || {});
+  
+  useEffect(() => {
+    dispatch(fetchMatchAvenues(matchId));
+  }, [dispatch, matchId]);
+  
+  const currentAvenue = avenues.find(a => a.matchId === matchId && a.type === selectedRoute);
+  
+  const handleRouteChange = (routeType) => {
+    setSelectedRoute(routeType);
+    setExpandedMoment(null);
+    // Scroll to top when changing routes
+    if (scrollViewRef.current) {
+      scrollViewRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
+  
+  const handleMomentPress = (momentId) => {
+    setExpandedMoment(expandedMoment === momentId ? null : momentId);
+  };
+  
+  const handleShare = async () => {
+    try {
+      const result = await Share.share({
+        message: `Check out this ${selectedRoute} avenue for ${match?.homeTeam.name} vs ${match?.awayTeam.name} on Futave!`,
+        url: `https://futave.app/avenues/${matchId}/${selectedRoute}`,
+      });
+    } catch (error) {
+      console.error('Error sharing avenue:', error);
+    }
+  };
+  
+  if (loading) {
+    return <LoadingIndicator />;
+  }
+  
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>Failed to load avenue: {error}</Text>
+        <TouchableOpacity 
+          style={styles.retryButton}
+          onPress={() => dispatch(fetchMatchAvenues(matchId))}
+        >
+          <Text style={styles.retryText}>Retry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+  
+  if (!currentAvenue) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>No avenue available for this match</Text>
+      </View>
+    );
+  }
+  
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>{currentAvenue.title}</Text>
+        <Text style={styles.subtitle}>{currentAvenue.description}</Text>
+        <Text style={styles.readTime}>Estimated read: {currentAvenue.estimatedReadTime} min</Text>
+      </View>
+      
+      <RouteSelector
+        selectedRoute={selectedRoute}
+        onRouteChange={handleRouteChange}
+        availableRoutes={avenues
+          .filter(a => a.matchId === matchId)
+          .map(a => ({ type: a.type, title: a.type.charAt(0).toUpperCase() + a.type.slice(1) }))
+        }
+      />
+      
+      <FlatList
+        ref={scrollViewRef}
+        data={currentAvenue.moments}
+        keyExtractor={item => item.id}
+        renderItem={({ item, index }) => (
+          <MomentCard
+            moment={item}
+            isExpanded={expandedMoment === item.id}
+            onPress={() => handleMomentPress(item.id)}
+            isFirst={index === 0}
+            isLast={index === currentAvenue.moments.length - 1}
+          />
+        )}
+        contentContainerStyle={styles.momentsList}
+        ItemSeparatorComponent={() => (
+          <View style={styles.pathLine} />
+        )}
+      />
+      
+      <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+        <Icon name="share-variant" size={24} color="white" />
+        <Text style={styles.shareText}>Share Avenue</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+// src/components/MomentCard.js
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, Animated } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const MomentCard = ({ moment, isExpanded, onPress, isFirst, isLast }) => {
+  const getIconForMomentType = (type) => {
+    switch (type) {
+      case 'goal': return 'soccer';
+      case 'card': return 'card';
+      case 'substitution': return 'account-switch';
+      case 'chance': return 'target';
+      case 'tactical': return 'strategy';
+      default: return 'information-outline';
+    }
+  };
+  
+  const getColorForMomentType = (type) => {
+    switch (type) {
+      case 'goal': return '#FF4500';
+      case 'card': return '#FFD700';
+      case 'substitution': return '#4285F4';
+      case 'chance': return '#FFA500';
+      case 'tactical': return '#9C27B0';
+      default: return '#757575';
+    }
+  };
+  
+  const iconName = getIconForMomentType(moment.type);
+  const iconColor = getColorForMomentType(moment.type);
+  
+  return (
+    <View style={styles.container}>
+      <View style={styles.timelineContainer}>
+        {!isFirst && <View style={styles.lineTop} />}
+        <View style={[styles.dot, { backgroundColor: iconColor }]}>
+          <Icon name={iconName} size={16} color="white" />
+        </View>
+        {!isLast && <View style={styles.lineBottom} />}
+      </View>
+      
+      <TouchableOpacity 
+        style={[styles.card, isExpanded && styles.expandedCard]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <View style={styles.header}>
+          <Text style={styles.timestamp}>{moment.timestamp}'</Text>
+          <Text style={styles.title}>{moment.description}</Text>
+          <Icon 
+            name={isExpanded ? 'chevron-up' : 'chevron-down'} 
+            size={20} 
+            color="#757575" 
+          />
+        </View>
+        
+        {isExpanded && (
+          <View style={styles.expandedContent}>
+            {moment.media && (
+              <Image 
+                source={{ uri: moment.media }} 
+                style={styles.media} 
+                resizeMode="cover"
+              />
+            )}
+            <Text style={styles.detailedDescription}>
+              {/* More detailed description would go here */}
+              This is a detailed description of the moment, providing context and significance.
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  // Styles implementation
+});
+
+export default MomentCard;
+```
+
+# Test Strategy:
+1. Test avenue visualization
+2. Verify thematic route selection
+3. Test pivotal moment highlighting
+4. Validate quick journey navigation
+5. Test avenue sharing
+6. Verify personalized avenue views
+7. Test animations for pathway navigation
+8. Validate different moment types display correctly
+9. Test responsiveness on different screen sizes
+10. Verify accessibility features

@@ -1,0 +1,330 @@
+# FUTAVE: NAVIGATE THE BEAUTIFUL GAME
+## Product Requirements Document
+
+### 1. Document overview
+
+This PRD outlines the requirements for Futave, a mobile application designed to help soccer fans navigate the overwhelming world of soccer matches, statistics, and content. The document serves as a comprehensive guide for the development team to understand what needs to be built, why it matters, and how it should function.
+
+### 2. Product overview
+
+#### 2.1 Product description
+
+Futave is a mobile application that serves as a personal navigator for soccer fans, helping them find their way to the matches, moments, and stories that matter most to them. Unlike existing apps that present an overwhelming maze of data, Futave provides a clean, personalized experience with intelligent features that highlight significance and connect isolated moments into meaningful narratives.
+
+#### 2.2 Problem statement
+
+Soccer fans today face several challenges with existing applications:
+- Information overload with cluttered interfaces lacking clear navigation
+- Difficulty determining which matches deserve attention among hundreds played weekly
+- Isolated highlights and moments without context or connection to broader narratives
+- Raw statistics without meaningful insights
+- Generic, one-size-fits-all experiences regardless of user interests
+
+#### 2.3 Business objectives
+
+- Develop and launch the MVP within 8 weeks (6-week development + 2-week testing)
+- Achieve a 4.5+ star rating on app stores within 3 months of launch
+- Acquire 10,000 active users within 6 months of launch
+- Establish a sustainable development model for a solo developer leveraging AI
+- Create a platform that can be incrementally expanded through 4-week development cycles
+
+#### 2.4 Success metrics
+
+- User engagement: Average session time of 15+ minutes
+- User retention: 60% of users returning weekly after 30 days
+- Feature adoption: 80% of users creating personalized preferences
+- Notification engagement: 30%+ open rate for notifications
+- App performance: Score updates delivered in <3 seconds
+- User satisfaction: Net Promoter Score of 40+
+
+### 3. Target audience
+
+#### 3.1 User personas
+
+**Casual Fan (Primary)**
+- **Profile**: 25-45 years old, follows 1-3 teams across 1-2 leagues
+- **Behaviors**: Checks scores on weekends, watches big matches
+- **Pain points**: Misses important matches, feels overwhelmed by data
+- **Goals**: Stay connected to favorite teams, discover significant matches
+
+**Passionate Follower**
+- **Profile**: 18-35 years old, follows multiple teams across several leagues
+- **Behaviors**: Checks scores daily, watches 3-5 matches weekly
+- **Pain points**: Can't keep track of all interesting matches, misses context
+- **Goals**: Prioritize which matches to watch, understand broader narratives
+
+**Soccer Explorer**
+- **Profile**: 20-50 years old, interested in discovering new leagues/teams
+- **Behaviors**: Enjoys finding hidden gems and emerging stories
+- **Pain points**: Doesn't know where to look beyond mainstream coverage
+- **Goals**: Discover interesting stories, expand soccer knowledge
+
+#### 3.2 Use cases
+
+- Following live scores of favorite teams and leagues
+- Discovering which matches are most significant at any given moment
+- Understanding the key moments and narratives of matches
+- Receiving timely notifications about important developments
+- Sharing match stories with friends and social networks
+
+### 4. Product features and requirements
+
+#### 4.1 Core feature: Fast, clean score navigation
+
+**Description**: A streamlined, distraction-free score interface that prioritizes orientation and quick access to match information.
+
+**Key components**:
+- Streamlined match display showing essential information
+- Rapid score updates (target: <3 seconds)
+- Intuitive navigation between leagues, teams, and matches
+- Personalized view highlighting followed entities
+
+**User stories**:
+
+| ID | User story | Acceptance criteria |
+|----|------------|---------------------|
+| US-001 | As a user, I want to view live scores for current matches so I can stay updated on ongoing games | - Live scores display with match time<br>- Score updates within 3 seconds<br>- Visual indicator for live matches<br>- Match status clearly visible (not started, in progress, finished) |
+| US-002 | As a user, I want to easily navigate between different leagues so I can check multiple competitions | - Clear league navigation tabs/menu<br>- Quick switching between leagues<br>- Visual distinction between different leagues<br>- Recently viewed leagues appear prominently |
+| US-003 | As a user, I want to mark teams, leagues, and players as favorites so I can quickly access content I care about | - Ability to mark/unmark favorites<br>- Favorites section prominently displayed<br>- Visual indicators for favorite entities across the app<br>- Favorites persist across app sessions |
+| US-004 | As a user, I want to receive notifications about goals in matches I'm following so I don't miss important moments | - Push notification received within 3 seconds of goal<br>- Notification displays teams and updated score<br>- Tapping notification navigates to match details<br>- Notification settings configurable per team/match |
+| US-005 | As a user, I want to see a personalized dashboard showing matches relevant to me so I can quickly find content I care about | - Dashboard displays matches from favorite teams/leagues<br>- Matches sorted by relevance and start time<br>- Quick-access filters for showing different groups of matches<br>- Dashboard refreshes automatically |
+
+#### 4.2 Signature feature #1: The Wave Detector
+
+**Description**: An intelligent system that spots rising action and significance across the soccer landscape, helping users identify which matches deserve attention.
+
+**Key components**:
+- Wave Score algorithm (1-100 rating) visualized as a wave
+- Rising Tides identification for emerging significant matches
+- Personalized relevance adjustments based on user interests
+- Wave-based notification system
+- Weekend Navigator map of significant matches
+
+**User stories**:
+
+| ID | User story | Acceptance criteria |
+|----|------------|---------------------|
+| US-006 | As a user, I want to see which matches are most significant right now so I can decide what to watch | - Each match displays a Wave Score (1-100)<br>- Visual wave representation of match significance<br>- Matches sortable by Wave Score<br>- Score updates dynamically as match conditions change |
+| US-007 | As a user, I want to be notified when a match becomes highly significant so I don't miss exciting games | - Notification when Wave Score exceeds user-defined threshold<br>- Notification explains why match significance increased<br>- Tapping notification navigates to match details<br>- Notification frequency configurable in settings |
+| US-008 | As a user, I want to see a weekend overview of the most significant upcoming matches so I can plan my viewing | - Visual map/calendar of upcoming matches<br>- Matches displayed with predicted Wave Scores<br>- Filtering options for different leagues/teams<br>- Ability to add matches to calendar/reminders |
+| US-009 | As a user, I want Wave Scores to consider my personal preferences so significance ratings are relevant to me | - Wave Scores weighted based on favorite teams/leagues<br>- User-configurable importance factors<br>- Transparency in how personal relevance affects scores<br>- Reset option to view objective significance |
+| US-010 | As a user, I want to understand why a match has a high Wave Score so I know what makes it significant | - Breakdown of factors contributing to Wave Score<br>- Key narratives highlighted (rivalry, standings impact, etc.)<br>- Historical context where relevant<br>- Real-time updates to contributing factors |
+
+#### 4.3 Signature feature #2: Memory Avenues
+
+**Description**: Transform match data into connected pathways through key moments and narratives, creating a storytelling experience around matches.
+
+**Key components**:
+- Visual pathways through a match's story
+- Thematic routes (tactical, emotional, statistical)
+- Pivotal moment highlighting
+- Quick journey navigation
+- Avenue sharing capabilities
+
+**User stories**:
+
+| ID | User story | Acceptance criteria |
+|----|------------|---------------------|
+| US-011 | As a user, I want to see a visual timeline of key match moments so I can understand how the match unfolded | - Visual pathway showing match progression<br>- Key moments highlighted (goals, cards, substitutions)<br>- Ability to navigate between moments<br>- Context provided around each moment |
+| US-012 | As a user, I want to view different thematic routes through a match so I can understand different aspects of the game | - Multiple avenue options (tactical, emotional, statistical)<br>- Clear visual distinction between avenue types<br>- Ability to switch between avenues<br>- Each avenue highlights relevant moments |
+| US-013 | As a user, I want to quickly skim the main path of a match so I can get a rapid understanding of what happened | - Condensed view option showing only critical moments<br>- Estimated time to consume content displayed<br>- Clear visual hierarchy of moment importance<br>- Easy navigation between highlight moments |
+| US-014 | As a user, I want to share match avenues with friends so we can discuss the game | - Share button for complete avenues<br>- Preview of shared content<br>- Multiple sharing options (social media, messaging)<br>- Shared link opens directly to avenue in app |
+| US-015 | As a user, I want Memory Avenues to incorporate my favorite players and teams so I see content most relevant to me | - Highlighted moments featuring favorite players<br>- Personalized context around favorite teams<br>- Option to focus avenue on specific players/teams<br>- Personalization indicated visually |
+
+#### 4.4 Authentication and user data
+
+**User stories**:
+
+| ID | User story | Acceptance criteria |
+|----|------------|---------------------|
+| US-016 | As a user, I want to create an account so my preferences and favorites are saved | - Email/password registration flow<br>- Social login options<br>- Verification email sent<br>- Clear success/error messages |
+| US-017 | As a user, I want to securely log in to access my personalized content | - Email/password login<br>- Social login options<br>- Remember me option<br>- Password reset functionality |
+| US-018 | As a user, I want my data to be securely stored so my information remains private | - Data encrypted in transit and at rest<br>- Privacy policy accessible<br>- No unnecessary personal data collected<br>- Option to delete account and data |
+| US-019 | As a user, I want to use the app without creating an account to try its features | - Core features accessible without login<br>- Clear benefits of account creation displayed<br>- Non-disruptive prompts to create account<br>- Temporary preferences stored locally |
+
+### 5. Technical requirements
+
+#### 5.1 Platforms and devices
+
+- Mobile applications for iOS and Android
+- Minimum OS versions: iOS 14+, Android 9+
+- Optimized for phones, with tablet support
+- No web or desktop versions in MVP
+
+#### 5.2 Architecture
+
+- Backend built with Payload CMS running on Next.js (v15.1.0)
+- MongoDB database for data storage
+- RESTful API endpoints exposing soccer data to client applications
+- Sportmonks API integration for soccer data
+- Task-based synchronization system for importing and updating data
+- Docker containerization for deployment
+- Sentry integration for error tracking and monitoring
+- React Native for cross-platform mobile development
+- Serverless functions for Wave calculations and Avenue generation
+- Push notification infrastructure
+
+#### 5.3 Data requirements
+
+- Core data models in Payload CMS:
+  - Matches: Comprehensive match data including scores, events, and states
+  - Teams: Team information with relationships to leagues and players
+  - Players: Player profiles and statistics
+  - Leagues: Competition data with seasons and stages
+  - Countries: Geographic data for teams and leagues
+  - MetadataTypes: Supporting metadata for various entities
+  - Users: User authentication and management
+  - Media: Media asset management
+
+- Real-time match data from Sportmonks API
+- Coverage for top 20 leagues initially
+- Match events (goals, cards, substitutions)
+- Team and player information
+- Historical data for completed matches
+- User preference and settings data
+- Match significance data for Wave Detector
+- Narrative structures for Memory Avenues
+
+#### 5.4 Performance requirements
+
+- Score updates delivered within 3 seconds
+- App launch to interactive in under 2 seconds
+- Smooth scrolling and transitions (60fps)
+- Maximum 200MB initial app size
+- Battery usage optimization for background updates
+- API request optimization to minimize data usage
+- Pagination for API endpoints to handle large datasets efficiently
+- Robust error handling and logging for API requests
+
+#### 5.5 Security requirements
+
+- User authentication system with Payload CMS
+- Environment variables for sensitive configuration (API keys, database URIs)
+- API middleware for request authentication
+- JWT-based authentication for API access
+- Error handling that prevents leaking sensitive information
+- Data encryption in transit and at rest
+- Rate limiting to prevent abuse
+- Input validation and sanitization
+- Regular security audits and updates
+
+### 6. Design guidelines
+
+#### 6.1 Visual design
+
+- Clean, distraction-free interface prioritizing content
+- Map-inspired design elements for navigation metaphor
+- Limited color palette focusing on clarity and hierarchy
+- Simple, functional visualizations without complex animations
+- Consistent iconography across the application
+- Typography optimized for legibility at various sizes
+
+#### 6.2 User experience
+
+- Intuitive navigation with minimal learning curve
+- Consistent interaction patterns throughout the app
+- Clear feedback for all user actions
+- Streamlined onboarding focusing on key features
+- Accessibility considerations (contrast, text size, screen readers)
+- One-handed operation optimization for core functions
+
+### 7. Phased implementation plan
+
+#### 7.1 MVP: Initial expedition (8 weeks)
+
+**Features:**
+- Live scores for top 20 leagues with clean navigation
+- Basic user accounts and personalization via Payload CMS
+- Simplified Wave Detector with visual representation
+- Basic template-based Memory Avenues
+- Push notifications for goals and high Wave Scores
+
+**Development timeline:**
+- Weeks 1-2: Core infrastructure and backend setup
+- Weeks 3-4: Third-party API integration and data synchronization
+- Week 5: Basic Wave Detector implementation
+- Week 6: Memory Avenues templates
+- Weeks 7-8: Testing, refinement, and bug fixes
+
+#### 7.2 Phase 2: Charting new territories (4 weeks)
+
+**Features**:
+- Expanded league coverage
+- Enhanced Wave algorithm with more dynamic factors
+- Improved Avenue templates with varied pathways
+- Wave-based notification system
+- Performance optimizations
+
+#### 7.3 Phase 3: Deeper exploration (4 weeks)
+
+**Features**:
+- Avenue sharing capabilities
+- Enhanced navigation design elements
+- Team and player profile journeys
+- More sophisticated wave predictions
+- User feedback implementation
+
+#### 7.4 Future horizons
+
+**Potential features**:
+- Advanced statistics integration
+- Historical match archives
+- Tactical pathway analysis
+- Limited social features (comments on shared avenues)
+- Predictive scenarios
+- Additional league coverage
+
+### 8. Risk assessment
+
+#### 8.1 Technical risks
+
+- **Data reliability**: Third-party API may have inconsistent updates or outages
+  - **Mitigation**: Implement caching strategy and fallback displays
+
+- **Performance issues**: Wave calculations could impact app responsiveness
+  - **Mitigation**: Move calculations to server-side, optimize algorithms
+
+- **Cross-platform compatibility**: UI inconsistencies between iOS and Android
+  - **Mitigation**: Thorough testing on multiple devices, platform-specific adjustments
+
+#### 8.2 Business risks
+
+- **User adoption**: Concept may be too novel for mainstream adoption
+  - **Mitigation**: Focus marketing on specific user segments, clear onboarding
+
+- **Development bandwidth**: Solo developer constraints limit iteration speed
+  - **Mitigation**: Strict prioritization, leverage AI assistance, consider contractors for specific components
+
+- **Competing applications**: Established players could implement similar features
+  - **Mitigation**: Focus on unique navigation metaphor and user experience, move quickly
+
+### 9. Success criteria
+
+- MVP delivered within 8-week timeframe
+- Core features functional across iOS and Android
+- Score updates consistently delivered within 3-second target
+- User testing shows >80% task completion rate
+- Zero critical security vulnerabilities
+- All acceptance criteria met for MVP user stories
+
+### 10. Appendix
+
+#### 10.1 Key terms and definitions
+
+- **Wave Score**: Algorithmic rating (1-100) of match significance
+- **Rising Tides**: Matches with rapidly increasing Wave Scores
+- **Memory Avenue**: Visual narrative pathway through a match's key moments
+- **Personal map**: Customized view showing user's followed entities
+- **Weekend Navigator**: Overview of upcoming significant matches
+- **Match State**: Enumerated states of a match (not started, in play, finished, etc.)
+- **Sportmonks**: Third-party API provider for soccer data
+- **Payload CMS**: Content management system used for backend infrastructure
+
+#### 10.2 References and resources
+
+- Existing soccer apps competitive analysis
+- User research findings
+- Technical feasibility assessment
+- Sportmonks API documentation
+- Payload CMS documentation
+- React Native documentation 

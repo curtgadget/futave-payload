@@ -1,0 +1,225 @@
+# Task ID: 11
+# Title: Implement Score Navigation Interface
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Develop the core score navigation interface that provides a streamlined, distraction-free view of match scores with intuitive navigation between leagues, teams, and matches.
+# Details:
+1. Create match list component
+2. Implement league navigation
+3. Develop match card component
+4. Add favorite filtering
+5. Implement live score updates
+6. Create match status indicators
+7. Add pull-to-refresh functionality
+8. Implement smooth animations
+
+```javascript
+// src/screens/MatchesScreen.js
+import React, { useState, useEffect } from 'react';
+import { View, FlatList, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+
+import LeagueSelector from '../components/LeagueSelector';
+import MatchCard from '../components/MatchCard';
+import FilterBar from '../components/FilterBar';
+import { fetchMatches, refreshMatches } from '../store/actions/matchActions';
+
+const MatchesScreen = ({ navigation }) => {
+  const [selectedLeague, setSelectedLeague] = useState('all');
+  const [filter, setFilter] = useState('all'); // all, live, upcoming, finished
+  const [refreshing, setRefreshing] = useState(false);
+  
+  const dispatch = useDispatch();
+  const { matches, loading, error } = useSelector(state => state.matches);
+  const { favorites } = useSelector(state => state.user);
+  
+  useEffect(() => {
+    dispatch(fetchMatches(selectedLeague, filter));
+    
+    // Set up polling for live matches
+    const interval = setInterval(() => {
+      if (filter === 'live') {
+        dispatch(fetchMatches(selectedLeague, filter, true)); // silent update
+      }
+    }, 30000); // 30 seconds
+    
+    return () => clearInterval(interval);
+  }, [dispatch, selectedLeague, filter]);
+  
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await dispatch(refreshMatches(selectedLeague, filter));
+    setRefreshing(false);
+  };
+  
+  const handleMatchPress = (match) => {
+    navigation.navigate('MatchDetails', { matchId: match.id });
+  };
+  
+  const filteredMatches = matches.filter(match => {
+    if (filter === 'live') return match.status === 'in_play';
+    if (filter === 'upcoming') return match.status === 'not_started';
+    if (filter === 'finished') return match.status === 'finished';
+    if (filter === 'favorites') {
+      return favorites.teams.includes(match.homeTeam.id) || 
+             favorites.teams.includes(match.awayTeam.id);
+    }
+    return true;
+  });
+  
+  return (
+    <View style={styles.container}>
+      <LeagueSelector
+        selectedLeague={selectedLeague}
+        onSelectLeague={setSelectedLeague}
+      />
+      
+      <FilterBar
+        selectedFilter={filter}
+        onSelectFilter={setFilter}
+      />
+      
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color="#0000ff" />
+      ) : (
+        <FlatList
+          data={filteredMatches}
+          keyExtractor={item => item.id.toString()}
+          renderItem={({ item }) => (
+            <MatchCard 
+              match={item} 
+              onPress={() => handleMatchPress(item)}
+              isFavorite={favorites.teams.includes(item.homeTeam.id) || 
+                         favorites.teams.includes(item.awayTeam.id)}
+            />
+          )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>
+                No matches found for the selected filters
+              </Text>
+            </View>
+          }
+        />
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  emptyContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+  },
+});
+
+export default MatchesScreen;
+
+// src/components/MatchCard.js
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useDispatch } from 'react-redux';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+import { toggleFavoriteTeam } from '../store/actions/userActions';
+
+const MatchCard = ({ match, onPress, isFavorite }) => {
+  const dispatch = useDispatch();
+  
+  const handleFavoritePress = (teamId) => {
+    dispatch(toggleFavoriteTeam(teamId));
+  };
+  
+  const getStatusText = () => {
+    if (match.status === 'in_play') {
+      return `${match.minute}'`;
+    } else if (match.status === 'not_started') {
+      return new Date(match.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else {
+      return 'FT';
+    }
+  };
+  
+  return (
+    <TouchableOpacity style={styles.card} onPress={onPress}>
+      <View style={styles.statusContainer}>
+        <Text style={[styles.status, match.status === 'in_play' && styles.liveStatus]}>
+          {getStatusText()}
+        </Text>
+      </View>
+      
+      <View style={styles.teamsContainer}>
+        <View style={styles.teamRow}>
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={() => handleFavoritePress(match.homeTeam.id)}
+          >
+            <Icon 
+              name={favorites.teams.includes(match.homeTeam.id) ? 'star' : 'star-outline'} 
+              size={16} 
+              color="#FFD700" 
+            />
+          </TouchableOpacity>
+          <Text style={styles.teamName}>{match.homeTeam.name}</Text>
+          <Text style={styles.score}>{match.homeScore}</Text>
+        </View>
+        
+        <View style={styles.teamRow}>
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={() => handleFavoritePress(match.awayTeam.id)}
+          >
+            <Icon 
+              name={favorites.teams.includes(match.awayTeam.id) ? 'star' : 'star-outline'} 
+              size={16} 
+              color="#FFD700" 
+            />
+          </TouchableOpacity>
+          <Text style={styles.teamName}>{match.awayTeam.name}</Text>
+          <Text style={styles.score}>{match.awayScore}</Text>
+        </View>
+      </View>
+      
+      {match.waveScore > 0 && (
+        <View style={styles.waveContainer}>
+          <View style={[styles.waveBar, { width: `${match.waveScore}%` }]} />
+          <Text style={styles.waveScore}>{match.waveScore}</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const styles = StyleSheet.create({
+  // Styles implementation
+});
+
+export default MatchCard;
+```
+
+# Test Strategy:
+1. Test match list rendering
+2. Verify league navigation
+3. Test match card component
+4. Validate favorite filtering
+5. Test live score updates
+6. Verify match status indicators
+7. Test pull-to-refresh functionality
+8. Validate smooth animations
+9. Test performance with large lists
+10. Verify responsive design on different screen sizes

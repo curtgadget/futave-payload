@@ -1,0 +1,98 @@
+# Task ID: 5
+# Title: Create RESTful API Endpoints
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Develop RESTful API endpoints to expose soccer data to client applications, implementing the necessary routes, controllers, and middleware.
+# Details:
+1. Design API routes for all data entities
+2. Implement controllers for each route
+3. Add authentication middleware
+4. Implement pagination for large datasets
+5. Add filtering and sorting capabilities
+6. Implement rate limiting
+7. Add error handling middleware
+8. Create API documentation
+
+```typescript
+// api/matches.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import payload from 'payload';
+import { authenticateRequest } from '../middleware/auth';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Apply authentication middleware
+  const authResult = await authenticateRequest(req, res);
+  if (!authResult.success) return;
+  
+  try {
+    switch (req.method) {
+      case 'GET':
+        // Parse query parameters
+        const { page = 1, limit = 10, league, team, status } = req.query;
+        
+        // Build query
+        const query: any = {};
+        if (league) query.league = { equals: league };
+        if (team) query['or'] = [
+          { homeTeam: { equals: team } },
+          { awayTeam: { equals: team } },
+        ];
+        if (status) query.status = { equals: status };
+        
+        // Execute query with pagination
+        const matches = await payload.find({
+          collection: 'matches',
+          where: query,
+          page: Number(page),
+          limit: Number(limit),
+          sort: '-startTime',
+        });
+        
+        return res.status(200).json(matches);
+        
+      default:
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+  } catch (error) {
+    console.error('API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+```
+
+# Test Strategy:
+1. Test all API endpoints with valid requests
+2. Verify authentication works correctly
+3. Test pagination with large datasets
+4. Verify filtering and sorting functionality
+5. Test error handling with invalid requests
+6. Verify rate limiting functionality
+7. Test API performance under load
+8. Validate API documentation against actual implementation
+
+# Subtasks:
+## 1. Implement Player and League API Endpoints [done]
+### Dependencies: None
+### Description: Create RESTful API endpoints for player and league data, following the pattern established in the matches endpoint. Include pagination, filtering, and sorting capabilities.
+### Details:
+Create api/players.ts and api/leagues.ts endpoints that handle GET requests with query parameters for pagination (page, limit) and filtering. Implement sorting by relevant fields (e.g., player stats, league standings). Apply the authentication middleware and follow the error handling pattern from the matches endpoint. For players, include filters for team, position, and stats thresholds. For leagues, allow filtering by country, season, and status.
+
+## 2. Implement Teams API Endpoint with Advanced Filtering [done]
+### Dependencies: 5.1
+### Description: Create a comprehensive teams endpoint with advanced filtering options, statistics inclusion, and relationship handling.
+### Details:
+Create api/teams.ts endpoint supporting GET requests with query parameters for pagination, filtering by league, country, and performance metrics. Implement an 'include' parameter that allows clients to specify related data to include (players, fixtures, stats). Add sorting capabilities for team rankings, performance metrics, etc. Ensure proper error handling and authentication. Optimize queries to prevent performance issues when including related data.
+
+## 3. Implement Rate Limiting and Request Validation Middleware [done]
+### Dependencies: 5.1, 5.2
+### Description: Add rate limiting middleware to protect API endpoints from abuse and implement request validation to ensure data integrity.
+### Details:
+Create middleware/rateLimit.ts to implement rate limiting based on client IP or API key, with configurable limits per endpoint. Create middleware/validation.ts to validate request parameters and body data against schemas. Apply these middleware to all API routes. Implement appropriate response headers for rate limiting (X-RateLimit-Limit, X-RateLimit-Remaining, etc.). Configure different rate limits for authenticated vs. unauthenticated requests.
+
+## 4. Create API Documentation and Response Standardization [done]
+### Dependencies: 5.1, 5.2, 5.3
+### Description: Generate comprehensive API documentation and standardize API responses across all endpoints for consistency.
+### Details:
+Implement a standardized response format across all endpoints with consistent error codes, pagination metadata, and data structure. Create detailed API documentation using Swagger/OpenAPI specification. Include authentication requirements, available endpoints, query parameters, response formats, and examples. Implement a documentation endpoint at /api/docs that serves the API documentation. Create helper functions in utils/apiResponse.ts to ensure consistent response formatting across all endpoints.
+

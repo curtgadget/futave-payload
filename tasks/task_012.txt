@@ -1,0 +1,224 @@
+# Task ID: 12
+# Title: Implement Wave Detector UI
+# Status: pending
+# Dependencies: 6, 11
+# Priority: medium
+# Description: Develop the user interface for the Wave Detector feature, including the visual wave representation, Rising Tides identification, and Weekend Navigator map.
+# Details:
+1. Create Wave Score visualization component
+2. Implement Rising Tides UI
+3. Develop Weekend Navigator map
+4. Add Wave Score details view
+5. Implement personalization controls
+6. Create Wave Score notifications UI
+7. Add animations for wave movements
+
+```javascript
+// src/components/WaveScore.js
+import React from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { LineChart } from 'react-native-chart-kit';
+
+const WaveScore = ({ score, history, size = 'medium' }) => {
+  // Determine styling based on size
+  const containerStyle = size === 'small' ? styles.smallContainer : styles.container;
+  const scoreStyle = size === 'small' ? styles.smallScore : styles.score;
+  
+  // Determine color based on score
+  const getScoreColor = (score) => {
+    if (score >= 80) return '#FF4500'; // High significance
+    if (score >= 60) return '#FFA500'; // Medium-high significance
+    if (score >= 40) return '#FFD700'; // Medium significance
+    if (score >= 20) return '#ADFF2F'; // Medium-low significance
+    return '#90EE90'; // Low significance
+  };
+  
+  const color = getScoreColor(score);
+  
+  // For small size, just show the number with colored background
+  if (size === 'small') {
+    return (
+      <View style={[containerStyle, { backgroundColor: color }]}>
+        <Text style={scoreStyle}>{Math.round(score)}</Text>
+      </View>
+    );
+  }
+  
+  // For medium/large size, show the wave visualization
+  return (
+    <View style={containerStyle}>
+      <Text style={scoreStyle}>{Math.round(score)}</Text>
+      
+      {history && history.length > 1 && (
+        <LineChart
+          data={{
+            labels: [],
+            datasets: [{
+              data: history.slice(-10), // Last 10 data points
+            }],
+          }}
+          width={120}
+          height={60}
+          chartConfig={{
+            backgroundColor: 'transparent',
+            backgroundGradientFrom: 'white',
+            backgroundGradientTo: 'white',
+            decimalPlaces: 0,
+            color: () => color,
+            labelColor: () => 'transparent',
+            style: {
+              borderRadius: 16,
+            },
+            propsForDots: {
+              r: '0',
+            },
+          }}
+          bezier
+          style={styles.chart}
+          withDots={false}
+          withInnerLines={false}
+          withOuterLines={false}
+          withHorizontalLabels={false}
+          withVerticalLabels={false}
+        />
+      )}
+      
+      <View style={[styles.waveBar, { width: `${score}%`, backgroundColor: color }]} />
+    </View>
+  );
+};
+
+// src/screens/WeekendNavigatorScreen.js
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { useSelector, useDispatch } from 'react-redux';
+import { Calendar } from 'react-native-calendars';
+
+import { fetchUpcomingMatches } from '../store/actions/matchActions';
+import MatchCard from '../components/MatchCard';
+import WaveScore from '../components/WaveScore';
+
+const WeekendNavigatorScreen = ({ navigation }) => {
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const dispatch = useDispatch();
+  const { upcomingMatches, loading } = useSelector(state => state.matches);
+  
+  useEffect(() => {
+    dispatch(fetchUpcomingMatches(selectedDate));
+  }, [dispatch, selectedDate]);
+  
+  // Generate marked dates for the calendar
+  const getMarkedDates = () => {
+    const marked = {};
+    
+    // Group matches by date
+    const matchesByDate = upcomingMatches.reduce((acc, match) => {
+      const date = new Date(match.startTime).toISOString().split('T')[0];
+      if (!acc[date]) acc[date] = [];
+      acc[date].push(match);
+      return acc;
+    }, {});
+    
+    // Find max wave score for each date
+    Object.entries(matchesByDate).forEach(([date, matches]) => {
+      const maxWaveScore = Math.max(...matches.map(m => m.predictedWaveScore || 0));
+      let dotColor = '#90EE90';
+      
+      if (maxWaveScore >= 80) dotColor = '#FF4500';
+      else if (maxWaveScore >= 60) dotColor = '#FFA500';
+      else if (maxWaveScore >= 40) dotColor = '#FFD700';
+      else if (maxWaveScore >= 20) dotColor = '#ADFF2F';
+      
+      marked[date] = {
+        marked: true,
+        dotColor,
+        selected: date === selectedDate,
+        selectedColor: '#E0E0E0',
+      };
+    });
+    
+    return marked;
+  };
+  
+  const filteredMatches = upcomingMatches.filter(match => {
+    const matchDate = new Date(match.startTime).toISOString().split('T')[0];
+    return matchDate === selectedDate;
+  });
+  
+  // Sort by predicted wave score
+  const sortedMatches = [...filteredMatches].sort((a, b) => 
+    (b.predictedWaveScore || 0) - (a.predictedWaveScore || 0)
+  );
+  
+  return (
+    <View style={styles.container}>
+      <Calendar
+        markedDates={getMarkedDates()}
+        onDayPress={day => setSelectedDate(day.dateString)}
+        theme={{
+          selectedDayBackgroundColor: '#4285F4',
+          todayTextColor: '#4285F4',
+          arrowColor: '#4285F4',
+        }}
+      />
+      
+      <View style={styles.matchesContainer}>
+        <Text style={styles.dateTitle}>
+          {new Date(selectedDate).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        </Text>
+        
+        {loading ? (
+          <ActivityIndicator size="large" color="#4285F4" />
+        ) : (
+          <FlatList
+            data={sortedMatches}
+            keyExtractor={item => item.id.toString()}
+            renderItem={({ item }) => (
+              <TouchableOpacity 
+                style={styles.matchItem}
+                onPress={() => navigation.navigate('MatchDetails', { matchId: item.id })}
+              >
+                <View style={styles.matchInfo}>
+                  <Text style={styles.matchTime}>
+                    {new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                  <Text style={styles.matchName}>
+                    {item.homeTeam.name} vs {item.awayTeam.name}
+                  </Text>
+                  <Text style={styles.leagueName}>{item.league.name}</Text>
+                </View>
+                
+                <WaveScore 
+                  score={item.predictedWaveScore || 0} 
+                  size="small" 
+                />
+              </TouchableOpacity>
+            )}
+            ListEmptyComponent={
+              <Text style={styles.emptyText}>No matches scheduled for this date</Text>
+            }
+          />
+        )}
+      </View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  // Styles implementation
+});
+
+export default WeekendNavigatorScreen;
+```
+
+# Test Strategy:
+1. Test Wave Score visualization
+2. Verify Rising Tides UI
+3. Test Weekend Navigator map
+4. Validate Wave Score details view
+5. Test personalization controls
+6. Verify Wave Score notifications UI
+7. Test animations for wave movements
+8. Validate color coding based on Wave Score
+9. Test responsiveness on different screen sizes
+10. Verify accessibility features

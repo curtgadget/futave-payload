@@ -1,0 +1,141 @@
+# Task ID: 9
+# Title: Implement Push Notification System
+# Status: pending
+# Dependencies: 6, 8
+# Priority: medium
+# Description: Develop a push notification system to alert users about goals, high Wave Scores, and other important events in matches they're following.
+# Details:
+1. Set up push notification infrastructure
+2. Implement notification triggers for different events
+3. Create notification templates
+4. Add user subscription management
+5. Implement notification preferences
+6. Create notification delivery service
+7. Add tracking for notification engagement
+
+```typescript
+// services/notifications.ts
+import * as admin from 'firebase-admin';
+import payload from 'payload';
+
+// Initialize Firebase Admin SDK
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    }),
+  });
+}
+
+interface NotificationData {
+  type: 'goal' | 'matchStart' | 'highWaveScore' | 'matchEnd';
+  matchId: string;
+  title: string;
+  body: string;
+  data?: Record<string, string>;
+}
+
+export async function sendNotification(userId: string, notification: NotificationData): Promise<boolean> {
+  try {
+    // Get user device tokens and preferences
+    const user = await payload.findByID({
+      collection: 'users',
+      id: userId,
+    });
+    
+    // Check if user has enabled this notification type
+    if (!user.notificationPreferences?.[notification.type]) {
+      return false;
+    }
+    
+    // Check if user has device tokens
+    if (!user.deviceTokens || user.deviceTokens.length === 0) {
+      return false;
+    }
+    
+    // Send to all user devices
+    const message = {
+      notification: {
+        title: notification.title,
+        body: notification.body,
+      },
+      data: notification.data || {},
+      tokens: user.deviceTokens,
+    };
+    
+    const response = await admin.messaging().sendMulticast(message);
+    
+    // Log notification for analytics
+    await payload.create({
+      collection: 'notifications',
+      data: {
+        user: userId,
+        type: notification.type,
+        matchId: notification.matchId,
+        title: notification.title,
+        body: notification.body,
+        sentAt: new Date().toISOString(),
+        successCount: response.successCount,
+        failureCount: response.failureCount,
+      },
+    });
+    
+    return response.successCount > 0;
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    return false;
+  }
+}
+
+export async function notifyGoal(matchId: string, goalData: any): Promise<void> {
+  // Get match details
+  const match = await payload.findByID({
+    collection: 'matches',
+    id: matchId,
+  });
+  
+  // Find users who follow either team
+  const users = await payload.find({
+    collection: 'users',
+    where: {
+      'or': [
+        { 'favoriteTeams.contains': match.homeTeam.id },
+        { 'favoriteTeams.contains': match.awayTeam.id },
+      ],
+    },
+  });
+  
+  // Create notification
+  const notification: NotificationData = {
+    type: 'goal',
+    matchId,
+    title: 'GOAL!',
+    body: `${goalData.team.name} scored! ${match.homeTeam.name} ${match.homeScore}-${match.awayScore} ${match.awayTeam.name}`,
+    data: {
+      matchId,
+      screen: 'MatchDetails',
+    },
+  };
+  
+  // Send to all relevant users
+  for (const user of users.docs) {
+    await sendNotification(user.id, notification);
+  }
+}
+
+// Other notification functions
+```
+
+# Test Strategy:
+1. Test notification infrastructure setup
+2. Verify notification triggers for different events
+3. Test notification templates
+4. Validate user subscription management
+5. Test notification preferences
+6. Verify notification delivery
+7. Test tracking for notification engagement
+8. Validate notification throttling to prevent spam
+9. Test notification deep linking
+10. Verify notification analytics

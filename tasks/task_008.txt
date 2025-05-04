@@ -1,0 +1,160 @@
+# Task ID: 8
+# Title: Implement User Authentication and Preferences
+# Status: pending
+# Dependencies: 1
+# Priority: high
+# Description: Develop the user authentication system and preference management to allow users to create accounts, log in, and personalize their experience.
+# Details:
+1. Implement user registration flow
+2. Create login functionality
+3. Add social login options
+4. Implement password reset
+5. Create user preference management
+6. Add favorite teams, leagues, and players functionality
+7. Implement anonymous mode for non-registered users
+8. Add account deletion functionality
+
+```typescript
+// collections/Users.ts
+import { CollectionConfig } from 'payload/types';
+
+const Users: CollectionConfig = {
+  slug: 'users',
+  auth: {
+    useAPIKey: true,
+  },
+  admin: {
+    useAsTitle: 'email',
+  },
+  access: {
+    read: ({ req: { user } }) => {
+      // Users can only read their own document
+      if (user) {
+        return {
+          id: {
+            equals: user.id,
+          },
+        };
+      }
+      return false;
+    },
+  },
+  fields: [
+    {
+      name: 'email',
+      type: 'email',
+      required: true,
+      unique: true,
+    },
+    {
+      name: 'favoriteTeams',
+      type: 'relationship',
+      relationTo: 'teams',
+      hasMany: true,
+    },
+    {
+      name: 'favoriteLeagues',
+      type: 'relationship',
+      relationTo: 'leagues',
+      hasMany: true,
+    },
+    {
+      name: 'favoritePlayers',
+      type: 'relationship',
+      relationTo: 'players',
+      hasMany: true,
+    },
+    {
+      name: 'notificationPreferences',
+      type: 'group',
+      fields: [
+        {
+          name: 'goals',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
+          name: 'matchStart',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
+          name: 'highWaveScore',
+          type: 'checkbox',
+          defaultValue: true,
+        },
+        {
+          name: 'waveScoreThreshold',
+          type: 'number',
+          min: 1,
+          max: 100,
+          defaultValue: 70,
+        },
+      ],
+    },
+    // Other preference fields
+  ],
+};
+
+export default Users;
+
+// api/preferences.ts
+import { NextApiRequest, NextApiResponse } from 'next';
+import payload from 'payload';
+import { authenticateRequest } from '../middleware/auth';
+
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Apply authentication middleware
+  const authResult = await authenticateRequest(req, res);
+  if (!authResult.success) return;
+  
+  const userId = authResult.user.id;
+  
+  try {
+    switch (req.method) {
+      case 'GET':
+        const user = await payload.findByID({
+          collection: 'users',
+          id: userId,
+        });
+        
+        return res.status(200).json({
+          favoriteTeams: user.favoriteTeams,
+          favoriteLeagues: user.favoriteLeagues,
+          favoritePlayers: user.favoritePlayers,
+          notificationPreferences: user.notificationPreferences,
+        });
+        
+      case 'PATCH':
+        const updatedUser = await payload.update({
+          collection: 'users',
+          id: userId,
+          data: req.body,
+        });
+        
+        return res.status(200).json({
+          success: true,
+          message: 'Preferences updated successfully',
+        });
+        
+      default:
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+  } catch (error) {
+    console.error('API error:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}
+```
+
+# Test Strategy:
+1. Test user registration flow
+2. Verify login functionality
+3. Test social login integration
+4. Validate password reset functionality
+5. Test preference management
+6. Verify favorites functionality
+7. Test anonymous mode
+8. Validate account deletion
+9. Test security measures (password hashing, JWT validation)
+10. Verify data privacy compliance

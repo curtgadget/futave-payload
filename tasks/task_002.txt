@@ -1,0 +1,122 @@
+# Task ID: 2
+# Title: Define Core Data Models in Payload CMS
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create the core data models in Payload CMS as specified in the technical requirements, including Matches, Teams, Players, Leagues, Countries, MetadataTypes, Users, and Media.
+# Details:
+Create collection definitions for each data model with appropriate fields, relationships, and validation:
+
+1. Matches: Include fields for teams, score, events, status, timestamps
+2. Teams: Include name, logo, country, league relationships
+3. Players: Include personal info, team relationships, statistics
+4. Leagues: Include name, country, seasons, stages
+5. Countries: Include name, code, flag
+6. MetadataTypes: Supporting metadata for various entities
+7. Users: Authentication fields, preferences
+8. Media: Asset management for images and videos
+
+Example collection definition:
+```typescript
+// collections/Matches.ts
+import { CollectionConfig } from 'payload/types';
+
+const Matches: CollectionConfig = {
+  slug: 'matches',
+  admin: {
+    useAsTitle: 'matchName',
+  },
+  fields: [
+    {
+      name: 'matchName',
+      type: 'text',
+      required: true,
+    },
+    {
+      name: 'homeTeam',
+      type: 'relationship',
+      relationTo: 'teams',
+      required: true,
+    },
+    {
+      name: 'awayTeam',
+      type: 'relationship',
+      relationTo: 'teams',
+      required: true,
+    },
+    {
+      name: 'homeScore',
+      type: 'number',
+      defaultValue: 0,
+    },
+    {
+      name: 'awayScore',
+      type: 'number',
+      defaultValue: 0,
+    },
+    {
+      name: 'status',
+      type: 'select',
+      options: [
+        { label: 'Not Started', value: 'not_started' },
+        { label: 'In Play', value: 'in_play' },
+        { label: 'Finished', value: 'finished' },
+        // other statuses
+      ],
+      defaultValue: 'not_started',
+      required: true,
+    },
+    {
+      name: 'events',
+      type: 'array',
+      fields: [
+        // event fields
+      ],
+    },
+    // other fields
+  ],
+};
+
+export default Matches;
+```
+
+# Test Strategy:
+1. Verify all collections are created in Payload CMS
+2. Test CRUD operations for each collection
+3. Validate relationships between collections
+4. Test field validations
+5. Verify indexes are properly created in MongoDB
+6. Test query performance for common data access patterns
+7. Ensure proper access control for different user roles
+
+# Subtasks:
+## 1. Create Team and Country Collections [done]
+### Dependencies: None
+### Description: Define the Team and Country collection models in Payload CMS with appropriate fields and relationships.
+### Details:
+For Teams: Implement fields for name, logo (media relationship), country (relationship), league (relationship), team code, and any team statistics. For Countries: Implement fields for name, country code (ISO), flag (media relationship), and continent. Ensure proper validation rules and admin UI configuration for both collections.
+
+## 2. Create Player and League Collections [done]
+### Dependencies: 2.1
+### Description: Define the Player and League collection models with comprehensive fields and relationships to other collections.
+### Details:
+For Players: Include personal information (name, DOB, nationality as relationship to Countries), team relationship, position, statistics object, and media relationships for photos. For Leagues: Include name, country relationship, seasons array, competition stages, and logo media relationship. Configure admin UI with appropriate grouping of fields.
+
+## 3. Implement Match Collection with Events [done]
+### Dependencies: 2.1, 2.2
+### Description: Create the Match collection with comprehensive fields for tracking match details, scores, and events.
+### Details:
+Define the Match collection with relationships to Teams (home/away), League, and Country. Include fields for match status enum, timestamps (start/end times), scores, venue information, and an events array for tracking goals, cards, and other match events. Implement proper indexing for query performance.
+
+## 4. Create MetadataTypes and Media Collections [done]
+### Dependencies: None
+### Description: Implement the MetadataTypes collection for supporting various entities and the Media collection for asset management.
+### Details:
+For MetadataTypes: Create a flexible schema that can store different types of metadata with key-value pairs, entity references, and categorization. For Media: Implement asset management with fields for title, alt text, caption, file type, dimensions, and usage tracking. Configure proper file storage options and image transformations.
+
+## 5. Implement User Collection with Authentication [done]
+### Dependencies: 2.4
+### Description: Create the User collection with authentication fields, role-based permissions, and user preferences.
+### Details:
+Define the User collection with fields for authentication (email, password), profile information, role-based access control (admin, editor, viewer roles), and user preferences. Implement proper password hashing, email verification, and session management. Configure access control policies for each collection based on user roles.
+

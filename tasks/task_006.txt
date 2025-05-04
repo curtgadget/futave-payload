@@ -1,0 +1,111 @@
+# Task ID: 6
+# Title: Implement Wave Detector Algorithm
+# Status: pending
+# Dependencies: 3, 4
+# Priority: high
+# Description: Develop the Wave Detector algorithm that calculates match significance (1-100 rating) based on various factors to help users identify which matches deserve attention.
+# Details:
+1. Define factors that contribute to match significance
+2. Implement scoring algorithm for each factor
+3. Create weighted scoring system
+4. Implement real-time score updates
+5. Add personalization adjustments based on user preferences
+6. Create visualization data for wave representation
+7. Implement Rising Tides detection for emerging significant matches
+
+```typescript
+// services/waveDetector.ts
+
+interface WaveFactors {
+  scoreDifference: number;
+  timeRemaining: number;
+  leagueImportance: number;
+  rivalryFactor: number;
+  tableImpact: number;
+  recentGoals: number;
+  redCards: number;
+  userPreferences: any;
+  // other factors
+}
+
+export function calculateWaveScore(match: any, userPreferences?: any): number {
+  // Extract match data
+  const factors: WaveFactors = {
+    scoreDifference: Math.abs(match.homeScore - match.awayScore),
+    timeRemaining: calculateTimeRemaining(match),
+    leagueImportance: getLeagueImportance(match.league),
+    rivalryFactor: getRivalryFactor(match.homeTeam, match.awayTeam),
+    tableImpact: calculateTableImpact(match),
+    recentGoals: countRecentGoals(match),
+    redCards: countRedCards(match),
+    userPreferences: userPreferences || {},
+  };
+  
+  // Base score calculation
+  let baseScore = 0;
+  
+  // Close score in late game
+  if (factors.scoreDifference <= 1 && factors.timeRemaining < 15) {
+    baseScore += 30;
+  }
+  
+  // Recent goals increase excitement
+  baseScore += factors.recentGoals * 15;
+  
+  // Red cards impact game dynamics
+  baseScore += factors.redCards * 10;
+  
+  // League importance factor
+  baseScore *= (0.5 + (factors.leagueImportance * 0.5));
+  
+  // Rivalry bonus
+  baseScore += factors.rivalryFactor * 15;
+  
+  // Table impact
+  baseScore += factors.tableImpact * 10;
+  
+  // Apply user preferences
+  baseScore = applyUserPreferences(baseScore, factors);
+  
+  // Ensure score is between 1-100
+  return Math.max(1, Math.min(100, Math.round(baseScore)));
+}
+
+function applyUserPreferences(score: number, factors: WaveFactors): number {
+  let adjustedScore = score;
+  
+  // Boost score for favorite teams
+  if (factors.userPreferences.favoriteTeams?.includes(factors.homeTeam) || 
+      factors.userPreferences.favoriteTeams?.includes(factors.awayTeam)) {
+    adjustedScore *= 1.2;
+  }
+  
+  // Boost score for favorite leagues
+  if (factors.userPreferences.favoriteLeagues?.includes(factors.league)) {
+    adjustedScore *= 1.1;
+  }
+  
+  return adjustedScore;
+}
+
+// Helper functions for each factor calculation
+function calculateTimeRemaining(match: any): number {
+  // Implementation
+}
+
+function getLeagueImportance(leagueId: string): number {
+  // Implementation
+}
+
+// Other helper functions
+```
+
+# Test Strategy:
+1. Test algorithm with various match scenarios
+2. Verify all factors are correctly calculated
+3. Test personalization adjustments
+4. Validate Rising Tides detection
+5. Test performance with multiple concurrent calculations
+6. Verify real-time updates work correctly
+7. Test edge cases (e.g., very high or low scores)
+8. Validate visualization data format

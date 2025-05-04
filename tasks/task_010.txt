@@ -1,0 +1,131 @@
+# Task ID: 10
+# Title: Initialize React Native Mobile App
+# Status: pending
+# Dependencies: None
+# Priority: high
+# Description: Set up the React Native mobile application for iOS and Android platforms with the necessary configuration, navigation, and state management.
+# Details:
+1. Initialize React Native project
+2. Configure iOS and Android platforms
+3. Set up navigation system
+4. Implement state management
+5. Create API client for backend communication
+6. Set up authentication flow
+7. Implement push notification handling
+8. Configure app icons and splash screens
+
+```javascript
+// App.js
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+
+import { store, persistor } from './src/store';
+import AuthScreen from './src/screens/AuthScreen';
+import HomeScreen from './src/screens/HomeScreen';
+import MatchesScreen from './src/screens/MatchesScreen';
+import MatchDetailsScreen from './src/screens/MatchDetailsScreen';
+import ProfileScreen from './src/screens/ProfileScreen';
+import { useAuth } from './src/hooks/useAuth';
+
+const Stack = createNativeStackNavigator();
+const Tab = createBottomTabNavigator();
+
+function MainTabs() {
+  return (
+    <Tab.Navigator>
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Matches" component={MatchesScreen} />
+      <Tab.Screen name="Profile" component={ProfileScreen} />
+    </Tab.Navigator>
+  );
+}
+
+function AppNavigator() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  if (isLoading) {
+    return <SplashScreen />;
+  }
+  
+  return (
+    <NavigationContainer>
+      <Stack.Navigator>
+        {!isAuthenticated ? (
+          <Stack.Screen 
+            name="Auth" 
+            component={AuthScreen} 
+            options={{ headerShown: false }}
+          />
+        ) : (
+          <>
+            <Stack.Screen 
+              name="Main" 
+              component={MainTabs} 
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen 
+              name="MatchDetails" 
+              component={MatchDetailsScreen}
+            />
+            {/* Other authenticated screens */}
+          </>
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
+}
+
+export default function App() {
+  return (
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <AppNavigator />
+      </PersistGate>
+    </Provider>
+  );
+}
+
+// src/api/client.js
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const API_URL = 'https://api.futave.com';
+
+const apiClient = axios.create({
+  baseURL: API_URL,
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add token to requests
+apiClient.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+export default apiClient;
+```
+
+# Test Strategy:
+1. Verify React Native project initialization
+2. Test iOS and Android builds
+3. Validate navigation system
+4. Test state management
+5. Verify API client functionality
+6. Test authentication flow
+7. Validate push notification handling
+8. Test app icons and splash screens
+9. Verify deep linking
+10. Test app performance on various devices
