@@ -8,7 +8,7 @@
       "testStrategy": "1. Verify Next.js server starts correctly\n2. Confirm Payload CMS admin panel is accessible\n3. Test MongoDB connection\n4. Validate environment variables are properly loaded\n5. Verify Docker container builds and runs\n6. Test Sentry integration by triggering test errors\n7. Ensure basic API endpoints return expected responses",
       "priority": "high",
       "dependencies": [],
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": 1,
@@ -16,7 +16,7 @@
           "description": "Set up a new Next.js v15.1.0 project and integrate Payload CMS as the headless CMS solution",
           "dependencies": [],
           "details": "Create a new Next.js project using 'npx create-next-app@15.1.0'. Install Payload CMS with 'npm install @payloadcms/next-payload payload'. Configure next.config.js with the withPayload wrapper to enable Payload integration. Create the initial payload.config.ts file with basic configuration settings.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Verify the Next.js server starts correctly with 'npm run dev' and Payload admin panel is accessible at /admin route"
         },
         {
@@ -27,7 +27,7 @@
             1
           ],
           "details": "Create a .env file with MONGODB_URI, PAYLOAD_SECRET, and SERVER_URL variables. Configure MongoDB adapter in payload.config.ts. Set up environment variable handling in next.config.js. Create a .env.example file for documentation. Implement secure handling of sensitive data using environment variables.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test MongoDB connection by verifying Payload can connect to the database and perform basic CRUD operations"
         },
         {
@@ -38,7 +38,7 @@
             2
           ],
           "details": "Create a Users collection in /collections/Users.ts with appropriate fields and authentication configuration. Implement login, register, and password reset functionality. Configure access control policies for different user roles. Set up JWT authentication with appropriate token expiration and security settings.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test user registration, login, password reset flows, and verify access control restrictions work as expected"
         },
         {
@@ -49,7 +49,7 @@
             3
           ],
           "details": "Create a Dockerfile that includes Node.js, MongoDB dependencies, and application code. Configure Docker Compose with services for the Next.js application and MongoDB. Set up volume mapping for persistent data storage. Configure environment variable injection for Docker environments. Implement health checks and container restart policies.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Build and run the Docker container locally, verify the application starts correctly and can connect to MongoDB"
         },
         {
@@ -60,7 +60,7 @@
             4
           ],
           "details": "Install Sentry SDK with 'npm install @sentry/nextjs'. Configure Sentry in next.config.js and create sentry.client.config.js and sentry.server.config.js files. Set up API routes under /pages/api/ or /app/api/ depending on the Next.js routing strategy. Implement error boundary components to capture and report frontend errors. Create API documentation using comments or a dedicated documentation tool.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Trigger test errors and verify they are properly captured in Sentry dashboard. Test API endpoints with tools like Postman or Jest to ensure they return expected responses"
         }
       ]
@@ -75,7 +75,7 @@
       "dependencies": [
         1
       ],
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": 1,
@@ -83,7 +83,7 @@
           "description": "Define the Team and Country collection models in Payload CMS with appropriate fields and relationships.",
           "dependencies": [],
           "details": "For Teams: Implement fields for name, logo (media relationship), country (relationship), league (relationship), team code, and any team statistics. For Countries: Implement fields for name, country code (ISO), flag (media relationship), and continent. Ensure proper validation rules and admin UI configuration for both collections.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Verify collection creation by adding test entries through the admin UI and checking that relationships work correctly."
         },
         {
@@ -94,7 +94,7 @@
             1
           ],
           "details": "For Players: Include personal information (name, DOB, nationality as relationship to Countries), team relationship, position, statistics object, and media relationships for photos. For Leagues: Include name, country relationship, seasons array, competition stages, and logo media relationship. Configure admin UI with appropriate grouping of fields.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test by creating sample entries and verifying that all relationships can be properly established and that required fields are enforced."
         },
         {
@@ -106,7 +106,7 @@
             2
           ],
           "details": "Define the Match collection with relationships to Teams (home/away), League, and Country. Include fields for match status enum, timestamps (start/end times), scores, venue information, and an events array for tracking goals, cards, and other match events. Implement proper indexing for query performance.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test by creating sample matches with different statuses and verify that all event types can be properly recorded and retrieved."
         },
         {
@@ -115,7 +115,7 @@
           "description": "Implement the MetadataTypes collection for supporting various entities and the Media collection for asset management.",
           "dependencies": [],
           "details": "For MetadataTypes: Create a flexible schema that can store different types of metadata with key-value pairs, entity references, and categorization. For Media: Implement asset management with fields for title, alt text, caption, file type, dimensions, and usage tracking. Configure proper file storage options and image transformations.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test metadata by creating entries linked to other collections. Test media uploads with different file types and sizes to ensure proper handling."
         },
         {
@@ -126,7 +126,7 @@
             4
           ],
           "details": "Define the User collection with fields for authentication (email, password), profile information, role-based access control (admin, editor, viewer roles), and user preferences. Implement proper password hashing, email verification, and session management. Configure access control policies for each collection based on user roles.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test user registration, login, password reset flows, and verify that role-based permissions correctly restrict access to collections and operations."
         }
       ]
@@ -141,7 +141,7 @@
       "dependencies": [
         2
       ],
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": 1,
@@ -149,7 +149,7 @@
           "description": "Implement a base API client service that handles authentication, request configuration, and common error handling for all Sportmonks API calls.",
           "dependencies": [],
           "details": "Create a service class using axios that configures the base URL, authentication headers with the API key, and implements interceptors for common error handling. Include methods for handling rate limiting, retries for failed requests, and proper logging of API interactions. Implement a request wrapper that standardizes error handling across all API calls.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Unit test the client with mocked API responses. Test error handling, retry logic, and authentication configuration."
         },
         {
@@ -160,7 +160,7 @@
             1
           ],
           "details": "Build upon the base client to implement specific fetching functions for each entity type. Include support for query parameters, filtering, and Sportmonks' include system for related data. Handle pagination properly to retrieve complete datasets. Implement functions for both bulk fetching (e.g., all teams in a league) and individual entity retrieval (e.g., specific match details).",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test each fetching function with mock responses that match Sportmonks API structure. Verify pagination handling and parameter passing."
         },
         {
@@ -171,7 +171,7 @@
             2
           ],
           "details": "Create mapping functions for each entity type that transform the API response structure to match our database schema. Handle data type conversions, field renaming, and relationship mapping. Ensure all required fields are extracted and optional fields are handled appropriately. Implement validation to ensure transformed data meets our schema requirements.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Unit test transformers with sample API responses to verify correct mapping of all fields and proper handling of edge cases like missing data."
         },
         {
@@ -182,7 +182,7 @@
             3
           ],
           "details": "Implement a synchronization service that orchestrates the full import of leagues, teams, players, and matches. Handle the proper order of imports to maintain data integrity (e.g., leagues before teams). Include progress tracking, error recovery, and the ability to resume interrupted imports. Implement batching to handle large datasets efficiently.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test the synchronization process with a subset of data. Verify that all entities are properly created in the database and relationships are maintained."
         },
         {
@@ -193,7 +193,7 @@
             4
           ],
           "details": "Implement an endpoint to receive webhook notifications from Sportmonks. Create handlers for different update types (match events, score changes, etc.). Implement a polling fallback mechanism for live match updates in case webhooks fail. Ensure updates are processed efficiently and applied to the database in near real-time. Include conflict resolution for cases where updates arrive out of order.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test webhook handlers with sample payloads. Verify that live updates are correctly applied to the database. Test the polling fallback mechanism by simulating webhook failures."
         }
       ]
@@ -208,7 +208,7 @@
       "dependencies": [
         3
       ],
-      "status": "in-progress",
+      "status": "done",
       "subtasks": [
         {
           "id": 1,
@@ -216,7 +216,7 @@
           "description": "Design and implement a task queue system that can manage synchronization jobs with proper prioritization, scheduling, and execution tracking.",
           "dependencies": [],
           "details": "Create a TaskQueue class that maintains a queue of pending tasks with priority levels. Implement methods for adding tasks to the queue, processing tasks sequentially, and handling task completion/failure. Use a singleton pattern to ensure a single queue instance throughout the application. Include status tracking for each task (pending, in-progress, completed, failed).",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Unit test the TaskQueue class with mock tasks to verify proper queuing, prioritization, and execution. Test edge cases like empty queue, task failures, and concurrent task additions."
         },
         {
@@ -227,7 +227,7 @@
             1
           ],
           "details": "Create an abstract SyncHandler base class with methods like fetchData(), transformData(), and saveToDatabase(). Implement concrete handlers for each entity type (LeagueHandler, TeamHandler, etc.) that extend this base class. Each handler should handle entity-specific API endpoints, data transformation logic, and database operations while maintaining a consistent interface.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test each handler with mock API responses to verify proper data transformation. Create integration tests that use test database instances to verify the full sync process for each entity type."
         },
         {
@@ -239,7 +239,7 @@
             2
           ],
           "details": "Extend the existing CronJob implementation to use the TaskQueue for scheduling regular sync jobs with different frequencies based on data type (e.g., live matches every minute, leagues daily). Create API endpoints for manual sync triggers that can be called from an admin interface. Implement a simple admin dashboard component that displays sync status and allows triggering manual syncs.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test scheduled triggers by mocking the time and verifying jobs are added to the queue at expected intervals. Test manual triggers via API endpoint tests that verify proper task creation."
         },
         {
@@ -252,7 +252,7 @@
             3
           ],
           "details": "Create a SyncLogger class that records detailed information about each sync operation, including timing, record counts, and error details. Implement retry logic for failed API requests with exponential backoff. Add transaction support for database operations to ensure data consistency. Create a monitoring dashboard that displays sync statistics and alerts for repeated failures. Implement a mechanism to resume interrupted syncs from the last successful point.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test error scenarios by mocking API failures, rate limit responses, and database errors. Verify that the system properly logs these events and implements appropriate retry/recovery strategies."
         }
       ]

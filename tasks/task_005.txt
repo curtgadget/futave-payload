@@ -1,6 +1,6 @@
 # Task ID: 5
 # Title: Create RESTful API Endpoints
-# Status: done
+# Status: in-progress
 # Dependencies: 2
 # Priority: high
 # Description: Develop RESTful API endpoints to expose soccer data to client applications, implementing the necessary routes, controllers, and middleware.
@@ -72,27 +72,95 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 8. Validate API documentation against actual implementation
 
 # Subtasks:
-## 1. Implement Player and League API Endpoints [done]
+## 1. Design API Route Structure and Authentication Flow [in-progress]
 ### Dependencies: None
-### Description: Create RESTful API endpoints for player and league data, following the pattern established in the matches endpoint. Include pagination, filtering, and sorting capabilities.
+### Description: Define the complete API route structure for all entities (leagues, teams, players, matches, countries, Wave Detector, Memory Avenues) and design the authentication flow for securing these endpoints.
 ### Details:
-Create api/players.ts and api/leagues.ts endpoints that handle GET requests with query parameters for pagination (page, limit) and filtering. Implement sorting by relevant fields (e.g., player stats, league standings). Apply the authentication middleware and follow the error handling pattern from the matches endpoint. For players, include filters for team, position, and stats thresholds. For leagues, allow filtering by country, season, and status.
+Create a comprehensive API route map document that outlines all endpoints, HTTP methods, required parameters, and expected responses. Define authentication requirements for each endpoint, specifying which routes require authentication and what permission levels are needed. Design JWT token structure and authentication flow.
+<info added on 2025-05-04T03:07:25.931Z>
+Create a comprehensive API route map document that outlines all endpoints, HTTP methods, required parameters, and expected responses. Define authentication requirements for each endpoint, specifying which routes require authentication and what permission levels are needed. Design JWT token structure and authentication flow.
 
-## 2. Implement Teams API Endpoint with Advanced Filtering [done]
+Progress has been made with the initial API structure setup in the /src/app/api/v1 directory. The first endpoint for teams with various views has been implemented, and an authentication utility has been established in utilities/auth.js.
+
+Remaining tasks include:
+1. Complete the comprehensive API route map document covering all entities (leagues, teams, players, matches, countries, Wave Detector, Memory Avenues)
+2. Finalize the JWT-based authentication flow design with special consideration for mobile client requirements
+3. Define detailed parameter structures and standardized response formats for all endpoints
+4. Document the relationships and dependencies between different entity endpoints
+5. Ensure the authentication utility in utilities/auth.js properly integrates with all planned endpoints
+6. Prepare for handoff to the Core Entity Controllers implementation team
+</info added on 2025-05-04T03:07:25.931Z>
+
+## 2. Implement Core Entity Controllers (Teams, Leagues, Players) [in-progress]
 ### Dependencies: 5.1
-### Description: Create a comprehensive teams endpoint with advanced filtering options, statistics inclusion, and relationship handling.
+### Description: Develop controllers for the core entities including teams, leagues, and players with full CRUD operations where appropriate.
 ### Details:
-Create api/teams.ts endpoint supporting GET requests with query parameters for pagination, filtering by league, country, and performance metrics. Implement an 'include' parameter that allows clients to specify related data to include (players, fixtures, stats). Add sorting capabilities for team rankings, performance metrics, etc. Ensure proper error handling and authentication. Optimize queries to prevent performance issues when including related data.
+Create separate controller files for each entity. Implement GET (list and detail), POST, PUT, and DELETE methods as needed. Include query parameter handling for filtering, sorting, and pagination. Ensure proper error handling and response formatting.
+<info added on 2025-05-04T03:07:08.905Z>
+Create separate controller files for each entity. Implement GET (list and detail), POST, PUT, and DELETE methods as needed. Include query parameter handling for filtering, sorting, and pagination. Ensure proper error handling and response formatting.
 
-## 3. Implement Rate Limiting and Request Validation Middleware [done]
-### Dependencies: 5.1, 5.2
-### Description: Add rate limiting middleware to protect API endpoints from abuse and implement request validation to ensure data integrity.
-### Details:
-Create middleware/rateLimit.ts to implement rate limiting based on client IP or API key, with configurable limits per endpoint. Create middleware/validation.ts to validate request parameters and body data against schemas. Apply these middleware to all API routes. Implement appropriate response headers for rate limiting (X-RateLimit-Limit, X-RateLimit-Remaining, etc.). Configure different rate limits for authenticated vs. unauthenticated requests.
+Progress Update:
+- Teams API endpoint has been implemented in src/app/api/v1/teams.ts
+- Teams endpoint supports multiple views (overview, fixtures, stats)
+- Implemented pagination, filtering, and proper error handling for Teams
+- Following established API development best practices
 
-## 4. Create API Documentation and Response Standardization [done]
-### Dependencies: 5.1, 5.2, 5.3
-### Description: Generate comprehensive API documentation and standardize API responses across all endpoints for consistency.
+Remaining Tasks:
+1. Implement Leagues API endpoints:
+   - Create controller file at src/app/api/v1/leagues.ts
+   - Implement GET endpoints for list and detail views
+   - Add specialized views (standings, seasons, participating teams)
+   - Implement POST, PUT, DELETE operations
+   - Add pagination, filtering, and sorting functionality
+   - Ensure proper error handling and response formatting
+
+2. Implement Players API endpoints:
+   - Create controller file at src/app/api/v1/players.ts
+   - Implement GET endpoints for list and detail views
+   - Add specialized views (stats, career history, current team)
+   - Implement POST, PUT, DELETE operations
+   - Add pagination, filtering, and sorting functionality
+   - Ensure proper error handling and response formatting
+
+3. Review and complete any remaining CRUD operations:
+   - Verify all required operations are implemented for each entity
+   - Ensure consistent response formatting across all endpoints
+   - Check that error handling is comprehensive
+</info added on 2025-05-04T03:07:08.905Z>
+
+## 3. Implement Match and Game Data Controllers [pending]
+### Dependencies: 5.2
+### Description: Develop controllers for match data, game statistics, and related entities with appropriate query capabilities.
 ### Details:
-Implement a standardized response format across all endpoints with consistent error codes, pagination metadata, and data structure. Create detailed API documentation using Swagger/OpenAPI specification. Include authentication requirements, available endpoints, query parameters, response formats, and examples. Implement a documentation endpoint at /api/docs that serves the API documentation. Create helper functions in utils/apiResponse.ts to ensure consistent response formatting across all endpoints.
+Create controllers for matches, game statistics, and related data. Implement complex queries for filtering matches by team, league, date range, and status. Add specialized endpoints for upcoming matches, live matches, and historical results. Include aggregation endpoints for team performance statistics.
+
+## 4. Implement Specialized Feature Controllers (Wave Detector, Memory Avenues) [pending]
+### Dependencies: 5.2
+### Description: Develop controllers for specialized features like Wave Detector and Memory Avenues with appropriate data transformation logic.
+### Details:
+Create controllers for Wave Detector data access and Memory Avenues. Implement specialized business logic for data transformation and analysis. Add endpoints for trend analysis, historical comparisons, and user-specific data views.
+
+## 5. Implement Authentication and Authorization Middleware [pending]
+### Dependencies: 5.1
+### Description: Develop middleware for JWT authentication, role-based authorization, and request validation.
+### Details:
+Create middleware functions for verifying JWT tokens, checking user permissions based on roles, and validating request parameters. Implement token refresh logic and secure token storage. Add middleware for handling CORS and other security headers.
+
+## 6. Implement API Performance Optimizations [pending]
+### Dependencies: 5.2, 5.3, 5.4, 5.5
+### Description: Add pagination, caching, and rate limiting to optimize API performance and prevent abuse.
+### Details:
+Implement consistent pagination across all list endpoints with customizable page size. Add response caching for frequently accessed and rarely changing data. Implement rate limiting with different tiers based on user roles. Add compression middleware for reducing response size.
+
+## 7. Implement Error Handling and Logging [pending]
+### Dependencies: 5.2, 5.3, 5.4, 5.5
+### Description: Develop comprehensive error handling middleware and logging for all API endpoints.
+### Details:
+Create centralized error handling middleware that catches all exceptions and returns appropriate HTTP status codes and error messages. Implement structured logging for all API requests, responses, and errors. Add correlation IDs for request tracing across the system.
+
+## 8. Create API Documentation and Developer Resources [pending]
+### Dependencies: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7
+### Description: Generate comprehensive API documentation and developer resources for API consumers.
+### Details:
+Use Swagger/OpenAPI to document all API endpoints, parameters, and response schemas. Create example requests and responses for each endpoint. Add authentication instructions and error code references. Generate interactive API documentation that allows testing endpoints directly from the documentation.
 
