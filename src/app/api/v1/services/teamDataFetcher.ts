@@ -1301,35 +1301,85 @@ export const teamListDataFetcher: TeamListDataFetcher = {
       season,
     })
 
-    // In a real implementation, this would fetch data from a database or external API
-    // and apply the filtering options
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Team A',
-          season_map: [{ id: '2023', name: '2023/2024' }],
+    try {
+      const payload = await getPayload({ config })
+
+      // Build the where query based on provided filters
+      const where: Record<string, any> = {}
+
+      // Add league filter if provided
+      if (leagueId) {
+        where.leagues = {
+          contains: leagueId,
+        }
+      }
+
+      // Add country filter if provided
+      if (countryId) {
+        where.country = {
+          equals: countryId,
+        }
+      }
+
+      // Add search filter if provided
+      if (search) {
+        where.name = {
+          contains: search,
+        }
+      }
+
+      // Add season filter if provided
+      if (season) {
+        where.activeseasons = {
+          contains: season,
+        }
+      }
+
+      // Query the database
+      const result = await payload.find({
+        collection: 'teams',
+        where,
+        page,
+        limit,
+      })
+
+      // Transform the results to match the expected response format
+      const teams = result.docs.map((team) => ({
+        id: String(team.id),
+        name: team.name as string,
+        season_map: Array.isArray(team.season_map)
+          ? team.season_map.map((s: any) => ({
+              id: String(s.id),
+              name: s.name,
+            }))
+          : [],
+      }))
+
+      return {
+        data: teams,
+        meta: {
+          pagination: {
+            page: result.page || page,
+            limit: result.limit || limit,
+            totalItems: result.totalDocs || 0,
+            totalPages: result.totalPages || 0,
+          },
         },
-        {
-          id: '2',
-          name: 'Team B',
-          season_map: [{ id: '2023', name: '2023/2024' }],
+      }
+    } catch (error) {
+      console.error('Error fetching teams:', error)
+      // Return empty result on error
+      return {
+        data: [],
+        meta: {
+          pagination: {
+            page,
+            limit,
+            totalItems: 0,
+            totalPages: 0,
+          },
         },
-        {
-          id: '3',
-          name: 'Team C',
-          season_map: [{ id: '2023', name: '2023/2024' }],
-        },
-        // More teams would be included in a real implementation
-      ],
-      meta: {
-        pagination: {
-          page,
-          limit,
-          totalItems: 100,
-          totalPages: Math.ceil(100 / limit),
-        },
-      },
+      }
     }
   },
 }
