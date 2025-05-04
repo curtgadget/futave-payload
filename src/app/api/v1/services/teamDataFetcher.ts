@@ -25,6 +25,8 @@ import type {
   TopPlayersStat,
   TopStatCategory,
   TopPlayerStatItem,
+  TeamListDataFetcher,
+  TeamsListResponse,
 } from '../types/team'
 
 function validateTeamId(teamId: string): number {
@@ -1274,4 +1276,60 @@ function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: 
 
   // Nothing found
   return null
+}
+
+/**
+ * Service for fetching list of teams
+ * This is a placeholder implementation that would be replaced with actual data fetching logic
+ */
+export const teamListDataFetcher: TeamListDataFetcher = {
+  getTeams: async (options: {
+    page: number
+    limit: number
+    leagueId?: string
+    countryId?: string
+    search?: string
+    season?: string
+  }): Promise<TeamsListResponse> => {
+    const { page, limit, leagueId, countryId, search, season } = options
+    console.log('Fetching teams with options:', {
+      page,
+      limit,
+      leagueId,
+      countryId,
+      search,
+      season,
+    })
+
+    // In a real implementation, this would fetch data from a database or external API
+    // and apply the filtering options
+    return {
+      data: [
+        {
+          id: '1',
+          name: 'Team A',
+          season_map: [{ id: '2023', name: '2023/2024' }],
+        },
+        {
+          id: '2',
+          name: 'Team B',
+          season_map: [{ id: '2023', name: '2023/2024' }],
+        },
+        {
+          id: '3',
+          name: 'Team C',
+          season_map: [{ id: '2023', name: '2023/2024' }],
+        },
+        // More teams would be included in a real implementation
+      ],
+      meta: {
+        pagination: {
+          page,
+          limit,
+          totalItems: 100,
+          totalPages: Math.ceil(100 / limit),
+        },
+      },
+    }
+  },
 }

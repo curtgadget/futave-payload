@@ -280,3 +280,28 @@ export type TabDataFetcher = {
     includeAllPlayers?: boolean,
   ) => Promise<TeamStatsResponse>
 }
+
+// Response type for teams list
+export type TeamsListResponse = {
+  data: TeamBase[]
+  meta: {
+    pagination: {
+      page: number
+      limit: number
+      totalItems: number
+      totalPages: number
+    }
+  }
+}
+
+// Data fetcher type for teams list
+export type TeamListDataFetcher = {
+  getTeams: (options: {
+    page: number
+    limit: number
+    leagueId?: string
+    countryId?: string
+    search?: string
+    season?: string
+  }) => Promise<TeamsListResponse>
+}
