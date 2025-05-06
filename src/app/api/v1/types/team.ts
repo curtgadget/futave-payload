@@ -299,9 +299,7 @@ export type TeamListDataFetcher = {
   getTeams: (options: {
     page: number
     limit: number
-    leagueId?: string
     countryId?: string
     search?: string
-    season?: string
   }) => Promise<TeamsListResponse>
 }

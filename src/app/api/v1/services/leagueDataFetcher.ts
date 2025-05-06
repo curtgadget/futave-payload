@@ -192,13 +192,38 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const league = leagueResult.docs[0]
+      const leagueIdNum = parseInt(leagueId, 10)
 
       // Now fetch teams associated with this league
       const teamsResult = await payload.find({
         collection: 'teams',
+        where: {
+          or: [
+            // Look for league ID in the seasons field
+            {
+              seasons: {
+                like: `%${leagueIdNum}%`,
+              },
+            },
+            // Look for league ID in the activeseasons field
+            {
+              activeseasons: {
+                like: `%${leagueIdNum}%`,
+              },
+            },
+            // Look for league ID in the season_map field
+            {
+              season_map: {
+                like: `%"id":"${leagueIdNum}"%`,
+              },
+            },
+          ],
+        },
         page,
         limit,
       })
+
+      console.log(`Found ${teamsResult.docs.length} teams for league ${leagueId}`)
 
       // Map the results
       const teams = teamsResult.docs.map((team) => ({

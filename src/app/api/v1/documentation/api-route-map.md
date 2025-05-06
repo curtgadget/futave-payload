@@ -65,7 +65,6 @@ Error responses follow this format:
 List all teams with pagination.
 
 **Query Parameters:**
-- `league_id`: Filter by league ID
 - `country_id`: Filter by country ID
 - `search`: Search teams by name
 

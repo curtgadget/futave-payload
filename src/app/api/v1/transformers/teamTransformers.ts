@@ -374,22 +374,136 @@ function determineQualificationStatus(
 
 export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
   if (!rawTeam?.id || !rawTeam?.name) {
-    throw new Error('Invalid team data: missing required fields')
+    console.warn('Invalid team data: missing required fields, returning default overview')
+    // Return a default response instead of throwing an error
+    return {
+      id: String(rawTeam?.id || 0),
+      name: rawTeam?.name || 'Unknown Team',
+      season_map: [],
+      squad: {
+        players: { goalkeepers: [], defenders: [], midfielders: [], forwards: [] },
+        coaches: [],
+      },
+      table: {},
+      fixtures: {
+        docs: [],
+        pagination: {
+          totalDocs: 0,
+          totalPages: 0,
+          page: 1,
+          hasNextPage: false,
+          hasPrevPage: false,
+          nextPage: null,
+          prevPage: null,
+          nextPageUrl: null,
+          prevPageUrl: null,
+        },
+        nextMatch: null,
+      },
+      results: [],
+      stats: {
+        player_stats: [],
+        team_stats: {
+          matches_played: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          goals_for: 0,
+          goals_against: 0,
+          goal_difference: 0,
+        },
+        season_id: 0,
+        seasons: [],
+        top_stats: [],
+      },
+    }
   }
 
-  const squadData = transformTeamSquad(rawTeam)
-  const tableData = transformTeamTable(rawTeam)
-  const fixturesData = transformTeamFixtures(rawTeam)
-  const resultsData = transformTeamResults(rawTeam)
-  const statsData = transformTeamStats(rawTeam)
+  // Initialize default values for all components with proper typing
+  let squadData: TeamSquadResponse = {
+    players: { goalkeepers: [], defenders: [], midfielders: [], forwards: [] },
+    coaches: [],
+  }
+
+  let tableData: TeamTableResponse = {}
+
+  let fixturesData: TeamFixturesResponse = {
+    docs: [],
+    pagination: {
+      totalDocs: 0,
+      totalPages: 0,
+      page: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+      nextPage: null,
+      prevPage: null,
+      nextPageUrl: null,
+      prevPageUrl: null,
+    },
+    nextMatch: null,
+  }
+
+  let resultsData: TeamResultsResponse = []
+
+  let statsData: TeamStatsResponse = {
+    player_stats: [],
+    team_stats: {
+      matches_played: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      goals_for: 0,
+      goals_against: 0,
+      goal_difference: 0,
+    },
+    season_id: 0,
+    seasons: [],
+    top_stats: [],
+  }
+
+  // Try to transform squad data
+  try {
+    squadData = transformTeamSquad(rawTeam)
+  } catch (error) {
+    console.error('Error transforming team squad data:', error)
+  }
+
+  // Try to transform table data
+  try {
+    tableData = transformTeamTable(rawTeam)
+  } catch (error) {
+    console.error('Error transforming team table data:', error)
+  }
+
+  // Try to transform fixtures data
+  try {
+    fixturesData = transformTeamFixtures(rawTeam)
+  } catch (error) {
+    console.error('Error transforming team fixtures data:', error)
+  }
+
+  // Try to transform results data
+  try {
+    resultsData = transformTeamResults(rawTeam)
+  } catch (error) {
+    console.error('Error transforming team results data:', error)
+  }
+
+  // Try to transform stats data
+  try {
+    statsData = transformTeamStats(rawTeam)
+  } catch (error) {
+    console.error('Error transforming team stats data:', error)
+  }
 
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
-    season_map: rawTeam.season_map?.map((season) => ({
-      id: String(season.id),
-      name: season.name,
-    })),
+    season_map:
+      rawTeam.season_map?.map((season) => ({
+        id: String(season.id || 0),
+        name: season.name || 'Unknown Season',
+      })) || [],
     squad: squadData,
     table: tableData,
     fixtures: fixturesData,
@@ -975,8 +1089,12 @@ export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {
 }
 
 export function transformPlayer(rawPlayer: any): TeamPlayer {
-  if (!rawPlayer?.id) {
-    throw new Error('Invalid player data: missing ID')
+  if (!rawPlayer) {
+    // Return a placeholder player object when data is completely missing
+    return {
+      id: '0',
+      name: 'Unknown Player',
+    }
   }
 
   // Resolve the name based on priority:
@@ -993,7 +1111,7 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
 
   // Create the base player object with required fields
   const player: TeamPlayer = {
-    id: String(rawPlayer.id),
+    id: String(rawPlayer.id || 0),
     name: resolvedName,
   }
 
@@ -1025,31 +1143,40 @@ export function transformPlayer(rawPlayer: any): TeamPlayer {
   if (typeof rawPlayer.jersey_number === 'number') {
     player.jersey_number = rawPlayer.jersey_number
   }
-  if (typeof rawPlayer.nationality?.name === 'string') {
-    player.nationality_name = rawPlayer.nationality.name
-  }
-  if (typeof rawPlayer.nationality?.id === 'number') {
-    player.nationality_id = rawPlayer.nationality.id
-  }
-  if (typeof rawPlayer.nationality?.image_path === 'string') {
-    player.nationality_image_path = rawPlayer.nationality.image_path
-  }
-  if (typeof rawPlayer.nationality?.fifa_name === 'string') {
-    // Extract first abbreviation from comma-delimited string
-    player.nationality_fifa_name = rawPlayer.nationality.fifa_name.split(',')[0].trim()
+
+  // Handle nationality data safely
+  if (rawPlayer.nationality && typeof rawPlayer.nationality === 'object') {
+    if (typeof rawPlayer.nationality.name === 'string') {
+      player.nationality_name = rawPlayer.nationality.name
+    }
+    if (typeof rawPlayer.nationality.id === 'number') {
+      player.nationality_id = rawPlayer.nationality.id
+    }
+    if (typeof rawPlayer.nationality.image_path === 'string') {
+      player.nationality_image_path = rawPlayer.nationality.image_path
+    }
+    if (typeof rawPlayer.nationality.fifa_name === 'string') {
+      // Extract first abbreviation from comma-delimited string
+      player.nationality_fifa_name = rawPlayer.nationality.fifa_name.split(',')[0].trim()
+    }
   }
 
   return player
 }
 
 export function transformCoach(rawCoach: any): TeamCoach {
-  if (!rawCoach?.id || !rawCoach?.name) {
-    throw new Error('Invalid coach data: missing required fields')
+  if (!rawCoach) {
+    // Return a placeholder coach object when data is missing
+    return {
+      id: '0',
+      name: 'Unknown Coach',
+    }
   }
 
+  // Handle when id or name is missing
   return {
-    id: String(rawCoach.id),
-    name: rawCoach.name,
+    id: String(rawCoach.id || 0),
+    name: rawCoach.name || 'Unknown Coach',
   }
 }
 
@@ -1063,21 +1190,83 @@ export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
 
   if (Array.isArray(rawTeam.players)) {
     rawTeam.players.forEach((player) => {
-      const transformedPlayer = transformPlayer(player)
-      const group = getPositionGroup(transformedPlayer.position_id) as PositionGroup
-      squadByPosition[group].push(transformedPlayer)
+      try {
+        const transformedPlayer = transformPlayer(player)
+
+        // Get the position group safely, with a fallback to midfielders
+        let group = 'midfielders' as PositionGroup // Default fallback
+
+        try {
+          // First try to get the group from the position_id
+          if (transformedPlayer.position_id) {
+            const possibleGroup = getPositionGroup(transformedPlayer.position_id)
+
+            // Validate that the returned group is valid
+            if (['goalkeepers', 'defenders', 'midfielders', 'forwards'].includes(possibleGroup)) {
+              group = possibleGroup as PositionGroup
+            }
+          }
+        } catch (positionError) {
+          console.warn(
+            `Error determining position group for player ${transformedPlayer.id}:`,
+            positionError,
+          )
+          // Fall back to midfielders (already set as default)
+        }
+
+        // Add the player to the appropriate group
+        squadByPosition[group].push(transformedPlayer)
+      } catch (error) {
+        console.warn(`Error transforming player data:`, error)
+        // Skip this player and continue with others
+      }
     })
+  }
+
+  // Transform coaches with better error handling
+  let coaches: TeamCoach[] = []
+  if (Array.isArray(rawTeam.coaches)) {
+    coaches = rawTeam.coaches
+      .filter((coach) => coach) // Filter out null/undefined values
+      .map((coach) => {
+        try {
+          return transformCoach(coach)
+        } catch (error) {
+          console.warn(`Error transforming coach data:`, error)
+          // Return a default coach object in case of error
+          return {
+            id: '0',
+            name: 'Unknown Coach',
+          }
+        }
+      })
   }
 
   return {
     players: squadByPosition,
-    coaches: Array.isArray(rawTeam.coaches) ? rawTeam.coaches.map(transformCoach) : [],
+    coaches: coaches,
   }
 }
 
 export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamStatsResponse {
   if (!rawTeam?.id || !rawTeam?.name) {
-    throw new Error('Invalid team data: missing required fields')
+    console.warn('Invalid team data: missing required fields, returning default stats')
+    // Return a default response instead of throwing an error
+    return {
+      player_stats: [],
+      team_stats: {
+        matches_played: 0,
+        wins: 0,
+        draws: 0,
+        losses: 0,
+        goals_for: 0,
+        goals_against: 0,
+        goal_difference: 0,
+      },
+      season_id: seasonId ? parseInt(seasonId) : 0,
+      seasons: [],
+      top_stats: [],
+    }
   }
 
   // Create the result object with basic structure

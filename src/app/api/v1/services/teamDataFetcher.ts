@@ -1286,19 +1286,15 @@ export const teamListDataFetcher: TeamListDataFetcher = {
   getTeams: async (options: {
     page: number
     limit: number
-    leagueId?: string
     countryId?: string
     search?: string
-    season?: string
   }): Promise<TeamsListResponse> => {
-    const { page, limit, leagueId, countryId, search, season } = options
+    const { page, limit, countryId, search } = options
     console.log('Fetching teams with options:', {
       page,
       limit,
-      leagueId,
       countryId,
       search,
-      season,
     })
 
     try {
@@ -1307,33 +1303,21 @@ export const teamListDataFetcher: TeamListDataFetcher = {
       // Build the where query based on provided filters
       const where: Record<string, any> = {}
 
-      // Add league filter if provided
-      if (leagueId) {
-        where.leagues = {
-          contains: leagueId,
-        }
-      }
-
       // Add country filter if provided
       if (countryId) {
-        where.country = {
-          equals: countryId,
+        where.country_id = {
+          equals: parseInt(countryId, 10),
         }
+        console.log(`Added country filter for ID ${countryId}`)
       }
 
       // Add search filter if provided
       if (search) {
-        where.name = {
-          contains: search,
-        }
+        where.or = [{ name: { like: `%${search}%` } }, { venue_name: { like: `%${search}%` } }]
+        console.log(`Added search filter for term "${search}"`)
       }
 
-      // Add season filter if provided
-      if (season) {
-        where.activeseasons = {
-          contains: season,
-        }
-      }
+      console.log('Final query where clause:', JSON.stringify(where))
 
       // Query the database
       const result = await payload.find({
@@ -1343,10 +1327,13 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         limit,
       })
 
+      console.log(`Query returned ${result.docs.length} teams out of ${result.totalDocs} total`)
+
       // Transform the results to match the expected response format
       const teams = result.docs.map((team) => ({
         id: String(team.id),
         name: team.name as string,
+        country_id: team.country_id as number,
         season_map: Array.isArray(team.season_map)
           ? team.season_map.map((s: any) => ({
               id: String(s.id),

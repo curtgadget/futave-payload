@@ -16,30 +16,75 @@ const getTeamsHandler = async (req: PayloadRequest) => {
   const validatedLimit = Math.min(limit, 100)
 
   // Extract filter parameters
-  const leagueId = url.searchParams.get('league_id')
-  const countryId = url.searchParams.get('country_id')
+  const countryId = url.searchParams.get('country_id') || url.searchParams.get('countryId')
   const search = url.searchParams.get('search')
-  const season = url.searchParams.get('season')
+  const debug = url.searchParams.get('debug') === 'true'
 
   try {
     const data = await teamListDataFetcher.getTeams({
       page,
       limit: validatedLimit,
-      leagueId: leagueId || undefined,
       countryId: countryId || undefined,
       search: search || undefined,
-      season: season || undefined,
     })
+
+    // Add debug information if requested
+    if (debug) {
+      try {
+        const payload = await import('payload').then((mod) =>
+          mod.getPayload({ config: require('@/payload.config') }),
+        )
+        const rawTeam = await payload.find({
+          collection: 'teams',
+          limit: 1,
+        })
+
+        if (rawTeam.docs.length > 0) {
+          const team = rawTeam.docs[0]
+          const debugInfo = {
+            debug: true,
+            teamFields: Object.keys(team),
+            seasons: team.seasons
+              ? {
+                  type: typeof team.seasons,
+                  isArray: Array.isArray(team.seasons),
+                  sample: Array.isArray(team.seasons)
+                    ? team.seasons.slice(0, 3)
+                    : String(team.seasons).substring(0, 100),
+                }
+              : null,
+            activeseasons: team.activeseasons
+              ? {
+                  type: typeof team.activeseasons,
+                  isArray: Array.isArray(team.activeseasons),
+                  sample: Array.isArray(team.activeseasons)
+                    ? team.activeseasons.slice(0, 3)
+                    : String(team.activeseasons).substring(0, 100),
+                }
+              : null,
+            rawData: {
+              id: team.id,
+              name: team.name,
+            },
+          }
+
+          return Response.json({
+            ...data,
+            _debug: debugInfo,
+          })
+        }
+      } catch (debugError) {
+        console.error('Error generating debug info:', debugError)
+      }
+    }
 
     return Response.json(data)
   } catch (error) {
     console.error('Error in teams list handler:', {
       page,
       limit: validatedLimit,
-      leagueId,
       countryId,
       search,
-      season,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     })

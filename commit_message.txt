@@ -1,0 +1,7 @@
+fix: improve resilience in team data transformers
+
+- Fix error handling in transformCoach function to handle missing data
+- Add error resilience to transformPlayer function
+- Improve transformTeamSquad with better error handling for position groups
+- Update transformTeamOverview and transformTeamStats to return default values instead of throwing errors
+- Add safeguards throughout data transformation pipeline
