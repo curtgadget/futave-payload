@@ -16,7 +16,7 @@ const getLeaguesHandler = async (req: PayloadRequest) => {
   const validatedLimit = Math.min(limit, 100)
 
   // Extract filter parameters
-  const countryId = url.searchParams.get('country_id')
+  const countryId = url.searchParams.get('country_id') || url.searchParams.get('countryId')
   const search = url.searchParams.get('search')
   const season = url.searchParams.get('season')
 

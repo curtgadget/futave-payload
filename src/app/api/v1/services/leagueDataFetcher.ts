@@ -1,3 +1,6 @@
+import config from '@/payload.config'
+import { getPayload } from 'payload'
+
 import type {
   LeagueDataFetcher,
   LeagueOverviewResponse,
@@ -8,7 +11,56 @@ import type {
   LeaguesListResponse,
   StandingTable,
   StandingTableRow,
+  StandingsData,
 } from '../types/league'
+
+// Define types for Payload documents
+type League = {
+  id: string | number
+  name: string
+  logo?: string
+  country?: {
+    id: string | number
+    name: string
+    flag?: string
+  }
+  current_season?: {
+    id: string | number
+    name: string
+  }
+  seasons?: Array<{
+    id: string | number
+    name: string
+    current?: boolean
+    start_date?: string
+    end_date?: string
+    coverage?: {
+      fixtures: boolean
+      standings: boolean
+      players: boolean
+      top_scorers: boolean
+      predictions: boolean
+      odds: boolean
+    }
+  }>
+  standings?: Record<
+    string,
+    {
+      name?: string
+      type?: string
+      data?: Array<any>
+    }
+  >
+}
+
+type Team = {
+  id: string | number
+  name: string
+  logo?: string
+  venue_name?: string
+  founded?: number
+  leagues?: Array<{ id: string | number }>
+}
 
 /**
  * Service for fetching league-related data
@@ -121,33 +173,66 @@ export const leagueDataFetcher: LeagueDataFetcher = {
     limit: number = 50,
   ): Promise<LeagueTeamsResponse> => {
     console.log(`Fetching teams for league ${leagueId}, page ${page}, limit ${limit}`)
-    // In a real implementation, this would fetch data from a database or external API
-    return {
-      id: leagueId,
-      name: `League ${leagueId}`,
-      teams: [
-        {
-          id: '1',
-          name: 'Team A',
-          logo: 'https://example.com/logos/team-1.png',
-          venue_name: 'Stadium A',
-          founded: 1900,
+
+    try {
+      const payload = await getPayload({ config })
+
+      // First get the league to ensure it exists
+      const leagueResult = await payload.find({
+        collection: 'leagues',
+        where: {
+          id: {
+            equals: parseInt(leagueId, 10),
+          },
         },
-        {
-          id: '2',
-          name: 'Team B',
-          logo: 'https://example.com/logos/team-2.png',
-          venue_name: 'Stadium B',
-          founded: 1905,
-        },
-        // More teams would be included in a real implementation
-      ],
-      pagination: {
+      })
+
+      if (!leagueResult.docs.length) {
+        throw new Error(`No league found with ID: ${leagueId}`)
+      }
+
+      const league = leagueResult.docs[0]
+
+      // Now fetch teams associated with this league
+      const teamsResult = await payload.find({
+        collection: 'teams',
         page,
         limit,
-        totalItems: 20,
-        totalPages: Math.ceil(20 / limit),
-      },
+      })
+
+      // Map the results
+      const teams = teamsResult.docs.map((team) => ({
+        id: String(team.id),
+        name: team.name as string,
+        logo: team.logo as string | undefined,
+        venue_name: team.venue_name as string | undefined,
+        founded: team.founded as number | undefined,
+      }))
+
+      return {
+        id: String(league.id),
+        name: league.name as string,
+        teams,
+        pagination: {
+          page: teamsResult.page || page,
+          limit: teamsResult.limit || limit,
+          totalItems: teamsResult.totalDocs || 0,
+          totalPages: teamsResult.totalPages || 0,
+        },
+      }
+    } catch (error) {
+      console.error('Error in getTeams:', error)
+      return {
+        id: leagueId,
+        name: `League ${leagueId}`,
+        teams: [],
+        pagination: {
+          page,
+          limit,
+          totalItems: 0,
+          totalPages: 0,
+        },
+      }
     }
   },
 
@@ -196,7 +281,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
 /**
  * Service for fetching list of leagues
- * This is a placeholder implementation that would be replaced with actual data fetching logic
  */
 export const leagueListDataFetcher: LeagueListDataFetcher = {
   getLeagues: async (options: {
@@ -209,48 +293,84 @@ export const leagueListDataFetcher: LeagueListDataFetcher = {
     const { page, limit, countryId, search, season } = options
     console.log('Fetching leagues with options:', { page, limit, countryId, search, season })
 
-    // In a real implementation, this would fetch data from a database or external API
-    // and apply the filtering options
-    return {
-      data: [
-        {
-          id: '1',
-          name: 'Premier League',
-          logo: 'https://example.com/logos/premier-league.png',
-          country: {
-            id: '1',
-            name: 'England',
-            flag: 'https://example.com/flags/england.png',
-          },
-          current_season: {
-            id: '2023',
-            name: '2023/2024',
+    try {
+      const payload = await getPayload({ config })
+
+      const where: Record<string, any> = {}
+
+      // Add country filter if provided
+      if (countryId) {
+        where.country_id = {
+          equals: parseInt(countryId, 10),
+        }
+      }
+
+      // Add search filter if provided
+      if (search) {
+        where.name = {
+          contains: search,
+        }
+      }
+
+      // Get the leagues from database
+      const result = await payload.find({
+        collection: 'leagues',
+        where,
+        page,
+        limit,
+      })
+
+      // Map the results to match the expected LeaguesListResponse format
+      const leagues = result.docs.map((league) => {
+        // Extract current season if available
+        let currentSeason = undefined
+        if (league.current_season) {
+          currentSeason = {
+            id: String(league.current_season.id),
+            name: league.current_season.name as string,
+          }
+        }
+
+        // Create the league object
+        return {
+          id: String(league.id),
+          name: league.name as string,
+          logo: league.logo as string | undefined,
+          country: league.country
+            ? {
+                id: String(league.country.id),
+                name: league.country.name as string,
+                flag: league.country.flag as string | undefined,
+              }
+            : undefined,
+          current_season: currentSeason,
+        }
+      })
+
+      return {
+        data: leagues,
+        meta: {
+          pagination: {
+            page: result.page || page,
+            limit: result.limit || limit,
+            totalItems: result.totalDocs || 0,
+            totalPages: result.totalPages || 0,
           },
         },
-        {
-          id: '2',
-          name: 'La Liga',
-          logo: 'https://example.com/logos/la-liga.png',
-          country: {
-            id: '2',
-            name: 'Spain',
-            flag: 'https://example.com/flags/spain.png',
-          },
-          current_season: {
-            id: '2023',
-            name: '2023/2024',
+      }
+    } catch (error) {
+      console.error('Error fetching leagues:', error)
+      return {
+        data: [],
+        meta: {
+          pagination: {
+            page,
+            limit,
+            totalItems: 0,
+            totalPages: 0,
           },
         },
-        // More leagues would be included in a real implementation
-      ],
-      meta: {
-        pagination: {
-          page,
-          limit,
-          totalItems: 100,
-          totalPages: Math.ceil(100 / limit),
-        },
-      },
+      }
     }
   },
 }
