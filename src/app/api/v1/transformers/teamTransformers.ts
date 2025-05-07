@@ -371,123 +371,10 @@ function determineQualificationStatus(
   return undefined
 }
 
-export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
-  if (!rawTeam?.id || !rawTeam?.name) {
-    console.warn('Invalid team data: missing required fields, returning default overview')
-    // Return a default response instead of throwing an error
-    return {
-      id: String(rawTeam?.id || 0),
-      name: rawTeam?.name || 'Unknown Team',
-      season_map: [],
-      squad: {
-        players: { goalkeepers: [], defenders: [], midfielders: [], forwards: [] },
-        coaches: [],
-      },
-      table: {},
-      fixtures: {
-        docs: [],
-        pagination: {
-          totalDocs: 0,
-          totalPages: 0,
-          page: 1,
-          hasNextPage: false,
-          hasPrevPage: false,
-          nextPage: null,
-          prevPage: null,
-          nextPageUrl: null,
-          prevPageUrl: null,
-        },
-        nextMatch: null,
-      },
-      results: [],
-      stats: {
-        player_stats: [],
-        team_stats: {
-          matches_played: 0,
-          wins: 0,
-          draws: 0,
-          losses: 0,
-          goals_for: 0,
-          goals_against: 0,
-          goal_difference: 0,
-        },
-        season_id: 0,
-        seasons: [],
-        top_stats: [],
-      },
-    }
-  }
-
-  // Initialize default values for all components with proper typing
-  let squadData: TeamSquadResponse = {
-    players: { goalkeepers: [], defenders: [], midfielders: [], forwards: [] },
-    coaches: [],
-  }
-
-  let tableData: TeamTableResponse = {}
-
-  let fixturesData: TeamFixturesResponse = {
-    docs: [],
-    pagination: {
-      totalDocs: 0,
-      totalPages: 0,
-      page: 1,
-      hasNextPage: false,
-      hasPrevPage: false,
-      nextPage: null,
-      prevPage: null,
-      nextPageUrl: null,
-      prevPageUrl: null,
-    },
-    nextMatch: null,
-  }
-
-  let resultsData: TeamFixture[] = []
-
-  let statsData: TeamStatsResponse = {
-    player_stats: [],
-    team_stats: {
-      matches_played: 0,
-      wins: 0,
-      draws: 0,
-      losses: 0,
-      goals_for: 0,
-      goals_against: 0,
-      goal_difference: 0,
-    },
-    season_id: 0,
-    seasons: [],
-    top_stats: [],
-  }
-
-  // Try to transform squad data
-  try {
-    squadData = transformTeamSquad(rawTeam)
-  } catch (error) {
-    console.error('Error transforming team squad data:', error)
-  }
-
-  // Try to transform table data
-  try {
-    tableData = transformTeamTable(rawTeam)
-  } catch (error) {
-    console.error('Error transforming team table data:', error)
-  }
-
-  // Try to transform fixtures data
-  try {
-    fixturesData = transformTeamFixtures(rawTeam)
-  } catch (error) {
-    console.error('Error transforming team fixtures data:', error)
-  }
-
-  // Try to transform stats data
-  try {
-    statsData = transformTeamStats(rawTeam)
-  } catch (error) {
-    console.error('Error transforming team stats data:', error)
-  }
-
+/**
+ * Transform basic team information from the raw API response
+ */
+export function transformTeamBase(rawTeam: RawTeam) {
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
@@ -496,10 +383,42 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
         id: String(season.id || 0),
         name: season.name || 'Unknown Season',
       })) || [],
+  }
+}
+
+export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
+  // Transform squad, table, fixtures, etc.
+  const squadData = transformTeamSquad(rawTeam)
+  const tableData = transformTeamTable(rawTeam)
+  const fixturesData = transformTeamFixtures(rawTeam)
+  const statsData = transformTeamStats(rawTeam)
+
+  // Get results directly from rawTeam.latest or similar property
+  // We'll use the current date as the cutoff point to filter matches
+  const now = new Date()
+
+  // Use rawTeam.latest or upcoming fixture data
+  const fixtures = [...(rawTeam.latest || []), ...(rawTeam.upcoming || [])]
+
+  // Filter for past matches (results)
+  const resultFixtures = fixtures
+    .filter((fixture) => fixture?.starting_at && new Date(fixture.starting_at) < now)
+    .sort((a, b) => {
+      // Sort by date descending (newest first)
+      const dateA = a?.starting_at ? new Date(a.starting_at).getTime() : 0
+      const dateB = b?.starting_at ? new Date(b.starting_at).getTime() : 0
+      return dateB - dateA
+    })
+    .slice(0, 5) // Take the 5 most recent matches
+    .map(transformFixture)
+
+  // Combine all the data into a team overview response
+  return {
+    ...transformTeamBase(rawTeam),
     squad: squadData,
     table: tableData,
     fixtures: fixturesData,
-    results: resultsData,
+    results: resultFixtures,
     stats: statsData,
   }
 }

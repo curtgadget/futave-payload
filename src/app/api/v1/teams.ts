@@ -35,7 +35,19 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
     if (tabName === 'fixtures') {
       // Cast to the correct function type for fixtures
       const getFixtures = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getFixtures
-      data = await getFixtures(id, page, limit)
+
+      // Extract date parameters if they exist
+      const beforeDate = url.searchParams.get('beforeDate') || undefined
+      const afterDate = url.searchParams.get('afterDate') || undefined
+      const includeResults = url.searchParams.get('includeResults') !== 'false'
+
+      // Use the new options object pattern
+      data = await getFixtures(id, {
+        limit,
+        beforeDate,
+        afterDate,
+        includeResults,
+      })
     } else if (tabName === 'stats') {
       // Cast to the correct function type for stats
       const getStats = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getStats
