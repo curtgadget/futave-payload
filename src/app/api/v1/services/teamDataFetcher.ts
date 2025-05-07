@@ -118,8 +118,8 @@ async function getBalancedFixtures(
 
   // Build pagination URLs
   const baseUrl = `/api/v1/team/${numericId}/fixtures?limit=${limit}`
-  const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
   const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
+  const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
 
   return {
     docs: matches,
@@ -442,22 +442,11 @@ export const teamDataFetcher: TabDataFetcher = {
       let afterId = null
 
       if (matches.length > 0) {
-        if (isPaginatingBackward) {
-          // If going backward:
-          // - First item becomes the "before" value for getting even older fixtures
-          // - Last item becomes the "after" value for getting newer fixtures
-          beforeId = matches[0].id
-          if (hasMore) {
-            afterId = matches[matches.length - 1].id
-          }
-        } else {
-          // If going forward:
-          // - First item becomes the "before" value for getting older fixtures
-          // - Last item becomes the "after" value for getting even newer fixtures
-          beforeId = matches[0].id
-          if (hasMore) {
-            afterId = matches[matches.length - 1].id
-          }
+        // First item's ID is used for "before" navigation (to get older fixtures)
+        // Last item's ID is used for "after" navigation (to get newer fixtures)
+        beforeId = matches[0].id
+        if (hasMore) {
+          afterId = matches[matches.length - 1].id
         }
       }
 
@@ -491,8 +480,10 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Build pagination URLs
       const baseUrl = `/api/v1/team/${teamId}/fixtures?limit=${limit}&type=${type}`
-      const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
+      // prevPageUrl goes to older fixtures using "before" the first fixture's ID
       const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
+      // nextPageUrl goes to newer fixtures using "after" the last fixture's ID
+      const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
 
       return {
         docs: matches,

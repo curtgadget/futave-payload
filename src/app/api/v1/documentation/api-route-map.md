@@ -218,8 +218,8 @@ For `fixtures` tab, the response will include a list of past and upcoming matche
         "limit": 10,
         "hasPrevPage": true,
         "hasNextPage": true,
-        "prevPageUrl": "/api/v1/team/123/fixtures?beforeDate=2023-01-01T00:00:00Z&limit=10",
-        "nextPageUrl": "/api/v1/team/123/fixtures?afterDate=2023-02-01T00:00:00Z&limit=10"
+        "prevPageUrl": "/api/v1/team/123/fixtures?before=12344&limit=10",
+        "nextPageUrl": "/api/v1/team/123/fixtures?after=12346&limit=10"
       },
       "nextMatch": {
         // Structure same as fixture item above, representing the next upcoming match (may be null)
@@ -281,10 +281,8 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
     "totalPages": 0, // Not relevant for cursor-based pagination
     "hasNextPage": true,
     "hasPrevPage": true,
-    "nextCursor": "12346", // ID of fixture to use as cursor for next page
-    "prevCursor": "12344", // ID of fixture to use as cursor for previous page
-    "nextPageUrl": "/api/v1/team/123/fixtures?cursor=12346&direction=after&limit=10",
-    "prevPageUrl": "/api/v1/team/123/fixtures?cursor=12344&direction=before&limit=10"
+    "nextPageUrl": "/api/v1/team/123/fixtures?after=12346&limit=10",
+    "prevPageUrl": "/api/v1/team/123/fixtures?before=12344&limit=10"
   },
   "nextMatch": {
     // Details of the next upcoming match (structure same as fixture objects above)
