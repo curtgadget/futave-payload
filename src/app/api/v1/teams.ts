@@ -37,8 +37,8 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       const getFixtures = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getFixtures
 
       // Get pagination parameters for cursor-based pagination
-      const cursor = url.searchParams.get('cursor') || undefined
-      const direction = url.searchParams.get('direction') as 'before' | 'after' | undefined
+      const before = url.searchParams.get('before') || undefined
+      const after = url.searchParams.get('after') || undefined
       const typeParam = url.searchParams.get('type') || 'all'
       const type = ['all', 'past', 'upcoming'].includes(typeParam)
         ? (typeParam as 'all' | 'past' | 'upcoming')
@@ -48,8 +48,8 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       // Use the cursor-based pagination options
       data = await getFixtures(id, {
         limit,
-        cursor,
-        direction,
+        before,
+        after,
         type,
         includeResults,
       })

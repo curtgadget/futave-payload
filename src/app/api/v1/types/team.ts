@@ -243,24 +243,18 @@ export type TeamOverviewResponse = TeamBase & {
   stats: TeamStatsResponse
 }
 
-export type PaginationMetadata = {
+export type Pagination = {
   totalDocs: number
   totalPages: number
-  page?: number
-  limit?: number
   hasNextPage: boolean
   hasPrevPage: boolean
-  nextPage?: number | null
-  prevPage?: number | null
-  nextCursor?: string | null
-  prevCursor?: string | null
   nextPageUrl: string | null
   prevPageUrl: string | null
 }
 
 export type TeamFixturesResponse = {
   docs: TeamFixture[]
-  pagination: PaginationMetadata
+  pagination: Pagination
   nextMatch: TeamFixture | null
 }
 
@@ -278,8 +272,8 @@ export type TabDataFetcher = {
     teamId: string,
     options?: {
       limit?: number
-      cursor?: string
-      direction?: 'before' | 'after'
+      before?: string
+      after?: string
       type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     },

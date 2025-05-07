@@ -99,19 +99,31 @@ List all teams with pagination.
 
 #### GET /api/v1/team/:id
 
-Get details for a specific team.
+Get detailed information about a specific team
 
 **Query Parameters:**
-- `tab`: View type (options: "overview", "fixtures", "stats", "squad", "table")
-- `limit`: Items per page (default: 10)
-- `cursor`: Fixture ID to use as reference point for pagination
-- `direction`: Direction to fetch from cursor (options: "before", "after")
-- `type`: For fixtures tab, filter type (options: "all", "past", "upcoming", default: "all")
-- `season`: Season ID for stats view
-- `include_all_players`: Include all players in stats view (default: false)
-- `includeResults`: Whether to include upcoming match in fixtures response (default: true)
+- `tab` (string, optional): Filter data to specific views. Options: `fixtures`, `players`, `stats`
+- `limit` (number, optional): Number of results to return (default: 10)
+- `type` (string, optional): For fixtures tab, filter by match type. Options: `all`, `past`, `upcoming` (default: `all`)
+- `before` (string, optional): Fetch fixtures chronologically before the fixture with this ID
+- `after` (string, optional): Fetch fixtures chronologically after the fixture with this ID
 
 **Response:**
+```json
+{
+  "data": {
+    "id": "1",
+    "name": "Team Name",
+    "logo": {
+      "url": "https://example.com/logo.png"
+    },
+    "stadium": "Stadium Name",
+    // Additional properties depending on tab parameter
+  }
+}
+```
+
+For `fixtures` tab, the response will include a list of past and upcoming matches, pagination, and next match:
 ```json
 {
   "data": {
@@ -223,18 +235,11 @@ Get details for a specific team.
 Get fixtures/results for a specific team with cursor-based pagination for easy chronological navigation.
 
 **Query Parameters:**
-- `limit`: Number of fixtures to return (default: 10)
-- `cursor`: Fixture ID to use as reference point for pagination
-- `direction`: Direction to fetch from cursor (options: "before", "after")
-- `type`: Filter type (options: "all", "past", "upcoming", default: "all")
-- `includeResults`: Whether to include the nextMatch in the response (default: true)
-
-**Notes:**
-- Without a cursor, returns a balanced selection of fixtures centered around the current date
-- Returns approximately half past results and half upcoming fixtures on first load
-- Use the cursor + direction for paginating through the chronological timeline
-- The 'before' direction fetches older fixtures, the 'after' direction fetches newer fixtures
-- The response includes nextCursor/prevCursor values (fixture IDs) which can be used for subsequent requests
+- `limit` (number, optional): Number of fixtures to return (default: 10)
+- `before` (string, optional): Fetch fixtures chronologically before the fixture with this ID
+- `after` (string, optional): Fetch fixtures chronologically after the fixture with this ID
+- `type` (string, optional): Filter by match type. Options: `all`, `past`, `upcoming` (default: `all`)
+- `includeResults` (boolean, optional): Whether to include upcoming match in response (default: true)
 
 **Response:**
 ```json

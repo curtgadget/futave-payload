@@ -101,35 +101,33 @@ async function getBalancedFixtures(
   }
 
   // Determine cursors for navigation
-  let prevCursor = null
-  let nextCursor = null
+  let beforeId = null
+  let afterId = null
 
   if (pastResults.docs.length > 0) {
-    // For prev page, use the oldest result's ID
+    // For looking backward (before), use the oldest result's ID
     const oldestPastResult = pastResults.docs[pastResults.docs.length - 1]
-    prevCursor = String(oldestPastResult.id)
+    beforeId = String(oldestPastResult.id)
   }
 
   if (upcomingFixtures.docs.length > 0) {
-    // For next page, use the last upcoming fixture's ID
+    // For looking forward (after), use the last upcoming fixture's ID
     const lastUpcomingFixture = upcomingFixtures.docs[upcomingFixtures.docs.length - 1]
-    nextCursor = String(lastUpcomingFixture.id)
+    afterId = String(lastUpcomingFixture.id)
   }
 
   // Build pagination URLs
   const baseUrl = `/api/v1/team/${numericId}/fixtures?limit=${limit}`
-  const nextPageUrl = nextCursor ? `${baseUrl}&cursor=${nextCursor}&direction=after` : null
-  const prevPageUrl = prevCursor ? `${baseUrl}&cursor=${prevCursor}&direction=before` : null
+  const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
+  const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
 
   return {
     docs: matches,
     pagination: {
       totalDocs: pastResults.totalDocs + upcomingFixtures.totalDocs,
       totalPages: 0, // Not relevant for cursor-based pagination
-      hasNextPage: !!nextCursor,
-      hasPrevPage: !!prevCursor,
-      nextCursor,
-      prevCursor,
+      hasNextPage: !!afterId,
+      hasPrevPage: !!beforeId,
       nextPageUrl,
       prevPageUrl,
     },
@@ -274,8 +272,8 @@ export const teamDataFetcher: TabDataFetcher = {
     teamId: string,
     options: {
       limit?: number
-      cursor?: string // Fixture ID to start fetching from
-      direction?: 'before' | 'after' // Direction to fetch (before or after the cursor)
+      before?: string // Fixture ID to get fixtures before
+      after?: string // Fixture ID to get fixtures after
       type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     } = {},
@@ -286,13 +284,7 @@ export const teamDataFetcher: TabDataFetcher = {
       const now = new Date()
 
       // Default settings
-      const {
-        limit = 10,
-        cursor,
-        direction = 'before',
-        type = 'all',
-        includeResults = true,
-      } = options
+      const { limit = 10, before, after, type = 'all', includeResults = true } = options
 
       // Create the base where query for team matches
       const baseQuery = {
@@ -301,13 +293,17 @@ export const teamDataFetcher: TabDataFetcher = {
         },
       }
 
+      // Determine if we're going forward or backward in time
+      const isPaginatingBackward = !!before
+      const cursorId = before || after
+
       // If a cursor is provided, we need to get the fixture to determine its date
       let cursorDate: Date | null = null
       let cursorFixtureId: number | null = null
 
-      if (cursor) {
+      if (cursorId) {
         try {
-          cursorFixtureId = parseInt(cursor, 10)
+          cursorFixtureId = parseInt(cursorId, 10)
 
           // Get the fixture to determine its date for proper chronological ordering
           const cursorFixture = await payload.findByID({
@@ -324,10 +320,9 @@ export const teamDataFetcher: TabDataFetcher = {
         }
       }
 
-      // Determine our date/id filters based on type and cursor direction
+      // Determine our date/id filters based on type and pagination direction
       let dateFilter = {}
-      let idFilter = {}
-      let sortDirection = direction === 'before' ? '-starting_at' : 'starting_at'
+      let sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
 
       if (type === 'past') {
         // Only past matches (results), always sort newest first
@@ -336,7 +331,7 @@ export const teamDataFetcher: TabDataFetcher = {
             less_than: now.toISOString(),
           },
         }
-        sortDirection = direction === 'before' ? '-starting_at' : 'starting_at'
+        sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
       } else if (type === 'upcoming') {
         // Only upcoming matches (fixtures), always sort soonest first
         dateFilter = {
@@ -344,11 +339,11 @@ export const teamDataFetcher: TabDataFetcher = {
             greater_than: now.toISOString(),
           },
         }
-        sortDirection = direction === 'before' ? '-starting_at' : 'starting_at'
+        sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
       } else if (cursorDate && cursorFixtureId) {
         // For 'all' type with cursor, use the fixture date for chronological ordering
         // but add an ID filter for ties (same starting time)
-        if (direction === 'before') {
+        if (isPaginatingBackward) {
           // For 'before', get fixtures chronologically before this one
           dateFilter = {
             or: [
@@ -431,8 +426,6 @@ export const teamDataFetcher: TabDataFetcher = {
             totalPages: 0,
             hasNextPage: false,
             hasPrevPage: false,
-            nextCursor: null,
-            prevCursor: null,
             nextPageUrl: null,
             prevPageUrl: null,
           },
@@ -444,25 +437,27 @@ export const teamDataFetcher: TabDataFetcher = {
       const hasMore = result.docs.length > limit
       const matches = result.docs.slice(0, limit).map(transformFixture)
 
-      // Determine next/prev cursors based on fixture IDs
-      let nextCursor = null
-      let prevCursor = null
+      // Determine before/after pagination
+      let beforeId = null
+      let afterId = null
 
       if (matches.length > 0) {
-        // For 'before' direction, the prev cursor is the first item's ID
-        // and the next cursor is the last item's ID
-        if (direction === 'before') {
+        if (isPaginatingBackward) {
+          // If going backward:
+          // - First item becomes the "before" value for getting even older fixtures
+          // - Last item becomes the "after" value for getting newer fixtures
+          beforeId = matches[0].id
           if (hasMore) {
-            nextCursor = String(matches[matches.length - 1].id)
+            afterId = matches[matches.length - 1].id
           }
-          prevCursor = String(matches[0].id)
         } else {
-          // For 'after' direction, the next cursor is the last item's ID
-          // and the prev cursor is the first item's ID
+          // If going forward:
+          // - First item becomes the "before" value for getting older fixtures
+          // - Last item becomes the "after" value for getting even newer fixtures
+          beforeId = matches[0].id
           if (hasMore) {
-            prevCursor = String(matches[0].id)
+            afterId = matches[matches.length - 1].id
           }
-          nextCursor = String(matches[matches.length - 1].id)
         }
       }
 
@@ -496,22 +491,16 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Build pagination URLs
       const baseUrl = `/api/v1/team/${teamId}/fixtures?limit=${limit}&type=${type}`
-      const nextPageUrl = nextCursor
-        ? `${baseUrl}&cursor=${nextCursor}&direction=${direction === 'before' ? 'before' : 'after'}`
-        : null
-      const prevPageUrl = prevCursor
-        ? `${baseUrl}&cursor=${prevCursor}&direction=${direction === 'before' ? 'after' : 'before'}`
-        : null
+      const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
+      const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
 
       return {
         docs: matches,
         pagination: {
           totalDocs: result.totalDocs || 0,
           totalPages: 0, // Not relevant for cursor-based pagination
-          hasNextPage: !!nextCursor,
-          hasPrevPage: !!prevCursor,
-          nextCursor,
-          prevCursor,
+          hasNextPage: !!afterId,
+          hasPrevPage: !!beforeId,
           nextPageUrl,
           prevPageUrl,
         },
