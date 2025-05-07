@@ -26,7 +26,15 @@ import type {
   TeamListDataFetcher,
   TeamsListResponse,
 } from '../types/team'
-import { validateTeamId } from '../utils'
+
+// Create a utility function to validate team ID
+function validateTeamId(teamId: string): number {
+  const numericId = parseInt(teamId, 10)
+  if (isNaN(numericId) || numericId <= 0) {
+    throw new Error('Invalid team ID format')
+  }
+  return numericId
+}
 
 // Helper function for initial balanced fixture loading (past and upcoming)
 async function getBalancedFixtures(
@@ -97,25 +105,21 @@ async function getBalancedFixtures(
   let nextCursor = null
 
   if (pastResults.docs.length > 0) {
-    // For prev page, use the oldest result's date
+    // For prev page, use the oldest result's ID
     const oldestPastResult = pastResults.docs[pastResults.docs.length - 1]
-    prevCursor = oldestPastResult.starting_at
+    prevCursor = String(oldestPastResult.id)
   }
 
   if (upcomingFixtures.docs.length > 0) {
-    // For next page, use the last upcoming fixture's date
+    // For next page, use the last upcoming fixture's ID
     const lastUpcomingFixture = upcomingFixtures.docs[upcomingFixtures.docs.length - 1]
-    nextCursor = lastUpcomingFixture.starting_at
+    nextCursor = String(lastUpcomingFixture.id)
   }
 
   // Build pagination URLs
   const baseUrl = `/api/v1/team/${numericId}/fixtures?limit=${limit}`
-  const nextPageUrl = nextCursor
-    ? `${baseUrl}&cursor=${encodeURIComponent(nextCursor)}&direction=after`
-    : null
-  const prevPageUrl = prevCursor
-    ? `${baseUrl}&cursor=${encodeURIComponent(prevCursor)}&direction=before`
-    : null
+  const nextPageUrl = nextCursor ? `${baseUrl}&cursor=${nextCursor}&direction=after` : null
+  const prevPageUrl = prevCursor ? `${baseUrl}&cursor=${prevCursor}&direction=before` : null
 
   return {
     docs: matches,
@@ -270,7 +274,7 @@ export const teamDataFetcher: TabDataFetcher = {
     teamId: string,
     options: {
       limit?: number
-      cursor?: string // ISO date string to start fetching from
+      cursor?: string // Fixture ID to start fetching from
       direction?: 'before' | 'after' // Direction to fetch (before or after the cursor)
       type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
@@ -290,9 +294,6 @@ export const teamDataFetcher: TabDataFetcher = {
         includeResults = true,
       } = options
 
-      // Parse cursor date if provided, otherwise use current date
-      const cursorDate = cursor ? new Date(cursor) : new Date()
-
       // Create the base where query for team matches
       const baseQuery = {
         'participants.id': {
@@ -300,8 +301,32 @@ export const teamDataFetcher: TabDataFetcher = {
         },
       }
 
-      // Determine our date filters based on type and cursor direction
+      // If a cursor is provided, we need to get the fixture to determine its date
+      let cursorDate: Date | null = null
+      let cursorFixtureId: number | null = null
+
+      if (cursor) {
+        try {
+          cursorFixtureId = parseInt(cursor, 10)
+
+          // Get the fixture to determine its date for proper chronological ordering
+          const cursorFixture = await payload.findByID({
+            collection: 'matches',
+            id: cursorFixtureId,
+          })
+
+          if (cursorFixture && cursorFixture.starting_at) {
+            cursorDate = new Date(cursorFixture.starting_at)
+          }
+        } catch (err) {
+          console.error('Error finding cursor fixture:', err)
+          // If we can't find the cursor fixture, continue without cursor filtering
+        }
+      }
+
+      // Determine our date/id filters based on type and cursor direction
       let dateFilter = {}
+      let idFilter = {}
       let sortDirection = direction === 'before' ? '-starting_at' : 'starting_at'
 
       if (type === 'past') {
@@ -320,20 +345,63 @@ export const teamDataFetcher: TabDataFetcher = {
           },
         }
         sortDirection = direction === 'before' ? '-starting_at' : 'starting_at'
-      } else if (cursor) {
-        // For 'all' type with cursor, apply cursor-based filter
+      } else if (cursorDate && cursorFixtureId) {
+        // For 'all' type with cursor, use the fixture date for chronological ordering
+        // but add an ID filter for ties (same starting time)
         if (direction === 'before') {
+          // For 'before', get fixtures chronologically before this one
           dateFilter = {
-            starting_at: {
-              less_than: cursorDate.toISOString(),
-            },
+            or: [
+              // Get fixtures with earlier date
+              {
+                starting_at: {
+                  less_than: cursorDate.toISOString(),
+                },
+              },
+              // Or fixtures with same date but lower ID (for proper tie-breaking)
+              {
+                and: [
+                  {
+                    starting_at: {
+                      equals: cursorDate.toISOString(),
+                    },
+                  },
+                  {
+                    id: {
+                      less_than: cursorFixtureId,
+                    },
+                  },
+                ],
+              },
+            ],
           }
           sortDirection = '-starting_at' // Newest first when going backward
         } else {
+          // For 'after', get fixtures chronologically after this one
           dateFilter = {
-            starting_at: {
-              greater_than: cursorDate.toISOString(),
-            },
+            or: [
+              // Get fixtures with later date
+              {
+                starting_at: {
+                  greater_than: cursorDate.toISOString(),
+                },
+              },
+              // Or fixtures with same date but higher ID (for proper tie-breaking)
+              {
+                and: [
+                  {
+                    starting_at: {
+                      equals: cursorDate.toISOString(),
+                    },
+                  },
+                  {
+                    id: {
+                      greater_than: cursorFixtureId,
+                    },
+                  },
+                ],
+              },
+            ],
           }
           sortDirection = 'starting_at' // Oldest first when going forward
         }
@@ -376,25 +444,25 @@ export const teamDataFetcher: TabDataFetcher = {
       const hasMore = result.docs.length > limit
       const matches = result.docs.slice(0, limit).map(transformFixture)
 
-      // Determine next/prev cursors
+      // Determine next/prev cursors based on fixture IDs
       let nextCursor = null
       let prevCursor = null
 
       if (matches.length > 0) {
-        // For 'before' direction, the prev cursor is the first item's date
-        // and the next cursor is the last item's date
+        // For 'before' direction, the prev cursor is the first item's ID
+        // and the next cursor is the last item's ID
         if (direction === 'before') {
           if (hasMore) {
-            nextCursor = matches[matches.length - 1].starting_at
+            nextCursor = String(matches[matches.length - 1].id)
           }
-          prevCursor = matches[0].starting_at
+          prevCursor = String(matches[0].id)
         } else {
-          // For 'after' direction, the next cursor is the last item's date
-          // and the prev cursor is the first item's date
+          // For 'after' direction, the next cursor is the last item's ID
+          // and the prev cursor is the first item's ID
           if (hasMore) {
-            prevCursor = matches[0].starting_at
+            prevCursor = String(matches[0].id)
           }
-          nextCursor = matches[matches.length - 1].starting_at
+          nextCursor = String(matches[matches.length - 1].id)
         }
       }
 
@@ -429,10 +497,10 @@ export const teamDataFetcher: TabDataFetcher = {
       // Build pagination URLs
       const baseUrl = `/api/v1/team/${teamId}/fixtures?limit=${limit}&type=${type}`
       const nextPageUrl = nextCursor
-        ? `${baseUrl}&cursor=${encodeURIComponent(nextCursor)}&direction=${direction === 'before' ? 'before' : 'after'}`
+        ? `${baseUrl}&cursor=${nextCursor}&direction=${direction === 'before' ? 'before' : 'after'}`
         : null
       const prevPageUrl = prevCursor
-        ? `${baseUrl}&cursor=${encodeURIComponent(prevCursor)}&direction=${direction === 'before' ? 'after' : 'before'}`
+        ? `${baseUrl}&cursor=${prevCursor}&direction=${direction === 'before' ? 'after' : 'before'}`
         : null
 
       return {

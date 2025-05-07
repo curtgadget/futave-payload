@@ -104,7 +104,7 @@ Get details for a specific team.
 **Query Parameters:**
 - `tab`: View type (options: "overview", "fixtures", "stats", "squad", "table")
 - `limit`: Items per page (default: 10)
-- `cursor`: ISO date string to fetch fixtures from for cursor-based pagination
+- `cursor`: Fixture ID to use as reference point for pagination
 - `direction`: Direction to fetch from cursor (options: "before", "after")
 - `type`: For fixtures tab, filter type (options: "all", "past", "upcoming", default: "all")
 - `season`: Season ID for stats view
@@ -224,7 +224,7 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
 
 **Query Parameters:**
 - `limit`: Number of fixtures to return (default: 10)
-- `cursor`: ISO date string timestamp to use as the reference point for pagination
+- `cursor`: Fixture ID to use as reference point for pagination
 - `direction`: Direction to fetch from cursor (options: "before", "after")
 - `type`: Filter type (options: "all", "past", "upcoming", default: "all")
 - `includeResults`: Whether to include the nextMatch in the response (default: true)
@@ -234,7 +234,7 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
 - Returns approximately half past results and half upcoming fixtures on first load
 - Use the cursor + direction for paginating through the chronological timeline
 - The 'before' direction fetches older fixtures, the 'after' direction fetches newer fixtures
-- The response includes nextCursor/prevCursor values which can be used for subsequent requests
+- The response includes nextCursor/prevCursor values (fixture IDs) which can be used for subsequent requests
 
 **Response:**
 ```json
@@ -276,10 +276,10 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
     "totalPages": 0, // Not relevant for cursor-based pagination
     "hasNextPage": true,
     "hasPrevPage": true,
-    "nextCursor": "2023-06-15T15:00:00Z", // Next timestamp to use as cursor
-    "prevCursor": "2023-04-25T15:00:00Z", // Previous timestamp to use as cursor
-    "nextPageUrl": "/api/v1/team/123/fixtures?cursor=2023-06-15T15:00:00Z&direction=after&limit=10",
-    "prevPageUrl": "/api/v1/team/123/fixtures?cursor=2023-04-25T15:00:00Z&direction=before&limit=10"
+    "nextCursor": "12346", // ID of fixture to use as cursor for next page
+    "prevCursor": "12344", // ID of fixture to use as cursor for previous page
+    "nextPageUrl": "/api/v1/team/123/fixtures?cursor=12346&direction=after&limit=10",
+    "prevPageUrl": "/api/v1/team/123/fixtures?cursor=12344&direction=before&limit=10"
   },
   "nextMatch": {
     // Details of the next upcoming match (structure same as fixture objects above)
