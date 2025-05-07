@@ -279,30 +279,6 @@ export const teamDataFetcher: TabDataFetcher = {
     }
   },
 
-  async getResults(teamId: string): Promise<TeamResultsResponse> {
-    const payload = await getPayload({ config })
-    const result = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: teamId,
-        },
-      },
-      depth: 1,
-    })
-
-    if (!result.docs.length) {
-      throw new Error(`No team found with ID: ${teamId}`)
-    }
-
-    const team = result.docs[0]
-    return transformTeamResults({
-      id: team.id,
-      name: team.name,
-      latest: Array.isArray(team.latest) ? team.latest : null,
-    })
-  },
-
   async getSquad(teamId: string): Promise<TeamSquadResponse> {
     const payload = await getPayload({ config })
 

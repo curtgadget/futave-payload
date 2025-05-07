@@ -15,7 +15,6 @@ import type {
   TeamFixturesResponse,
   TeamOverviewResponse,
   TeamPlayer,
-  TeamResultsResponse,
   TeamSeason,
   TeamSquadBase,
   TeamStatsResponse,
@@ -443,7 +442,7 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
     nextMatch: null,
   }
 
-  let resultsData: TeamResultsResponse = []
+  let resultsData: TeamFixture[] = []
 
   let statsData: TeamStatsResponse = {
     player_stats: [],
@@ -480,13 +479,6 @@ export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
     fixturesData = transformTeamFixtures(rawTeam)
   } catch (error) {
     console.error('Error transforming team fixtures data:', error)
-  }
-
-  // Try to transform results data
-  try {
-    resultsData = transformTeamResults(rawTeam)
-  } catch (error) {
-    console.error('Error transforming team results data:', error)
   }
 
   // Try to transform stats data
@@ -1081,11 +1073,6 @@ export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
     },
     nextMatch: fixtures.length > 0 ? fixtures[0] : null,
   }
-}
-
-export function transformTeamResults(rawTeam: RawTeam): TeamResultsResponse {
-  if (!rawTeam?.latest) return []
-  return Array.isArray(rawTeam.latest) ? rawTeam.latest.map(transformFixture) : []
 }
 
 export function transformPlayer(rawPlayer: any): TeamPlayer {

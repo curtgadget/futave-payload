@@ -239,7 +239,7 @@ export type TeamOverviewResponse = TeamBase & {
   squad: TeamSquadResponse
   table: TeamTableResponse
   fixtures: TeamFixturesResponse
-  results: TeamResultsResponse
+  results: TeamFixture[]
   stats: TeamStatsResponse
 }
 
@@ -261,18 +261,17 @@ export type TeamFixturesResponse = {
   nextMatch: TeamFixture | null
 }
 
-export type TeamResultsResponse = TeamFixture[]
 export type TeamSquadResponse = {
   players: TeamSquadByPosition
   coaches: TeamCoach[]
 }
+
 export type TeamStatsResponse = TeamStatistics
 
 export type TabDataFetcher = {
   getOverview: (teamId: string) => Promise<TeamOverviewResponse>
   getTable: (teamId: string) => Promise<TeamTableResponse>
   getFixtures: (teamId: string, page?: number, limit?: number) => Promise<TeamFixturesResponse>
-  getResults: (teamId: string) => Promise<TeamResultsResponse>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>
   getStats: (
     teamId: string,
