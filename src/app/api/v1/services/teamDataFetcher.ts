@@ -171,9 +171,9 @@ export const teamDataFetcher: TabDataFetcher = {
   async getFixtures(
     teamId: string,
     options: {
+      page?: number
       limit?: number
-      beforeDate?: string
-      afterDate?: string
+      type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     } = {},
   ): Promise<TeamFixturesResponse> {
@@ -183,7 +183,7 @@ export const teamDataFetcher: TabDataFetcher = {
       const now = new Date()
 
       // Default settings
-      const { limit = 10, beforeDate, afterDate, includeResults = true } = options
+      const { page = 1, limit = 10, type = 'all', includeResults = true } = options
 
       // Create the base where query for team matches
       const baseQuery = {
@@ -192,132 +192,138 @@ export const teamDataFetcher: TabDataFetcher = {
         },
       }
 
-      // Determine our date filters
-      let dateFilter: Record<string, any> = {}
+      // Determine our date filters based on type
+      let dateFilter = {}
+      let sortDirection = '-starting_at' // Default to newest first
 
-      if (beforeDate && afterDate) {
-        // If both dates are provided, fetch fixtures between those dates
+      if (type === 'past') {
+        // Only past matches (results)
         dateFilter = {
           starting_at: {
-            greater_than_equal: afterDate,
-            less_than_equal: beforeDate,
+            less_than: now.toISOString(),
           },
         }
-      } else if (beforeDate) {
-        // If only beforeDate is provided, fetch fixtures before that date
+        sortDirection = '-starting_at' // Most recent first
+      } else if (type === 'upcoming') {
+        // Only upcoming matches (fixtures)
         dateFilter = {
           starting_at: {
-            less_than_equal: beforeDate,
+            greater_than: now.toISOString(),
           },
         }
-      } else if (afterDate) {
-        // If only afterDate is provided, fetch fixtures after that date
-        dateFilter = {
-          starting_at: {
-            greater_than_equal: afterDate,
-          },
-        }
+        sortDirection = 'starting_at' // Soonest first
       } else {
-        // Default: fetch centered around current date (past results + upcoming fixtures)
-        // Will split the limit between past and future fixtures
+        // Mixed results - we'll do a centered approach below
+        sortDirection = 'starting_at' // For the first query
+      }
 
-        // First, get past fixtures (results)
-        const pastLimit = Math.ceil(limit / 2)
-        const pastResult = await payload.find({
-          collection: 'matches',
-          where: {
-            and: [
-              baseQuery,
-              {
-                starting_at: {
-                  less_than_equal: now.toISOString(),
+      // For "all" type, we need a centered approach - get half past, half upcoming
+      if (type === 'all') {
+        // For page 1, we'll do something special: get a balanced set of fixtures
+        if (page === 1) {
+          const halfLimit = Math.ceil(limit / 2)
+
+          // First get past matches (results)
+          const pastResults = await payload.find({
+            collection: 'matches',
+            where: {
+              and: [
+                baseQuery,
+                {
+                  starting_at: {
+                    less_than: now.toISOString(),
+                  },
                 },
-              },
-            ],
-          },
-          sort: '-starting_at', // Descending order for past matches (newest first)
-          limit: pastLimit,
-          depth: 1,
-        })
+              ],
+            },
+            sort: '-starting_at', // Most recent first
+            limit: halfLimit,
+            depth: 1,
+          })
 
-        // Then, get future fixtures
-        const futureLimit = limit - Math.min(pastResult.docs.length, pastLimit)
-        const futureResult = await payload.find({
-          collection: 'matches',
-          where: {
-            and: [
-              baseQuery,
-              {
-                starting_at: {
-                  greater_than: now.toISOString(),
+          // Then get upcoming matches
+          const upcomingFixtures = await payload.find({
+            collection: 'matches',
+            where: {
+              and: [
+                baseQuery,
+                {
+                  starting_at: {
+                    greater_than: now.toISOString(),
+                  },
                 },
-              },
-            ],
-          },
-          sort: 'starting_at', // Ascending order for future matches (soonest first)
-          limit: futureLimit,
-          depth: 1,
-        })
+              ],
+            },
+            sort: 'starting_at', // Soonest first
+            limit: halfLimit,
+            depth: 1,
+          })
 
-        // Combine and sort the results
-        const combinedMatches = [...pastResult.docs, ...futureResult.docs].sort((a, b) => {
-          // Sort by starting_at (ascending)
-          return new Date(a.starting_at).getTime() - new Date(b.starting_at).getTime()
-        })
+          // Combine them with past matches first, then upcoming
+          const combinedDocs = [...pastResults.docs, ...upcomingFixtures.docs]
 
-        // Get the next match (soonest upcoming)
-        const nextMatch =
-          futureResult.docs.length > 0 ? transformFixture(futureResult.docs[0]) : null
+          // Find the next upcoming match regardless of pagination
+          let nextMatch = null
+          if (includeResults && upcomingFixtures.docs.length > 0) {
+            nextMatch = transformFixture(upcomingFixtures.docs[0])
+          }
 
-        // Get the oldest and newest dates for pagination links
-        const oldestFixture = combinedMatches.length > 0 ? combinedMatches[0] : null
-        const newestFixture =
-          combinedMatches.length > 0 ? combinedMatches[combinedMatches.length - 1] : null
-
-        // Create pagination metadata
-        const prevDate = oldestFixture ? oldestFixture.starting_at : null
-        const nextDate = newestFixture ? newestFixture.starting_at : null
-
-        return {
-          docs: combinedMatches.map(transformFixture),
-          pagination: {
-            totalDocs: pastResult.totalDocs + futureResult.totalDocs,
-            totalPages: Math.ceil((pastResult.totalDocs + futureResult.totalDocs) / limit),
-            limit,
-            hasPrevPage: pastResult.totalDocs > pastLimit,
-            hasNextPage: futureResult.totalDocs > futureLimit,
-            prevPageUrl: prevDate
-              ? `/api/v1/team/${teamId}/fixtures?beforeDate=${prevDate}&limit=${limit}`
-              : null,
-            nextPageUrl: nextDate
-              ? `/api/v1/team/${teamId}/fixtures?afterDate=${nextDate}&limit=${limit}`
-              : null,
-          },
-          nextMatch,
+          return {
+            docs: combinedDocs.map(transformFixture),
+            pagination: {
+              totalDocs: pastResults.totalDocs + upcomingFixtures.totalDocs,
+              totalPages: Math.ceil((pastResults.totalDocs + upcomingFixtures.totalDocs) / limit),
+              page,
+              limit,
+              hasPrevPage: false, // First page
+              hasNextPage: pastResults.totalDocs + upcomingFixtures.totalDocs > limit,
+              prevPage: null,
+              nextPage: pastResults.totalDocs + upcomingFixtures.totalDocs > limit ? 2 : null,
+              prevPageUrl: null,
+              nextPageUrl:
+                pastResults.totalDocs + upcomingFixtures.totalDocs > limit
+                  ? `/api/v1/team/${teamId}/fixtures?page=2&limit=${limit}&type=${type}`
+                  : null,
+            },
+            nextMatch,
+          }
+        } else {
+          // For page > 1, switch to past-only (all fixtures before "now")
+          // This simplifies the pagination model - as user pages back they see older and older results
+          dateFilter = {
+            starting_at: {
+              less_than: now.toISOString(),
+            },
+          }
+          sortDirection = '-starting_at' // Most recent first
         }
       }
 
-      // If using date filters, execute a single query
-      const sortDirection = afterDate && !beforeDate ? 'starting_at' : '-starting_at'
+      // Regular pagination query for either type='past', type='upcoming', or paging through type='all'
       const result = await payload.find({
         collection: 'matches',
         where: {
           and: [baseQuery, dateFilter],
         },
         sort: sortDirection,
+        page,
         limit,
         depth: 1,
       })
 
+      // If we have no results, return empty
       if (!result.docs.length) {
         return {
           docs: [],
           pagination: {
             totalDocs: 0,
             totalPages: 0,
+            page,
             limit,
             hasPrevPage: false,
             hasNextPage: false,
+            prevPage: null,
+            nextPage: null,
             prevPageUrl: null,
             nextPageUrl: null,
           },
@@ -326,26 +332,6 @@ export const teamDataFetcher: TabDataFetcher = {
       }
 
       const matches = result.docs.map(transformFixture)
-
-      // For result queries (beforeDate), the oldest fixture is the last one in the array
-      // For upcoming queries (afterDate), the newest fixture is the last one in the array
-      const oldestFixture =
-        afterDate && !beforeDate
-          ? result.docs.length > 0
-            ? result.docs[0]
-            : null
-          : result.docs.length > 0
-            ? result.docs[result.docs.length - 1]
-            : null
-
-      const newestFixture =
-        afterDate && !beforeDate
-          ? result.docs.length > 0
-            ? result.docs[result.docs.length - 1]
-            : null
-          : result.docs.length > 0
-            ? result.docs[0]
-            : null
 
       // Find the next upcoming match regardless of pagination
       let nextMatch = null
@@ -375,26 +361,26 @@ export const teamDataFetcher: TabDataFetcher = {
           nextMatchResult.docs.length > 0 ? transformFixture(nextMatchResult.docs[0]) : null
       }
 
-      // Create pagination URLs based on oldest/newest fixtures
-      let prevPageUrl = null
-      let nextPageUrl = null
+      // Build pagination URLs
+      const prevPageUrl = result.prevPage
+        ? `/api/v1/team/${teamId}/fixtures?page=${result.prevPage}&limit=${limit}&type=${type}`
+        : null
 
-      if (oldestFixture) {
-        prevPageUrl = `/api/v1/team/${teamId}/fixtures?beforeDate=${oldestFixture.starting_at}&limit=${limit}`
-      }
-
-      if (newestFixture) {
-        nextPageUrl = `/api/v1/team/${teamId}/fixtures?afterDate=${newestFixture.starting_at}&limit=${limit}`
-      }
+      const nextPageUrl = result.nextPage
+        ? `/api/v1/team/${teamId}/fixtures?page=${result.nextPage}&limit=${limit}&type=${type}`
+        : null
 
       return {
         docs: matches,
         pagination: {
           totalDocs: result.totalDocs || 0,
           totalPages: result.totalPages || 0,
+          page: result.page || 1,
           limit,
           hasPrevPage: result.hasPrevPage || false,
           hasNextPage: result.hasNextPage || false,
+          prevPage: result.prevPage,
+          nextPage: result.nextPage,
           prevPageUrl,
           nextPageUrl,
         },

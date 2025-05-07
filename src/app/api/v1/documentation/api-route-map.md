@@ -107,9 +107,8 @@ Get details for a specific team.
 - `limit`: Items per page (default: 10)
 - `season`: Season ID for stats view
 - `include_all_players`: Include all players in stats view (default: false)
-- `beforeDate`: ISO date string to fetch fixtures before this date (for pagination)
-- `afterDate`: ISO date string to fetch fixtures after this date (for pagination)
-- `includeResults`: Whether to include past results in fixtures response (default: true)
+- `type`: For fixtures tab, filter type (options: "all", "past", "upcoming", default: "all")
+- `includeResults`: Whether to include the nextMatch in fixtures response (default: true)
 
 **Response:**
 ```json
@@ -220,20 +219,20 @@ Get details for a specific team.
 
 #### GET /api/v1/team/:id/fixtures
 
-Get fixtures/results for a specific team with chronological date-based pagination.
+Get fixtures/results for a specific team with traditional page-based pagination.
 
 **Query Parameters:**
-- `limit`: Number of fixtures to return (default: 10)
-- `beforeDate`: ISO date string to fetch fixtures before this date (for "backward" pagination)
-- `afterDate`: ISO date string to fetch fixtures after this date (for "forward" pagination)
+- `page`: Page number (default: 1)
+- `limit`: Number of fixtures per page (default: 10)
+- `type`: Filter type (options: "all", "past", "upcoming", default: "all")
 - `includeResults`: Whether to include the nextMatch in the response (default: true)
 
 **Notes:**
-- Without date parameters, returns a balanced selection of fixtures centered around the current date
-- Returns approximately half past results and half upcoming fixtures when no date filters are provided
-- To paginate backward (older fixtures), use the `beforeDate` parameter with the oldest fixture date from previous response
-- To paginate forward (newer fixtures), use the `afterDate` parameter with the newest fixture date from previous response
-- Navigation links are provided in the pagination object for ease of use
+- When `type` is "all" and `page` is 1: Returns a balanced view of past and upcoming fixtures
+- When `type` is "all" and `page` is > 1: Returns only past fixtures (results) in reverse chronological order
+- When `type` is "past": Returns only past matches in reverse chronological order (newest first)
+- When `type` is "upcoming": Returns only upcoming fixtures in chronological order (soonest first)
+- Traditional pagination links are provided in the response for easy navigation
 
 **Response:**
 ```json
@@ -313,11 +312,14 @@ Get fixtures/results for a specific team with chronological date-based paginatio
   "pagination": {
     "totalDocs": 50,
     "totalPages": 5,
+    "page": 1,
     "limit": 10,
-    "hasPrevPage": true,
+    "hasPrevPage": false,
     "hasNextPage": true,
-    "prevPageUrl": "/api/v1/team/123/fixtures?beforeDate=2023-01-01T00:00:00Z&limit=10",
-    "nextPageUrl": "/api/v1/team/123/fixtures?afterDate=2023-02-01T00:00:00Z&limit=10"
+    "prevPage": null,
+    "nextPage": 2,
+    "prevPageUrl": null,
+    "nextPageUrl": "/api/v1/team/123/fixtures?page=2&limit=10&type=all"
   },
   "nextMatch": {
     // Next upcoming match (same structure as fixtures, may be null)

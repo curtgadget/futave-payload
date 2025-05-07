@@ -36,16 +36,20 @@ const getTeamDataHandler = async (req: PayloadRequest) => {
       // Cast to the correct function type for fixtures
       const getFixtures = teamDataFetcher[fetcherName] as typeof teamDataFetcher.getFixtures
 
-      // Extract date parameters if they exist
-      const beforeDate = url.searchParams.get('beforeDate') || undefined
-      const afterDate = url.searchParams.get('afterDate') || undefined
+      // Get pagination parameters
+      const pageParam = url.searchParams.get('page')
+      const page = pageParam ? parseInt(pageParam, 10) : 1
+      const typeParam = url.searchParams.get('type') || 'all'
+      const type = ['all', 'past', 'upcoming'].includes(typeParam)
+        ? (typeParam as 'all' | 'past' | 'upcoming')
+        : 'all'
       const includeResults = url.searchParams.get('includeResults') !== 'false'
 
       // Use the new options object pattern
       data = await getFixtures(id, {
+        page,
         limit,
-        beforeDate,
-        afterDate,
+        type,
         includeResults,
       })
     } else if (tabName === 'stats') {

@@ -246,12 +246,12 @@ export type TeamOverviewResponse = TeamBase & {
 export type PaginationMetadata = {
   totalDocs: number
   totalPages: number
-  page?: number
-  limit?: number
+  page: number
+  limit: number
   hasNextPage: boolean
   hasPrevPage: boolean
-  nextPage?: number | null
-  prevPage?: number | null
+  nextPage: number | null
+  prevPage: number | null
   nextPageUrl: string | null
   prevPageUrl: string | null
 }
@@ -275,9 +275,9 @@ export type TabDataFetcher = {
   getFixtures: (
     teamId: string,
     options?: {
+      page?: number
       limit?: number
-      beforeDate?: string
-      afterDate?: string
+      type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     },
   ) => Promise<TeamFixturesResponse>
