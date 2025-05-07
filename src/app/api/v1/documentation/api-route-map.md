@@ -103,12 +103,13 @@ Get details for a specific team.
 
 **Query Parameters:**
 - `tab`: View type (options: "overview", "fixtures", "stats", "squad", "table")
-- `page`: For paginated views like fixtures (default: 1)
 - `limit`: Items per page (default: 10)
+- `cursor`: ISO date string to fetch fixtures from for cursor-based pagination
+- `direction`: Direction to fetch from cursor (options: "before", "after")
+- `type`: For fixtures tab, filter type (options: "all", "past", "upcoming", default: "all")
 - `season`: Season ID for stats view
 - `include_all_players`: Include all players in stats view (default: false)
-- `type`: For fixtures tab, filter type (options: "all", "past", "upcoming", default: "all")
-- `includeResults`: Whether to include the nextMatch in fixtures response (default: true)
+- `includeResults`: Whether to include upcoming match in fixtures response (default: true)
 
 **Response:**
 ```json
@@ -219,20 +220,21 @@ Get details for a specific team.
 
 #### GET /api/v1/team/:id/fixtures
 
-Get fixtures/results for a specific team with traditional page-based pagination.
+Get fixtures/results for a specific team with cursor-based pagination for easy chronological navigation.
 
 **Query Parameters:**
-- `page`: Page number (default: 1)
-- `limit`: Number of fixtures per page (default: 10)
+- `limit`: Number of fixtures to return (default: 10)
+- `cursor`: ISO date string timestamp to use as the reference point for pagination
+- `direction`: Direction to fetch from cursor (options: "before", "after")
 - `type`: Filter type (options: "all", "past", "upcoming", default: "all")
 - `includeResults`: Whether to include the nextMatch in the response (default: true)
 
 **Notes:**
-- When `type` is "all" and `page` is 1: Returns a balanced view of past and upcoming fixtures
-- When `type` is "all" and `page` is > 1: Returns only past fixtures (results) in reverse chronological order
-- When `type` is "past": Returns only past matches in reverse chronological order (newest first)
-- When `type` is "upcoming": Returns only upcoming fixtures in chronological order (soonest first)
-- Traditional pagination links are provided in the response for easy navigation
+- Without a cursor, returns a balanced selection of fixtures centered around the current date
+- Returns approximately half past results and half upcoming fixtures on first load
+- Use the cursor + direction for paginating through the chronological timeline
+- The 'before' direction fetches older fixtures, the 'after' direction fetches newer fixtures
+- The response includes nextCursor/prevCursor values which can be used for subsequent requests
 
 **Response:**
 ```json
@@ -247,82 +249,40 @@ Get fixtures/results for a specific team with traditional page-based pagination.
         "name": "Finished",
         "short_name": "FT"
       },
-      "league": {
-        "id": 789,
-        "name": "Premier League",
-        "short_code": "PL",
-        "image_path": "https://..."
-      },
-      "season": {
-        "id": 101,
-        "name": "2023/2024"
-      },
+      "league": { "id": 789, "name": "Premier League", "short_code": "PL" },
+      "season": { "id": 101, "name": "2023/2024" },
       "participants": [
         {
-          "id": 123,
-          "name": "Home Team",
-          "short_code": "HOME",
-          "image_path": "https://...",
-          "meta": {
-            "location": "home",
-            "winner": true,
-            "position": 1
-          }
+          "id": "123",
+          "name": "Team A",
+          "short_code": "TAM",
+          "score": 2,
+          "is_home": true
         },
         {
-          "id": 124,
-          "name": "Away Team",
-          "short_code": "AWAY",
-          "image_path": "https://...",
-          "meta": {
-            "location": "away",
-            "winner": false,
-            "position": 2
-          }
+          "id": "456",
+          "name": "Team B",
+          "short_code": "TBM",
+          "score": 1,
+          "is_home": false
         }
       ],
-      "scores": [
-        {
-          "id": 1001,
-          "type_id": 1525,
-          "participant_id": 123,
-          "score": {
-            "goals": 2,
-            "participant": "home"
-          },
-          "description": "Current Score"
-        },
-        {
-          "id": 1002,
-          "type_id": 1525,
-          "participant_id": 124,
-          "score": {
-            "goals": 1,
-            "participant": "away"
-          },
-          "description": "Current Score"
-        }
-      ],
-      "final_score": {
-        "home": 2,
-        "away": 1
-      }
+      "venue": { "id": "789", "name": "Stadium Name" }
     }
+    // More fixtures...
   ],
   "pagination": {
-    "totalDocs": 50,
-    "totalPages": 5,
-    "page": 1,
-    "limit": 10,
-    "hasPrevPage": false,
+    "totalDocs": 42,
+    "totalPages": 0, // Not relevant for cursor-based pagination
     "hasNextPage": true,
-    "prevPage": null,
-    "nextPage": 2,
-    "prevPageUrl": null,
-    "nextPageUrl": "/api/v1/team/123/fixtures?page=2&limit=10&type=all"
+    "hasPrevPage": true,
+    "nextCursor": "2023-06-15T15:00:00Z", // Next timestamp to use as cursor
+    "prevCursor": "2023-04-25T15:00:00Z", // Previous timestamp to use as cursor
+    "nextPageUrl": "/api/v1/team/123/fixtures?cursor=2023-06-15T15:00:00Z&direction=after&limit=10",
+    "prevPageUrl": "/api/v1/team/123/fixtures?cursor=2023-04-25T15:00:00Z&direction=before&limit=10"
   },
   "nextMatch": {
-    // Next upcoming match (same structure as fixtures, may be null)
+    // Details of the next upcoming match (structure same as fixture objects above)
   }
 }
 ```
