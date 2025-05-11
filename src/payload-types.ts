@@ -1100,6 +1100,7 @@ export interface TaskSyncMatches {
   input: {
     startDate?: string | null;
     endDate?: string | null;
+    backfill?: boolean | null;
   };
   output: {
     message?: string | null;

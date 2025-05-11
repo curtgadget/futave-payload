@@ -29,6 +29,7 @@ import type {
   PlayerSeasonStats,
   TopPlayersStat,
   TopStatCategory,
+  MinimalTeamFixture,
 } from '../types/team'
 
 type RawTeam = {
@@ -899,78 +900,68 @@ function calculateFinalScore(
     )
 }
 
-export function transformFixture(rawFixture: any): TeamFixture {
-  if (!rawFixture?.id || !rawFixture?.starting_at) {
-    throw new Error('Invalid fixture data: missing required fields')
-  }
-
-  const scores = Array.isArray(rawFixture.scores)
-    ? rawFixture.scores.map((score: any) => ({
-        id: score.id || 0,
-        type_id: score.type_id || 0,
-        participant_id: score.participant_id || 0,
-        score: {
-          goals: score.score?.goals || 0,
-          participant: score.score?.participant || 'home',
-        },
-        description: score.description || '',
-      }))
-    : []
-
-  const finalScore = calculateFinalScore(scores)
-
+/**
+ * Minimal fixture transformer for UI (Fotmob-style):
+ * Returns only the fields needed for the fixture list UI.
+ */
+export function transformFixture(rawFixture: any) {
   return {
-    id: String(rawFixture.id),
+    id: rawFixture.id,
     starting_at: rawFixture.starting_at,
-    state: {
-      id: rawFixture.state?.id || 0,
-      state: rawFixture.state?.state || '',
-      name: rawFixture.state?.name || '',
-      short_name: rawFixture.state?.short_name || '',
-    },
-    league: {
-      id: rawFixture.league?.id || 0,
-      name: rawFixture.league?.name || '',
-      short_code: rawFixture.league?.short_code || null,
-      image_path: rawFixture.league?.image_path || null,
-    },
-    season: {
-      id: rawFixture.season?.id || 0,
-      name: rawFixture.season?.name || '',
-    },
+    starting_at_timestamp: rawFixture.starting_at_timestamp,
+    name: rawFixture.name,
+    league: rawFixture.league
+      ? {
+          id: rawFixture.league.id,
+          name: rawFixture.league.name,
+          short_code: rawFixture.league.short_code ?? null,
+          image_path: rawFixture.league.image_path ?? null,
+        }
+      : null,
+    season: rawFixture.season
+      ? {
+          id: rawFixture.season.id,
+          name: rawFixture.season.name,
+        }
+      : null,
     participants: Array.isArray(rawFixture.participants)
       ? rawFixture.participants.map((participant: any) => ({
-          id: participant.id || 0,
-          name: participant.name || '',
-          short_code: participant.short_code || null,
-          image_path: participant.image_path || null,
+          id: participant.id,
+          name: participant.name,
+          short_code: participant.short_code ?? null,
+          image_path: participant.image_path ?? null,
           meta: {
-            location: participant.meta?.location || 'home',
-            winner: participant.meta?.winner || null,
-            position: participant.meta?.position || null,
+            location: participant.meta?.location ?? null,
           },
         }))
       : [],
-    scores,
-    final_score: finalScore,
+    final_score:
+      rawFixture.final_score ??
+      (Array.isArray(rawFixture.scores) && rawFixture.scores.length > 0
+        ? calculateFinalScore(rawFixture.scores)
+        : null),
+    state: rawFixture.state
+      ? {
+          id: rawFixture.state.id,
+          name: rawFixture.state.name,
+          short_name: rawFixture.state.short_name ?? null,
+        }
+      : null,
   }
 }
 
-export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
+export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse<MinimalTeamFixture> {
   if (!rawTeam?.upcoming) {
     return {
       docs: [],
-      pagination: {
-        totalDocs: 0,
-        totalPages: 0,
-        page: 1,
-        limit: 10,
-        hasNextPage: false,
-        hasPrevPage: false,
-        nextPage: null,
-        prevPage: null,
-        nextPageUrl: null,
-        prevPageUrl: null,
+      meta: {
+        pagination: {
+          totalFixtures: 0,
+          hasNextPage: false,
+          hasPrevPage: false,
+          nextPageUrl: null,
+          prevPageUrl: null,
+        },
       },
       nextMatch: null,
     }
@@ -980,17 +971,14 @@ export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse {
 
   return {
     docs: fixtures,
-    pagination: {
-      totalDocs: fixtures.length,
-      totalPages: 1,
-      page: 1,
-      limit: fixtures.length,
-      hasNextPage: false,
-      hasPrevPage: false,
-      nextPage: null,
-      prevPage: null,
-      nextPageUrl: null,
-      prevPageUrl: null,
+    meta: {
+      pagination: {
+        totalFixtures: fixtures.length,
+        hasNextPage: false,
+        hasPrevPage: false,
+        nextPageUrl: null,
+        prevPageUrl: null,
+      },
     },
     nextMatch: fixtures.length > 0 ? fixtures[0] : null,
   }

@@ -106,6 +106,10 @@ export default buildConfig({
             name: 'endDate',
             type: 'text',
           },
+          {
+            name: 'backfill',
+            type: 'checkbox',
+          },
         ],
         outputSchema: [
           {

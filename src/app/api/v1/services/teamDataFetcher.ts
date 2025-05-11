@@ -25,6 +25,9 @@ import type {
   TopPlayerStatItem,
   TeamListDataFetcher,
   TeamsListResponse,
+  TeamFixture,
+  MinimalTeamFixture,
+  MinimalNextMatch,
 } from '../types/team'
 
 // Create a utility function to validate team ID
@@ -36,100 +39,222 @@ function validateTeamId(teamId: string): number {
   return numericId
 }
 
-// Helper function for initial balanced fixture loading (past and upcoming)
-async function getBalancedFixtures(
-  numericId: number,
-  limit: number,
-  now: Date,
-  includeResults: boolean,
-) {
+/**
+ * Fetches paginated fixtures for a team using both 'latest' and 'upcoming' arrays from the teams collection.
+ * Combines, deduplicates, sorts, and paginates fixtures. Supports filtering by type and cursor-based navigation.
+ */
+export async function getTeamFixturesCombined(
+  teamId: string,
+  options: {
+    limit?: number
+    after?: string // Fixture ID to get fixtures after (newer)
+    before?: string // Fixture ID to get fixtures before (older)
+    type?: 'all' | 'past' | 'upcoming'
+    includeResults?: boolean
+  } = {},
+): Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>> {
   const payload = await getPayload({ config })
-  const halfLimit = Math.ceil(limit / 2)
+  const { limit = 10, after, before, type = 'all' } = options
 
-  // First get past matches (results)
-  const pastResults = await payload.find({
-    collection: 'matches',
-    where: {
-      and: [
-        {
-          'participants.id': {
-            equals: numericId,
-          },
-        },
-        {
-          starting_at: {
-            less_than: now.toISOString(),
-          },
-        },
-      ],
-    },
-    sort: '-starting_at', // Most recent first
-    limit: halfLimit,
-    depth: 1,
+  // Fetch the team document
+  const team = await payload.findByID({
+    collection: 'teams',
+    id: teamId,
   })
 
-  // Then get upcoming matches
-  const upcomingFixtures = await payload.find({
+  // Combine upcoming and latest arrays, but reverse upcoming first
+  const upcoming = Array.isArray(team?.upcoming) ? [...team.upcoming].reverse() : []
+  const latest = Array.isArray(team?.latest) ? team.latest : []
+  const allFixtures = [...upcoming, ...latest]
+
+  // Deduplicate by fixture ID (favor the first occurrence, i.e., upcoming if present)
+  const fixtureMap = new Map<string, any>()
+  for (const fixture of allFixtures as any[]) {
+    const id = typeof fixture === 'string' ? fixture : fixture.id
+    if (id && !fixtureMap.has(id)) {
+      fixtureMap.set(id, fixture)
+    }
+  }
+  let fixtures = Array.from(fixtureMap.values())
+
+  // --- Merge with match details from matches collection ---
+  const fixtureIds = fixtures.map((f) => (typeof f === 'string' ? f : f.id))
+  const matchesResult = await payload.find({
     collection: 'matches',
-    where: {
-      and: [
-        {
-          'participants.id': {
-            equals: numericId,
-          },
-        },
-        {
-          starting_at: {
-            greater_than: now.toISOString(),
-          },
-        },
-      ],
-    },
-    sort: 'starting_at', // Soonest first
-    limit: halfLimit,
-    depth: 1,
+    where: { id: { in: fixtureIds } },
+    limit: fixtureIds.length,
+  })
+  const matchMap = new Map(matchesResult.docs.map((m: any) => [String(m.id), m]))
+  fixtures = fixtures.map((fixture) => {
+    const id = typeof fixture === 'string' ? fixture : fixture.id
+    const match = matchMap.get(String(id))
+    // Merge: prefer match fields, fallback to fixture fields
+    return { ...fixture, ...match }
   })
 
-  // Combine them with past matches first, then upcoming
-  const combinedDocs = [...pastResults.docs, ...upcomingFixtures.docs]
-  const matches = combinedDocs.map(transformFixture)
+  // Do NOT sort fixtures. Use the order as provided (upcoming first, then latest)
 
-  // Find the next upcoming match regardless of pagination
-  let nextMatch = null
-  if (includeResults && upcomingFixtures.docs.length > 0) {
-    nextMatch = transformFixture(upcomingFixtures.docs[0])
+  // Filter by type if specified (convert to ms for comparison)
+  const now = Date.now()
+  if (type === 'past') {
+    fixtures = fixtures.filter((f) => f.starting_at_timestamp * 1000 < now)
+  } else if (type === 'upcoming') {
+    fixtures = fixtures.filter((f) => f.starting_at_timestamp * 1000 >= now)
   }
 
-  // Determine cursors for navigation
-  let beforeId = null
-  let afterId = null
+  // Find the index for cursor-based pagination
+  let startIdx = 0
+  let endIdx = fixtures.length
 
-  if (pastResults.docs.length > 0) {
-    // For looking backward (before), use the oldest result's ID
-    const oldestPastResult = pastResults.docs[pastResults.docs.length - 1]
-    beforeId = String(oldestPastResult.id)
+  if (after) {
+    const idx = fixtureIds.indexOf(after)
+    startIdx = idx >= 0 ? idx + 1 : 0
+    endIdx = Math.min(startIdx + limit, fixtures.length)
+  } else if (before) {
+    const idx = fixtureIds.indexOf(before)
+    endIdx = idx >= 0 ? idx : fixtures.length
+    startIdx = Math.max(0, endIdx - limit)
+  } else {
+    endIdx = Math.min(limit, fixtures.length)
   }
 
-  if (upcomingFixtures.docs.length > 0) {
-    // For looking forward (after), use the last upcoming fixture's ID
-    const lastUpcomingFixture = upcomingFixtures.docs[upcomingFixtures.docs.length - 1]
-    afterId = String(lastUpcomingFixture.id)
-  }
+  let paginatedFixtures = fixtures.slice(startIdx, endIdx)
 
-  // Build pagination URLs
-  const baseUrl = `/api/v1/team/${numericId}/fixtures?limit=${limit}`
-  const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
-  const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
+  // Map fixtures to minimal UI shape
+  const docs = paginatedFixtures.map(transformFixture)
+
+  // Pagination meta
+  const totalFixtures = fixtures.length
+  const hasNextPage = endIdx < fixtures.length
+  const hasPrevPage = startIdx > 0
+  const nextPageCursor = hasNextPage && docs.length > 0 ? fixtureIds[endIdx] : null
+  const prevPageCursor = hasPrevPage && docs.length > 0 ? fixtureIds[startIdx - 1] : null
+
+  // Find the next upcoming match (true soonest future fixture, regardless of array order)
+  const nextFixture =
+    [...fixtures]
+      .filter((f) => f.starting_at_timestamp * 1000 >= now)
+      .sort((a, b) => a.starting_at_timestamp - b.starting_at_timestamp)[0] || null
+
+  let nextMatch: MinimalNextMatch | null = null
+  if (nextFixture) {
+    // Extract home/away participants
+    const home = Array.isArray(nextFixture.participants)
+      ? nextFixture.participants.find((p: any) => p.meta?.location === 'home')
+      : null
+    const away = Array.isArray(nextFixture.participants)
+      ? nextFixture.participants.find((p: any) => p.meta?.location === 'away')
+      : null
+    // Fetch both teams' info (name, image, table position, stats)
+    let homeTeam = null
+    let awayTeam = null
+    let home_position = null
+    let away_position = null
+    let home_goals_per_match = null
+    let away_goals_per_match = null
+    let home_goals_conceded_per_match = null
+    let away_goals_conceded_per_match = null
+    if (home && away) {
+      // Fetch both teams from the teams collection
+      const teamsResult = await payload.find({
+        collection: 'teams',
+        where: { id: { in: [home.id, away.id] } },
+        limit: 2,
+      })
+      const teamMap = new Map(teamsResult.docs.map((t: any) => [String(t.id), t]))
+      homeTeam = teamMap.get(String(home.id))
+      awayTeam = teamMap.get(String(away.id))
+      // Get league/season for standings lookup
+      const leagueId = nextFixture.league?.id
+      const seasonId = nextFixture.season?.id
+      // Fetch standings for both teams
+      let homeStanding = null
+      let awayStanding = null
+      if (leagueId && seasonId) {
+        // Try to get standings from the teams' standings field
+        const getStanding = (team: any) => {
+          const standings = team?.standings?.[String(seasonId)]
+          if (standings && Array.isArray(standings)) {
+            return standings.find((row: any) => row.participant_id === team.id)
+          }
+          // Try nested structure
+          if (standings?.standings?.[0]?.standings) {
+            return standings.standings[0].standings.find((row: any) => row.team_id === team.id)
+          }
+          return null
+        }
+        homeStanding = getStanding(homeTeam)
+        awayStanding = getStanding(awayTeam)
+      }
+      home_position = homeStanding?.position ?? null
+      away_position = awayStanding?.position ?? null
+      // Get goals per match and conceded per match from team stats
+      const getStats = (team: any) => {
+        const stats = team?.statistics
+        if (!stats) return {}
+        // Try to find the right season
+        let seasonStats = null
+        for (const key in stats) {
+          if (stats[key]?.season?.id === seasonId) {
+            seasonStats = stats[key]
+            break
+          }
+        }
+        if (!seasonStats) return {}
+        const details = seasonStats.details || []
+        // Find avg goals scored/conceded
+        let avg_goals_scored = null
+        let avg_goals_conceded = null
+        details.forEach((d: any) => {
+          if (d.type_id === 45 && d.value?.all?.average) {
+            avg_goals_scored = d.value.all.average
+          }
+          if (d.type_id === 46 && d.value?.all?.average) {
+            avg_goals_conceded = d.value.all.average
+          }
+        })
+        return { avg_goals_scored, avg_goals_conceded }
+      }
+      const homeStats = getStats(homeTeam)
+      const awayStats = getStats(awayTeam)
+      home_goals_per_match = homeStats.avg_goals_scored ?? null
+      away_goals_per_match = awayStats.avg_goals_scored ?? null
+      home_goals_conceded_per_match = homeStats.avg_goals_conceded ?? null
+      away_goals_conceded_per_match = awayStats.avg_goals_conceded ?? null
+    }
+    nextMatch = {
+      starting_at: nextFixture.starting_at,
+      league: nextFixture.league
+        ? { id: nextFixture.league.id, name: nextFixture.league.name }
+        : { id: 0, name: '' },
+      home_team: home
+        ? { id: home.id, name: home.name, image_path: home.image_path ?? null }
+        : { id: 0, name: '', image_path: null },
+      away_team: away
+        ? { id: away.id, name: away.name, image_path: away.image_path ?? null }
+        : { id: 0, name: '', image_path: null },
+      home_position,
+      away_position,
+      home_goals_per_match,
+      away_goals_per_match,
+      home_goals_conceded_per_match,
+      away_goals_conceded_per_match,
+    }
+  }
 
   return {
-    docs: matches,
-    pagination: {
-      totalDocs: pastResults.totalDocs + upcomingFixtures.totalDocs,
-      totalPages: 0, // Not relevant for cursor-based pagination
-      hasNextPage: !!afterId,
-      hasPrevPage: !!beforeId,
-      nextPageUrl,
-      prevPageUrl,
+    docs,
+    meta: {
+      pagination: {
+        totalFixtures,
+        hasNextPage,
+        hasPrevPage,
+        nextPageUrl:
+          hasNextPage && nextPageCursor ? `?after=${nextPageCursor}&limit=${limit}` : null,
+        prevPageUrl:
+          hasPrevPage && prevPageCursor ? `?before=${prevPageCursor}&limit=${limit}` : null,
+        cursor: docs.length > 0 ? docs[docs.length - 1].id : null,
+      },
     },
     nextMatch,
   }
@@ -272,240 +397,14 @@ export const teamDataFetcher: TabDataFetcher = {
     teamId: string,
     options: {
       limit?: number
-      before?: string // Fixture ID to get fixtures before
-      after?: string // Fixture ID to get fixtures after
+      before?: string // Fixture ID to get fixtures before (older)
+      after?: string // Fixture ID to get fixtures after (newer)
       type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     } = {},
-  ): Promise<TeamFixturesResponse> {
-    try {
-      const numericId = validateTeamId(teamId)
-      const payload = await getPayload({ config })
-      const now = new Date()
-
-      // Default settings
-      const { limit = 10, before, after, type = 'all', includeResults = true } = options
-
-      // Create the base where query for team matches
-      const baseQuery = {
-        'participants.id': {
-          equals: numericId,
-        },
-      }
-
-      // Determine if we're going forward or backward in time
-      const isPaginatingBackward = !!before
-      const cursorId = before || after
-
-      // If a cursor is provided, we need to get the fixture to determine its date
-      let cursorDate: Date | null = null
-      let cursorFixtureId: number | null = null
-
-      if (cursorId) {
-        try {
-          cursorFixtureId = parseInt(cursorId, 10)
-
-          // Get the fixture to determine its date for proper chronological ordering
-          const cursorFixture = await payload.findByID({
-            collection: 'matches',
-            id: cursorFixtureId,
-          })
-
-          if (cursorFixture && cursorFixture.starting_at) {
-            cursorDate = new Date(cursorFixture.starting_at)
-          }
-        } catch (err) {
-          console.error('Error finding cursor fixture:', err)
-          // If we can't find the cursor fixture, continue without cursor filtering
-        }
-      }
-
-      // Determine our date/id filters based on type and pagination direction
-      let dateFilter = {}
-      let sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
-
-      if (type === 'past') {
-        // Only past matches (results), always sort newest first
-        dateFilter = {
-          starting_at: {
-            less_than: now.toISOString(),
-          },
-        }
-        sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
-      } else if (type === 'upcoming') {
-        // Only upcoming matches (fixtures), always sort soonest first
-        dateFilter = {
-          starting_at: {
-            greater_than: now.toISOString(),
-          },
-        }
-        sortDirection = isPaginatingBackward ? '-starting_at' : 'starting_at'
-      } else if (cursorDate && cursorFixtureId) {
-        // For 'all' type with cursor, use the fixture date for chronological ordering
-        // but add an ID filter for ties (same starting time)
-        if (isPaginatingBackward) {
-          // For 'before', get fixtures chronologically before this one
-          dateFilter = {
-            or: [
-              // Get fixtures with earlier date
-              {
-                starting_at: {
-                  less_than: cursorDate.toISOString(),
-                },
-              },
-              // Or fixtures with same date but lower ID (for proper tie-breaking)
-              {
-                and: [
-                  {
-                    starting_at: {
-                      equals: cursorDate.toISOString(),
-                    },
-                  },
-                  {
-                    id: {
-                      less_than: cursorFixtureId,
-                    },
-                  },
-                ],
-              },
-            ],
-          }
-          sortDirection = '-starting_at' // Newest first when going backward
-        } else {
-          // For 'after', get fixtures chronologically after this one
-          dateFilter = {
-            or: [
-              // Get fixtures with later date
-              {
-                starting_at: {
-                  greater_than: cursorDate.toISOString(),
-                },
-              },
-              // Or fixtures with same date but higher ID (for proper tie-breaking)
-              {
-                and: [
-                  {
-                    starting_at: {
-                      equals: cursorDate.toISOString(),
-                    },
-                  },
-                  {
-                    id: {
-                      greater_than: cursorFixtureId,
-                    },
-                  },
-                ],
-              },
-            ],
-          }
-          sortDirection = 'starting_at' // Oldest first when going forward
-        }
-      } else {
-        // Initial load with no cursor (balanced view)
-        // Special case for initial load - get balanced results
-        return await getBalancedFixtures(numericId, limit, now, includeResults)
-      }
-
-      // Fetch fixtures with cursor-based pagination
-      const result = await payload.find({
-        collection: 'matches',
-        where: {
-          and: [baseQuery, dateFilter],
-        },
-        sort: sortDirection,
-        limit: limit + 1, // Get one extra to determine if there are more results
-        depth: 1,
-      })
-
-      // If we have no results, return empty
-      if (result.docs.length === 0) {
-        return {
-          docs: [],
-          pagination: {
-            totalDocs: 0,
-            totalPages: 0,
-            hasNextPage: false,
-            hasPrevPage: false,
-            nextPageUrl: null,
-            prevPageUrl: null,
-          },
-          nextMatch: null,
-        }
-      }
-
-      // Check if we got an extra item (meaning there are more results in this direction)
-      const hasMore = result.docs.length > limit
-      const matches = result.docs.slice(0, limit).map(transformFixture)
-
-      // Determine before/after pagination
-      let beforeId = null
-      let afterId = null
-
-      if (matches.length > 0) {
-        // First item's ID is used for "before" navigation (to get older fixtures)
-        // Last item's ID is used for "after" navigation (to get newer fixtures)
-        beforeId = matches[0].id
-        if (hasMore) {
-          afterId = matches[matches.length - 1].id
-        }
-      }
-
-      // Find the next upcoming match regardless of pagination
-      let nextMatch = null
-      if (includeResults) {
-        const nextMatchResult = await payload.find({
-          collection: 'matches',
-          where: {
-            and: [
-              {
-                'participants.id': {
-                  equals: numericId,
-                },
-              },
-              {
-                starting_at: {
-                  greater_than: now.toISOString(),
-                },
-              },
-            ],
-          },
-          sort: 'starting_at', // Ascending to get the soonest match
-          limit: 1,
-          depth: 1,
-        })
-
-        nextMatch =
-          nextMatchResult.docs.length > 0 ? transformFixture(nextMatchResult.docs[0]) : null
-      }
-
-      // Build pagination URLs
-      const baseUrl = `/api/v1/team/${teamId}/fixtures?limit=${limit}&type=${type}`
-      // prevPageUrl goes to older fixtures using "before" the first fixture's ID
-      const prevPageUrl = beforeId ? `${baseUrl}&before=${beforeId}` : null
-      // nextPageUrl goes to newer fixtures using "after" the last fixture's ID
-      const nextPageUrl = afterId ? `${baseUrl}&after=${afterId}` : null
-
-      return {
-        docs: matches,
-        pagination: {
-          totalDocs: result.totalDocs || 0,
-          totalPages: 0, // Not relevant for cursor-based pagination
-          hasNextPage: !!afterId,
-          hasPrevPage: !!beforeId,
-          nextPageUrl,
-          prevPageUrl,
-        },
-        nextMatch,
-      }
-    } catch (error) {
-      console.error('Error in getFixtures:', {
-        teamId,
-        options,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-      throw error
-    }
+  ): Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>> {
+    // Use the new combined latest+upcoming fetcher
+    return getTeamFixturesCombined(teamId, options)
   },
 
   async getSquad(teamId: string): Promise<TeamSquadResponse> {
@@ -1554,7 +1453,7 @@ export const teamListDataFetcher: TeamListDataFetcher = {
             page: result.page || page,
             limit: result.limit || limit,
             totalItems: result.totalDocs || 0,
-            totalPages: result.totalPages || 0,
+            pageCount: result.totalPages || 0,
           },
         },
       }
@@ -1568,7 +1467,7 @@ export const teamListDataFetcher: TeamListDataFetcher = {
             page,
             limit,
             totalItems: 0,
-            totalPages: 0,
+            pageCount: 0,
           },
         },
       }

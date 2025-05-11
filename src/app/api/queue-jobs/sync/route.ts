@@ -1,6 +1,7 @@
 import { NINETY_DAYS_MS, ONE_DAY_MS } from '@/constants/time'
 import configPromise from '@payload-config'
-import { getPayload } from 'payload'
+import { getPayload, PayloadRequest } from 'payload'
+import { NextRequest } from 'next/server'
 
 type PayloadTaskSlug =
   | 'inline'
@@ -11,7 +12,7 @@ type PayloadTaskSlug =
   | 'syncMetadataTypes'
   | 'syncCountries'
 
-type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily'
+type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill'
 
 type SyncJob = {
   task: PayloadTaskSlug
@@ -35,11 +36,40 @@ const syncJobs: SyncJob[] = [
   { task: 'syncCountries' },
 ]
 
-export async function syncAllHandler() {
-  const payload = await getPayload({
-    config: configPromise,
-  })
+export async function syncAllHandler(req: NextRequest | PayloadRequest) {
+  const payload = await getPayload({ config: configPromise })
+  let queueParam: string | null = null
 
+  // Support both NextRequest (API route) and PayloadRequest (job system)
+  if ('url' in req) {
+    // NextRequest
+    const urlString = typeof req.url === 'string' ? req.url : ''
+    const url = new URL(urlString)
+    queueParam = url.searchParams.get('queue')
+  } else if ('query' in req) {
+    // PayloadRequest (Express-style)
+    queueParam = (req.query?.queue as string | undefined) || null
+  }
+
+  if (queueParam === 'backfill') {
+    // Only queue the backfill job
+    const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000
+    const startDate = new Date(Date.now() - ONE_YEAR_MS).toISOString().split('T')[0]
+    const endDate = new Date().toISOString().split('T')[0]
+
+    await payload.jobs.queue({
+      task: 'syncMatches',
+      input: { startDate, endDate, backfill: true },
+      queue: 'backfill',
+    })
+
+    return Response.json({
+      message: 'Backfill job has been queued',
+      job: { task: 'syncMatches', queue: 'backfill', startDate, endDate },
+    })
+  }
+
+  // Normal sync logic
   payload.logger.info('Starting full data sync')
 
   const queuedJobs = []

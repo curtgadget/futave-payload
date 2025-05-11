@@ -238,24 +238,76 @@ export type TeamFixture = {
 export type TeamOverviewResponse = TeamBase & {
   squad: TeamSquadResponse
   table: TeamTableResponse
-  fixtures: TeamFixturesResponse
-  results: TeamFixture[]
+  fixtures: TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>
+  results: MinimalTeamFixture[]
   stats: TeamStatsResponse
 }
 
 export type Pagination = {
-  totalDocs: number
-  totalPages: number
+  totalFixtures: number
   hasNextPage: boolean
   hasPrevPage: boolean
   nextPageUrl: string | null
   prevPageUrl: string | null
+  cursor?: string | null
 }
 
-export type TeamFixturesResponse = {
-  docs: TeamFixture[]
-  pagination: Pagination
-  nextMatch: TeamFixture | null
+// Minimal fixture type for UI (Fotmob-style)
+export type MinimalTeamFixture = {
+  id: string | number
+  starting_at: string
+  starting_at_timestamp: number
+  name: string
+  league: {
+    id: number
+    name: string
+    short_code?: string | null
+    image_path?: string | null
+  } | null
+  season: {
+    id: number
+    name: string
+  } | null
+  participants: Array<{
+    id: number
+    name: string
+    short_code?: string | null
+    image_path?: string | null
+    meta?: {
+      location?: string | null
+    }
+  }>
+  final_score?: {
+    home: number
+    away: number
+  } | null
+  state?: {
+    id: number
+    name: string
+    short_name?: string | null
+  } | null
+}
+
+// Minimal next match type for UI card
+export type MinimalNextMatch = {
+  starting_at: string
+  league: { id: number; name: string }
+  home_team: { id: number; name: string; image_path?: string | null }
+  away_team: { id: number; name: string; image_path?: string | null }
+  home_position?: number | null
+  away_position?: number | null
+  home_goals_per_match?: number | null
+  away_goals_per_match?: number | null
+  home_goals_conceded_per_match?: number | null
+  away_goals_conceded_per_match?: number | null
+}
+
+export type TeamFixturesResponse<T = TeamFixture, N = T> = {
+  docs: T[]
+  meta: {
+    pagination: Pagination
+  }
+  nextMatch: N | null
 }
 
 export type TeamSquadResponse = {
@@ -277,7 +329,7 @@ export type TabDataFetcher = {
       type?: 'all' | 'past' | 'upcoming'
       includeResults?: boolean
     },
-  ) => Promise<TeamFixturesResponse>
+  ) => Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>
   getStats: (
     teamId: string,
@@ -294,7 +346,7 @@ export type TeamsListResponse = {
       page: number
       limit: number
       totalItems: number
-      totalPages: number
+      pageCount: number
     }
   }
 }

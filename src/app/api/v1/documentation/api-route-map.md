@@ -60,6 +60,30 @@ Error responses follow this format:
 
 ### Teams
 
+#### Shared Handler Pattern for Team Sub-Resources
+
+The following endpoints are all powered by a shared handler abstraction, ensuring consistent authentication, team ID parsing, error handling, and response formatting:
+- `/v1/team/:id/fixtures`
+- `/v1/team/:id/squad`
+- `/v1/team/:id/table`
+- `/v1/team/:id/stats`
+
+This pattern reduces code duplication and makes it easy to add new sub-resources. Each endpoint specifies its fetcher and, if needed, a query parser.
+
+**Example: Adding a new sub-resource endpoint**
+```typescript
+import { createTeamSubResourceEndpoint } from './utils/createTeamSubResourceEndpoint'
+import { teamDataFetcher } from './services/teamDataFetcher'
+
+export default createTeamSubResourceEndpoint({
+  resource: 'myresource',
+  fetcher: teamDataFetcher.getMyResource,
+  parseQuery: (url) => ({ custom: url.searchParams.get('custom') }), // optional
+})
+```
+
+---
+
 #### GET /api/v1/teams
 
 List all teams with pagination.
@@ -99,14 +123,7 @@ List all teams with pagination.
 
 #### GET /api/v1/team/:id
 
-Get detailed information about a specific team
-
-**Query Parameters:**
-- `tab` (string, optional): Filter data to specific views. Options: `fixtures`, `players`, `stats`
-- `limit` (number, optional): Number of results to return (default: 10)
-- `type` (string, optional): For fixtures tab, filter by match type. Options: `all`, `past`, `upcoming` (default: `all`)
-- `before` (string, optional): Fetch fixtures chronologically before the fixture with this ID
-- `after` (string, optional): Fetch fixtures chronologically after the fixture with this ID
+Get overview information about a specific team.
 
 **Response:**
 ```json
@@ -118,114 +135,7 @@ Get detailed information about a specific team
       "url": "https://example.com/logo.png"
     },
     "stadium": "Stadium Name",
-    // Additional properties depending on tab parameter
-  }
-}
-```
-
-For `fixtures` tab, the response will include a list of past and upcoming matches, pagination, and next match:
-```json
-{
-  "data": {
-    "id": 123,
-    "name": "Team Name",
-    "logo": "https://...",
-    "country": {
-      "id": 456,
-      "name": "Country Name"
-    },
-    "league": {
-      "id": 789,
-      "name": "League Name"
-    },
-    "players": [...],  // Only included in certain views
-    "fixtures": {      // Only included in fixtures view
-      "docs": [        // Array of fixtures
-        {
-          "id": "12345",
-          "starting_at": "2023-05-20T15:00:00Z",
-          "state": {
-            "id": 1,
-            "state": "finished",
-            "name": "Finished",
-            "short_name": "FT"
-          },
-          "league": {
-            "id": 789,
-            "name": "Premier League",
-            "short_code": "PL",
-            "image_path": "https://..."
-          },
-          "season": {
-            "id": 101,
-            "name": "2023/2024"
-          },
-          "participants": [
-            {
-              "id": 123,
-              "name": "Home Team",
-              "short_code": "HOME",
-              "image_path": "https://...",
-              "meta": {
-                "location": "home",
-                "winner": true,
-                "position": 1
-              }
-            },
-            {
-              "id": 124,
-              "name": "Away Team",
-              "short_code": "AWAY",
-              "image_path": "https://...",
-              "meta": {
-                "location": "away",
-                "winner": false,
-                "position": 2
-              }
-            }
-          ],
-          "scores": [
-            {
-              "id": 1001,
-              "type_id": 1525,
-              "participant_id": 123,
-              "score": {
-                "goals": 2,
-                "participant": "home"
-              },
-              "description": "Current Score"
-            },
-            {
-              "id": 1002,
-              "type_id": 1525,
-              "participant_id": 124,
-              "score": {
-                "goals": 1,
-                "participant": "away"
-              },
-              "description": "Current Score"
-            }
-          ],
-          "final_score": {
-            "home": 2,
-            "away": 1
-          }
-        }
-      ],
-      "pagination": {
-        "totalDocs": 50,
-        "totalPages": 5,
-        "limit": 10,
-        "hasPrevPage": true,
-        "hasNextPage": true,
-        "prevPageUrl": "/api/v1/team/123/fixtures?before=12344&limit=10",
-        "nextPageUrl": "/api/v1/team/123/fixtures?after=12346&limit=10"
-      },
-      "nextMatch": {
-        // Structure same as fixture item above, representing the next upcoming match (may be null)
-      }
-    },
-    "stats": {...}      // Only included in stats view
+    // Additional overview properties
   }
 }
 ```
@@ -289,6 +199,82 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
   }
 }
 ```
+
+#### GET /api/v1/team/:id/squad
+
+Get the current squad for a specific team.
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 321,
+      "name": "Player Name",
+      "position": "Forward",
+      "nationality": "Country Name",
+      "team": {
+        "id": 123,
+        "name": "Team Name"
+      },
+      "photo": "https://..."
+    }
+    // More players...
+  ]
+}
+```
+
+#### GET /api/v1/team/:id/table
+
+Get the current league table for the team's league and season.
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "position": 1,
+      "team": {
+        "id": 123,
+        "name": "Team Name"
+      },
+      "points": 75,
+      "played": 38,
+      "won": 24,
+      "drawn": 3,
+      "lost": 11,
+      // ... other table fields
+    }
+    // More teams...
+  ]
+}
+```
+
+#### GET /api/v1/team/:id/stats
+
+Get season stats for a specific team. Optionally filter by season.
+
+**Query Parameters:**
+- `season` (string, optional): Season ID to filter stats
+
+**Response:**
+```json
+{
+  "data": {
+    "matches_played": 38,
+    "wins": 24,
+    "draws": 3,
+    "losses": 11,
+    "goals_scored": 85,
+    "goals_conceded": 40,
+    // ... other stats fields
+  }
+}
+```
+
+---
+
+> **Deprecated:** The previous `tab` query parameter approach (e.g., `/v1/team/:id?tab=fixtures`) is no longer supported. Use the new sub-resource endpoints for all team data views.
 
 ### Leagues
 
