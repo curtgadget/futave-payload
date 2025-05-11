@@ -98,6 +98,49 @@ function getFinalScore(scoresArr: any[], participantId: number) {
   return null
 }
 
+// Helper to group lineup and attach events to each player
+function groupLineupWithEvents(
+  teamId: number,
+  formation: string | null,
+  eventsArr: any[],
+  lineupsArr: any[],
+): any {
+  const teamLineup = lineupsArr.filter((p: any) => p.team_id === teamId)
+  const attachEvents = (player: any) => ({
+    ...player,
+    events: eventsArr.filter((e: any) => e.player_id === player.player_id),
+  })
+  const startingXI = teamLineup
+    .filter((p: any) => p.type_id === 11)
+    .map((p: any) =>
+      attachEvents({
+        player_id: p.player_id,
+        player_name: p.player_name,
+        jersey_number: p.jersey_number,
+        position_id: p.position_id,
+        formation_field: p.formation_field,
+        formation_position: p.formation_position,
+      }),
+    )
+  const bench = teamLineup
+    .filter((p: any) => p.type_id === 12)
+    .map((p: any) =>
+      attachEvents({
+        player_id: p.player_id,
+        player_name: p.player_name,
+        jersey_number: p.jersey_number,
+        position_id: p.position_id,
+        formation_field: p.formation_field,
+        formation_position: p.formation_position,
+      }),
+    )
+  return {
+    formation,
+    startingXI,
+    bench,
+  }
+}
+
 const getMatchHandler: APIRouteV1 = {
   path: '/v1/match/:id/:tab?',
   method: 'get',
@@ -122,11 +165,9 @@ const getMatchHandler: APIRouteV1 = {
         return Response.json({ error: 'Match not found' }, { status: 404 })
       }
 
-      // Log participants and scores for debugging
+      // Debug: print only the top-level keys of match
       // @ts-ignore
-      console.log('DEBUG match.participants:', match?.participants)
-      // @ts-ignore
-      console.log('DEBUG match.scores:', match?.scores)
+      console.log('DEBUG match keys:', Object.keys(match))
 
       // Extract home/away team info from participants
       let homeTeamData: any = null
@@ -171,6 +212,30 @@ const getMatchHandler: APIRouteV1 = {
         // Defensive helpers for country_id
         const safeCountry = (val: any): number | undefined =>
           typeof val === 'number' ? val : undefined
+        // Extract formation from metadata (type_id 159 or type.code === 'formation')
+        let homeFormation: string | null = null
+        let awayFormation: string | null = null
+        if (Array.isArray(match.metadata)) {
+          const formationMeta = match.metadata.find(
+            (m: any) => m.type_id === 159 || (m.type && m.type.code === 'formation'),
+          )
+          if (
+            formationMeta &&
+            typeof (formationMeta as any).values === 'object' &&
+            (formationMeta as any).values !== null
+          ) {
+            homeFormation = (formationMeta as any).values.home || null
+            awayFormation = (formationMeta as any).values.away || null
+          }
+        }
+        const lineupsArr = Array.isArray(match.lineups) ? match.lineups : []
+        const eventsArr = Array.isArray(match.events) ? match.events : []
+        const homeLineup = homeTeamData
+          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr)
+          : { formation: null, startingXI: [], bench: [] }
+        const awayLineup = awayTeamData
+          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr)
+          : { formation: null, startingXI: [], bench: [] }
         const response: MatchDetailResponse = {
           id: match.id,
           league: league
@@ -215,8 +280,38 @@ const getMatchHandler: APIRouteV1 = {
           teamForm,
           historicMatchups,
           metadata: match.metadata || undefined,
+          lineups: { home: homeLineup, away: awayLineup },
         }
         return Response.json({ data: response })
+      }
+
+      // Debug and inspect lineups for the 'lineups' tab
+      if (tabName === 'lineups') {
+        const lineupsArr = Array.isArray(match.lineups) ? match.lineups : []
+        const eventsArr = Array.isArray(match.events) ? match.events : []
+        // Extract formation from metadata (type_id 159 or type.code === 'formation')
+        let homeFormation: string | null = null
+        let awayFormation: string | null = null
+        if (Array.isArray(match.metadata)) {
+          const formationMeta = match.metadata.find(
+            (m: any) => m.type_id === 159 || (m.type && m.type.code === 'formation'),
+          )
+          if (
+            formationMeta &&
+            typeof (formationMeta as any).values === 'object' &&
+            (formationMeta as any).values !== null
+          ) {
+            homeFormation = (formationMeta as any).values.home || null
+            awayFormation = (formationMeta as any).values.away || null
+          }
+        }
+        const home = homeTeamData
+          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr)
+          : { formation: null, startingXI: [], bench: [] }
+        const away = awayTeamData
+          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr)
+          : { formation: null, startingXI: [], bench: [] }
+        return Response.json({ lineups: { home, away } })
       }
 
       // Other tabs (to be implemented)
