@@ -10,6 +10,7 @@ import getTeamFixtures from './teamFixtures'
 import getTeamSquad from './teamSquad'
 import getTeamTable from './teamTable'
 import getTeamStats from './teamStats'
+import getMatchHandler from './match'
 
 export type APIRouteV1 = Omit<Endpoint, 'path'> & {
   path: `/v1/${string}` // This enforces that path must start with '/v1'
@@ -27,6 +28,7 @@ const apiV1Routes: APIRouteV1[] = [
   getTeamSquad,
   getTeamTable,
   getTeamStats,
+  getMatchHandler,
 ]
 
 export default apiV1Routes
