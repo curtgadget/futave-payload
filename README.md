@@ -17,9 +17,9 @@ This repository contains the backend and content management system (CMS) for Fut
 
 ## Technical Stack
 
-- **Framework**: [Payload CMS](https://payloadcms.com/)
+- **Framework**: Next.js with Payload CMS
 - **Database**: MongoDB
-- **Storage**: Local disk storage
+- **Storage**: Payload Cloud
 - **API Integration**: Sportmonks Soccer API
 - **Language**: TypeScript
 
@@ -31,6 +31,7 @@ The CMS is structured around the following main collections:
 - **Matches** - Live and historical match data
 - **Teams** - Team information, statistics, and standings
 - **Players** - Player information and statistics
+- **Coaches** - Coach information
 - **Countries** - Country information for teams and leagues
 - **MetadataTypes** - Supporting metadata for other collections
 - **Media** - Images and media assets
@@ -43,6 +44,7 @@ The system includes automated jobs for:
 - Updating match information
 - Maintaining team statistics and standings
 - Syncing player information
+- Syncing coach information
 - Updating country data
 - Managing metadata types
 
@@ -54,6 +56,7 @@ The CMS exposes RESTful endpoints for:
 - Fetching team statistics and standings
 - Accessing player information
 - Managing media assets
+Additionally, there are specific endpoints for managing data synchronization queues (e.g., `/api/queue-jobs/sync`, `/api/queue-jobs/preview`) and a versioned API (e.g., `/api/v1/...`) for broader data access.
 
 ## Development
 
