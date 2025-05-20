@@ -44,6 +44,10 @@ export type StandingTable = {
   id: number
   name: string
   type: string
+  stage_id: number | null
+  stage_name: string | null
+  group_id: number | null
+  group_name: string | null
   standings: StandingTableRow[]
 }
 

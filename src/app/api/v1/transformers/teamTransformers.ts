@@ -30,6 +30,7 @@ import type {
   TopPlayersStat,
   TopStatCategory,
   MinimalTeamFixture,
+  MinimalNextMatch,
 } from '../types/team'
 
 type RawTeam = {
@@ -513,30 +514,120 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
         )
 
         if (validItems.length > 0) {
-          // Create a simplified standings table structure
-          const standingRows = validItems.map((item: any) => createStandingRow(item))
+          // Group standings by stage_id and group_id to create separate tables
+          const standingsByStageAndGroup = new Map<
+            string,
+            {
+              stage_id: number | null
+              stage_name: string | null
+              group_id: number | null
+              group_name: string | null
+              type_id: number | null
+              rows: any[]
+            }
+          >()
 
-          // If we have valid rows, add them to the result
-          if (standingRows.length > 0) {
-            // Deduplicate standing rows by team_id, keeping the one with the most played matches
-            const uniqueStandingRows = deduplicateStandingRows(standingRows)
+          // First, organize by stage and group
+          validItems.forEach((item) => {
+            // Extract stage and group data more carefully
+            const stage_id = item.stage_id || null
+            // Extract stage name either from direct property or nested object
+            const stage_name = item.stage_name || item.stage?.name || null
+
+            const group_id = item.group_id || null
+            // Extract group name either from direct property or nested object
+            const group_name = item.group?.name || null
+
+            // Extract rule type id if available
+            const type_id = item.rule?.type_id || null
+
+            // Create a unique key for this combination of stage and group
+            const key = `${stage_id || 'null'}_${group_id || 'null'}`
+
+            if (!standingsByStageAndGroup.has(key)) {
+              standingsByStageAndGroup.set(key, {
+                stage_id,
+                stage_name,
+                group_id,
+                group_name,
+                type_id,
+                rows: [],
+              })
+            }
+
+            standingsByStageAndGroup.get(key)!.rows.push(item)
+          })
+
+          // Convert to array of tables
+          const tables: StandingTable[] = []
+          let tableIdCounter = 1
+
+          // Process groups and create tables
+          standingsByStageAndGroup.forEach(
+            ({ stage_id, stage_name, group_id, group_name, type_id, rows }) => {
+              // Create the table name based on available information
+              let tableName = 'League Table'
+
+              // Try to determine table name in this priority:
+              // 1. Use group_name if available
+              // 2. Use stage_name if available
+              // 3. Fallback to default "League Table"
+              if (group_name) {
+                tableName = group_name
+              } else if (stage_name) {
+                tableName = stage_name
+              }
+
+              // Sort rows by position
+              const sortedRows = [...rows].sort((a, b) => {
+                if (typeof a.position === 'number' && typeof b.position === 'number') {
+                  return a.position - b.position
+                }
+                return 0
+              })
+
+              // Transform to standing rows
+              const standingRows = sortedRows.map((item) => createStandingRow(item))
+
+              // Create the table
+              if (standingRows.length > 0) {
+                tables.push({
+                  id: tableIdCounter++,
+                  name: tableName,
+                  type: 'total',
+                  stage_id,
+                  stage_name,
+                  group_id,
+                  group_name,
+                  standings: standingRows,
+                })
+              }
+            },
+          )
+
+          // Sort tables by their ID to maintain a consistent order
+          tables.sort((a, b) => a.id - b.id)
+
+          // If we have tables, add them to the response
+          if (tables.length > 0) {
+            // Find a representative item to extract league_id and season_id
+            const representativeItem =
+              validItems.find(
+                (item) => item.league_id !== undefined || item.season_id !== undefined,
+              ) || validItems[0]
+
+            // Extract stage information from the first group
+            const firstGroupInfo = Array.from(standingsByStageAndGroup.values())[0]
 
             transformedStandings[seasonId] = {
               id: parseInt(seasonId),
               name: `Season ${seasonId}`,
               type: 'league',
-              league_id: validItems[0].league_id || 0,
-              season_id: validItems[0].season_id || parseInt(seasonId),
-              stage_id: validItems[0].stage_id || null,
-              stage_name: validItems[0].stage_name || null,
-              standings: [
-                {
-                  id: 1, // Generate a placeholder ID
-                  name: 'League Table',
-                  type: 'total',
-                  standings: uniqueStandingRows,
-                },
-              ],
+              league_id: representativeItem.league_id || 0,
+              season_id: representativeItem.season_id || parseInt(seasonId),
+              stage_id: firstGroupInfo.stage_id,
+              stage_name: firstGroupInfo.stage_name,
+              standings: tables,
             }
           }
         }
@@ -554,15 +645,17 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
               const rows = table.standings.data
                 .filter((row: any) => row)
                 .map((item: any) => createStandingRow(item, table))
-
-              // Deduplicate the rows
-              const uniqueRows = deduplicateStandingRows(rows)
+                .sort((a: any, b: any) => a.position - b.position) // Sort by position
 
               return {
                 id: table.id,
-                name: table.name,
+                name: table.name || 'League Table',
                 type: table.type || '',
-                standings: uniqueRows,
+                stage_id: table.stage_id || null,
+                stage_name: table.stage_name || null,
+                group_id: table.group_id || null,
+                group_name: table.group?.name || null,
+                standings: rows,
               }
             })
 
@@ -589,63 +682,11 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
 }
 
 /**
- * Helper function to deduplicate standing rows by team_id
- * When multiple entries for the same team exist:
- * 1. Keep the entry with more games played (most recent)
- * 2. If tied, keep the one with higher points (more accurate)
- * 3. Fix positions after removing duplicates
+ * Helper function to sort standings by position
  */
-function deduplicateStandingRows(rows: StandingTableRow[]): StandingTableRow[] {
-  // Group by team_id
-  const teamGroups = new Map<number, StandingTableRow[]>()
-
-  // Group rows by team ID
-  rows.forEach((row) => {
-    if (!teamGroups.has(row.team_id)) {
-      teamGroups.set(row.team_id, [])
-    }
-    teamGroups.get(row.team_id)!.push(row)
-  })
-
-  // For each team, select the entry with the highest games played (most recent)
-  // If tied, select the one with most points
-  const uniqueRows: StandingTableRow[] = []
-  teamGroups.forEach((teamRows) => {
-    // Sort by played (descending), then by points (descending)
-    teamRows.sort((a, b) => {
-      // Prioritize entries with qualification_status
-      if (a.qualification_status && !b.qualification_status) return -1
-      if (!a.qualification_status && b.qualification_status) return 1
-
-      // Then prioritize by played matches (most played first)
-      if (a.played !== b.played) return b.played - a.played
-
-      // If played matches are equal, prioritize by points
-      return b.points - a.points
-    })
-
-    // Take the first (best) entry
-    uniqueRows.push(teamRows[0])
-  })
-
-  // Sort by points (descending) to recreate league table positions
-  uniqueRows.sort((a, b) => {
-    // First by points (descending)
-    if (b.points !== a.points) return b.points - a.points
-
-    // If points are equal, by goal difference (descending)
-    if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference
-
-    // If goal difference is equal, by goals scored (descending)
-    return b.goals_for - a.goals_for
-  })
-
-  // Reassign positions based on the sorted order
-  uniqueRows.forEach((row, index) => {
-    row.position = index + 1
-  })
-
-  return uniqueRows
+function sortStandingsByPosition(rows: StandingTableRow[]): StandingTableRow[] {
+  // Sort by position (ascending)
+  return [...rows].sort((a, b) => a.position - b.position)
 }
 
 /**
@@ -950,7 +991,9 @@ export function transformFixture(rawFixture: any) {
   }
 }
 
-export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse<MinimalTeamFixture> {
+export function transformTeamFixtures(
+  rawTeam: RawTeam,
+): TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch> {
   if (!rawTeam?.upcoming) {
     return {
       docs: [],
@@ -969,6 +1012,60 @@ export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse<Mi
 
   const fixtures = Array.isArray(rawTeam.upcoming) ? rawTeam.upcoming.map(transformFixture) : []
 
+  // Create a minimal next match object that satisfies the MinimalNextMatch interface
+  let nextMatch: MinimalNextMatch | null = null
+
+  if (fixtures.length > 0) {
+    const fixture = fixtures[0]
+    const homeTeam = fixture.participants.find(
+      (p: {
+        id: number
+        name: string
+        image_path: string | null
+        meta?: { location?: string | null }
+      }) => p.meta?.location === 'home',
+    )
+    const awayTeam = fixture.participants.find(
+      (p: {
+        id: number
+        name: string
+        image_path: string | null
+        meta?: { location?: string | null }
+      }) => p.meta?.location === 'away',
+    )
+
+    nextMatch = {
+      starting_at: fixture.starting_at,
+      league: fixture.league
+        ? {
+            id: fixture.league.id,
+            name: fixture.league.name,
+          }
+        : { id: 0, name: '' },
+      home_team: homeTeam
+        ? {
+            id: homeTeam.id,
+            name: homeTeam.name,
+            image_path: homeTeam.image_path,
+          }
+        : { id: 0, name: '', image_path: null },
+      away_team: awayTeam
+        ? {
+            id: awayTeam.id,
+            name: awayTeam.name,
+            image_path: awayTeam.image_path,
+          }
+        : { id: 0, name: '', image_path: null },
+      // Optional fields can be null
+      home_position: null,
+      away_position: null,
+      home_goals_per_match: null,
+      away_goals_per_match: null,
+      home_goals_conceded_per_match: null,
+      away_goals_conceded_per_match: null,
+    }
+  }
+
   return {
     docs: fixtures,
     meta: {
@@ -980,7 +1077,7 @@ export function transformTeamFixtures(rawTeam: RawTeam): TeamFixturesResponse<Mi
         prevPageUrl: null,
       },
     },
-    nextMatch: fixtures.length > 0 ? fixtures[0] : null,
+    nextMatch: nextMatch,
   }
 }
 
