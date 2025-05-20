@@ -10,201 +10,133 @@ The Futave backend uses scheduled and on-demand jobs to synchronize football dat
 
 ## Job Queue Architecture (Powered by Payload CMS)
 
-The Futave backend leverages [Payload CMS's Jobs Queue](https://payloadcms.com/docs/jobs-queue/overview) to manage all Sportmonks sync operations. Payload's queue system allows us to offload long-running or scheduled syncs from the main API server, ensuring non-blocking, scalable, and reliable data ingestion.
+The Futave backend leverages [Payload CMS's Jobs Queue](https://payloadcms.com/docs/jobs-queue/overview) to manage all Sportmonks sync operations. Payload handles job scheduling, execution, retries, and failure handling. Jobs are defined as tasks registered in Payload with specific handlers.
 
-**Key Concepts from Payload Jobs Queue:**
-- **Task:** A function that performs a specific sync operation (e.g., syncing teams, fixtures, etc.).
-- **Job:** An instance of a task (or workflow) with its own payload and execution context.
-- **Workflow:** (Optional) A sequence of tasks that should be run in order, with retry support.
-- **Queue:** A logical grouping of jobs (e.g., "sync", "nightly", etc.).
+#### Key Components of the Job Queue System:
 
-**How We Use It:**
-- Each Sportmonks sync (e.g., `syncTeams`, `syncFixtures`) is implemented as a Payload Task.
-- Jobs are enqueued via Payload's API, either on a schedule (cron), via admin actions, or in response to events.
-- Jobs can be scheduled for future execution, retried on failure, and run in parallel (with concurrency controls).
-- All job logic is kept out of request/response cycles, ensuring fast API performance.
+- **Queue Slots**: Different priority levels for different types of jobs (hourly, nightly, daily)
+- **Task Registry**: Set of registered task handlers that can be invoked by the queue
+- **Job Scheduling**: Both automated (timer-triggered) and manual (API-triggered) job scheduling
+- **Job Progress Tracking**: Monitoring of execution status, errors, and results
+- **Retry Logic**: Automatic retry of failed jobs based on configured policies
+- **Error Handling**: Comprehensive error capture and reporting
 
-**References:**
-- [Payload CMS Jobs Queue Documentation](https://payloadcms.com/docs/jobs-queue/overview)
+## Entities Synced from Sportmonks
 
----
+The following entities are synced from the Sportmonks API:
 
-## Entities Synced
+1. **Leagues**: Competition structures (Premier League, La Liga, etc.)
+2. **Teams**: Clubs participating in leagues
+3. **Matches**: Fixtures/games between teams
+4. **Players**: Athletes registered with teams
+5. **Metadata Types**: Reference data for various entity attributes
+6. **Countries**: Country information used for relationships
+7. **Coaches**: Team coaches and managers
 
-The following core entities are regularly synchronized from Sportmonks:
+## Sync Schedule
 
-- **Leagues**: League metadata, country, and season info
-- **Seasons**: Season details for each league
-- **Teams**: Team info, logos, stadiums, and league associations
-- **Players**: Player profiles, team assignments, and stats
-- **Fixtures**: Match schedules, results, and live updates
-- **Standings**: League tables and rankings
-- **Events**: Match events (goals, cards, substitutions, etc.)
-- **Lineups**: Starting lineups and substitutes for fixtures
-- **Venues**: Stadium and location data
+Jobs are organized into queue types based on frequency and priority:
 
-Each entity may have its own sync handler and job type.
-
----
-
-## Sync Triggers
-
-Sync jobs can be triggered in several ways:
-
-- **Scheduled Jobs**: Periodic cron jobs (e.g., every hour, daily) for regular updates
-- **Manual Triggers**: Admin endpoints or CLI commands to force a sync
-- **Event-Driven**: Webhooks or internal events (e.g., after a fixture finishes)
-
-## Triggering Sync Jobs via API Endpoint
-
-You can trigger a full set of Sportmonks sync jobs using the following endpoint:
-
-### Endpoint
-```
-GET /api/queue-jobs/sync
-```
-
-### How it Works
-- When you call this endpoint, it attempts to queue jobs for all major sync tasks:
-  - `syncLeagues`
-  - `syncTeams`
-  - `syncMatches` (with a date range)
-  - `syncPlayers`
-  - `syncMetadataTypes`
-  - `syncCountries`
-- If a job of the same type is already queued or processing, it will be skipped to avoid duplication.
-- You can trigger a special backfill job by adding the `?queue=backfill` query parameter. This will queue a long-range `syncMatches` job for the past year.
-
-### Example Request
-```http
-GET /api/queue-jobs/sync
-```
-Or for backfill:
-```http
-GET /api/queue-jobs/sync?queue=backfill
-```
-
-### Example Response
-```json
-{
-  "message": "Sync jobs have been processed",
-  "queuedJobs": [
-    { "task": "syncLeagues", "queue": null },
-    { "task": "syncTeams", "queue": null },
-    { "task": "syncMatches", "queue": "hourly" },
-    { "task": "syncPlayers", "queue": "nightly" },
-    { "task": "syncMetadataTypes", "queue": null },
-    { "task": "syncCountries", "queue": null }
-  ],
-  "skippedJobs": []
-}
-```
-If jobs are already running, they will appear in `skippedJobs`.
-
-### Backfill Sync Job
-
-The backfill job is designed to synchronize a large historical range of match data (typically the past year) from Sportmonks. This is useful for initial data loads or when you need to recover missing historical data.
-
-#### How to Trigger
-To queue a backfill job, call the sync endpoint with the `queue=backfill` query parameter:
-
-```http
-GET /api/queue-jobs/sync?queue=backfill
-```
-
-#### What It Does
-- Queues a `syncMatches` job with a date range covering the past year.
-- The job is placed in the `backfill` queue for special handling (e.g., lower priority, longer processing window).
-- Only the backfill job is queued; other sync jobs are skipped.
-
-#### Example Response
-```json
-{
-  "message": "Backfill job has been queued",
-  "job": {
-    "task": "syncMatches",
-    "queue": "backfill",
-    "startDate": "2023-06-01",
-    "endDate": "2024-06-01"
-  }
-}
-```
-
-#### Notes
-- The backfill job is intended for large, potentially slow syncs and may take significant time to complete.
-- Only one backfill job will be queued at a time; if one is already running or queued, new requests will be skipped.
-
-### Previewing the Queue
-You can view the current state of the job queue with:
-```
-GET /api/queue-jobs/preview
-```
-This returns all currently queued and processing jobs, with their status and timing.
-
----
-
-**References:**
-- [API Route Map](mdc:src/app/api/v1/documentation/api-route-map.md)
-- [Sync Job Route Implementation](mdc:src/app/api/queue-jobs/sync/route.ts)
-- [Queue Preview Route](mdc:src/app/api/queue-jobs/preview/route.ts)
-
----
-
-## Task/Job Handling & Queueing
-
-- **Job Queue:** All sync jobs are managed by Payload CMS's built-in Jobs Queue.
-- **Task Definitions:** Each sync operation is a Payload Task (see [Payload Tasks](https://payloadcms.com/docs/jobs-queue/overview#tasks)).
-- **Job Types:** Each entity sync (e.g., `syncTeams`, `syncFixtures`) is a distinct job type.
-- **Handler Pattern:** Each task receives job data (e.g., entity IDs, date ranges), fetches data from Sportmonks, transforms it, and upserts it into the database.
-- **Retry & Error Handling:** Payload handles retries and error logging. Failed jobs can be retried automatically or manually.
-- **Scheduling:** Jobs can be scheduled for future execution using Payload's `waitUntil` property or via cron.
-- **Concurrency:** Multiple jobs can be processed in parallel, with rate limits to respect Sportmonks API quotas.
-
-**Example Handler Registration:**
-```typescript
-import { queueJob } from '@/utilities/queue'
-import { syncTeamsHandler } from '@/sync/handlers/syncTeamsHandler'
-
-queueJob('syncTeams', syncTeamsHandler)
-```
-
-**Example Job Enqueue:**
-```typescript
-import { enqueueJob } from '@/utilities/queue'
-
-enqueueJob('syncTeams', { leagueId: 123 })
-```
-
----
+- **Hourly Queue**: High-frequency updates for time-sensitive data
+- **Daily Queue**: Daily refreshes of relatively stable data
+- **Nightly Queue**: Comprehensive background syncs for large data sets
+- **Backfill Queue**: One-time or on-demand historical data imports
+- **Dev Queue**: Testing queue for development purposes
 
 ## Example Sync Flow: Syncing Teams
 
 1. **Trigger**: Scheduled job or manual trigger enqueues a `syncTeams` job for a league.
-2. **Queue**: The job is added to the queue with payload `{ leagueId }`.
-3. **Handler**: `syncTeamsHandler` fetches teams from Sportmonks for the given league.
-4. **Transform**: Data is mapped to our internal schema.
-5. **Upsert**: Teams are upserted into the database (inserted or updated as needed).
-6. **Result**: Job status is updated (success/failure), and errors are logged if any.
+2. **Queue**: The job is added to the queue with payload `{ leagueId: 123 }`.
+3. **Processing**: When a queue slot is available, Payload invokes the `syncTeamsHandler`.
+4. **API Call**: The handler calls the Sportmonks API to fetch team data for the league.
+5. **Transformation**: Raw API data is transformed into our database schema.
+6. **Storage**: Transformed data is upserted into the database (creating new records or updating existing ones).
+7. **Completion**: Handler returns success status and stats to the job queue.
+
+## Example Sync Flow: Syncing Coaches
+
+1. **Trigger**: Scheduled job or manual trigger enqueues a `syncCoaches` job.
+2. **Queue**: The job is added to the "dev" or "nightly" queue (configurable).
+3. **Processing**: When a queue slot is available, Payload invokes the `syncCoachesHandler`.
+4. **API Call**: The handler calls the Sportmonks API endpoint `/coaches` to fetch coach data.
+5. **Transformation**: Raw API data is transformed using `coach.transformer.ts` into our database schema.
+6. **Storage**: Transformed coach data is upserted into the Coaches collection.
+7. **Completion**: Handler returns success/failure status and statistics to the job queue.
+
+## Implementation Details
+
+### Service Pattern
+
+Each entity follows a consistent service pattern:
+
+1. **Client Endpoints**: API wrapper functions in `src/services/sportmonks/client/endpoints/`
+2. **Transformers**: Data transformation functions in `src/services/sportmonks/transformers/`
+3. **Sync Services**: Sync logic in `src/services/sync/handlers/`
+4. **Task Handlers**: Payload job handlers in `src/tasks/handlers/`
+
+### Error Handling
+
+Sync operations capture and report errors at multiple levels:
+
+- **API Call Errors**: Network issues, rate limits, authorization problems
+- **Transformation Errors**: Data schema mismatches, invalid formats
+- **Database Errors**: Constraint violations, transaction failures
+- **General Errors**: Unexpected exceptions in the sync process
+
+### Adding a New Sync Entity
+
+To add synchronization for a new entity (e.g., transfers, venues):
+
+1. Create a collection in `src/collections/`
+2. Add type definitions in `src/services/sportmonks/client/types/`
+3. Create an endpoint in `src/services/sportmonks/client/endpoints/`
+4. Implement a transformer in `src/services/sportmonks/transformers/`
+5. Create a sync service in `src/services/sync/handlers/`
+6. Add a task handler in `src/tasks/handlers/`
+7. Register the task in `src/payload.config.ts`
+8. Add it to the appropriate queue in `src/app/api/queue-jobs/sync/route.ts`
+
+## Troubleshooting Sync Issues
+
+Common sync issues and resolutions:
+
+- **404 Errors**: Verify API endpoint paths and ensure your subscription includes access to the entity
+- **Rate Limiting**: Check concurrency settings and consider reducing parallel requests
+- **Transformation Errors**: Verify schema alignment with Sportmonks API responses
+- **Missing Relationships**: Ensure dependent entities are synced first (e.g., countries before teams)
+- **Task Timeouts**: For large datasets, consider implementing pagination or chunking
+## MongoDB ID Strategy
+
+In Futave, we use the Sportmonks integer IDs directly as MongoDB `_id` fields rather than using MongoDB's default ObjectIds. This design decision has several important implications.
+
+### Implementation
+
+- Each entity synced from Sportmonks uses the Sportmonks ID as both the `_id` field and the `id` field
+- We implement this in `src/services/sync/base.sync.ts` by explicitly setting `_id: item.id` during document insertion
+- Most collections also include a `sportmonksId` field with the string representation of the ID for compatibility
+
+### Advantages
+
+- **Simplicity**: Using the same ID across systems makes database operations, joins, and lookups more intuitive
+- **Storage efficiency**: Integer IDs use less space than ObjectIds (4 bytes vs 12 bytes)
+- **Query performance**: Equality queries on integer IDs can be slightly faster than on ObjectIds
+- **Readability**: Integer IDs are human-readable and easier to reference in debugging or analytics
+- **API integration**: Maintaining the original ID makes integration with Sportmonks API more straightforward
+
+### Drawbacks
+
+- **Loss of timestamp information**: ObjectIds contain an embedded creation timestamp, which we have to track separately
+- **Sharding considerations**: If we ever shard MongoDB, integer IDs might not distribute as evenly as ObjectIds
+- **No automatic sorting by creation time**: Unlike ObjectIds which naturally sort chronologically
+- **Custom creation workflow**: Creating entities outside the sync process requires careful ID management
+- **Tool compatibility**: Some MongoDB tools or libraries might have optimizations specifically for ObjectId type
+
+### Troubleshooting
+
+- If you see relationship issues with Payload CMS, verify that the integer IDs are being correctly referenced
+- For entities that use a different ID structure, make the appropriate adjustments in both the transformer and sync logic
+- If using MongoDB tools like mongodump/mongorestore, test carefully with integer IDs to ensure proper handling
 
 ---
 
-## Extending/Adding New Syncs
-
-To add a new entity sync:
-1. **Create a handler** in `src/sync/handlers/` (e.g., `syncVenuesHandler.ts`).
-2. **Register the job type** in the queue system.
-3. **Enqueue jobs** as needed (scheduled, manual, or event-driven).
-4. **Document the new sync in this file.**
-
----
-
-## References
-
-- [Queue Utilities](mdc:src/utilities/queue.ts)
-- [Sync Handlers](mdc:src/sync/handlers/)
-- [Sportmonks API Docs](https://docs.sportmonks.com/football/)
-- [API Route Map](mdc:src/app/api/v1/documentation/api-route-map.md)
-
----
-
-> **Note:** This document should be updated whenever new sync jobs or entities are added, or when the sync/job handling pattern changes.
+*This documentation is maintained by the Futave backend team. For questions or to report issues, please contact the development team.*

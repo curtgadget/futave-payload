@@ -19,6 +19,7 @@ export interface Config {
     players: Player;
     'metadata-types': MetadataType;
     countries: Country;
+    coaches: Coach;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -34,6 +35,7 @@ export interface Config {
     players: PlayersSelect<false> | PlayersSelect<true>;
     'metadata-types': MetadataTypesSelect<false> | MetadataTypesSelect<true>;
     countries: CountriesSelect<false> | CountriesSelect<true>;
+    coaches: CoachesSelect<false> | CoachesSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -56,6 +58,7 @@ export interface Config {
       syncPlayers: TaskSyncPlayers;
       syncMetadataTypes: TaskSyncMetadataTypes;
       syncCountries: TaskSyncCountries;
+      syncCoaches: TaskSyncCoaches;
       inline: {
         input: unknown;
         output: unknown;
@@ -623,6 +626,46 @@ export interface Country {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "coaches".
+ */
+export interface Coach {
+  id: number;
+  /**
+   * Unique ID from Sportmonks
+   */
+  sportmonksId: string;
+  name: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  dateOfBirth?: string | null;
+  gender?: ('male' | 'female') | null;
+  /**
+   * Image URL from Sportmonks
+   */
+  image?: string | null;
+  country?: (number | null) | Country;
+  nationality?: (number | null) | Country;
+  /**
+   * Teams this coach has managed
+   */
+  teams?:
+    | {
+        teamId: number | Team;
+        active?: boolean | null;
+        startDate?: string | null;
+        endDate?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * When this record was last updated
+   */
+  lastUpdated?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -680,7 +723,8 @@ export interface PayloadJob {
           | 'syncMatches'
           | 'syncPlayers'
           | 'syncMetadataTypes'
-          | 'syncCountries';
+          | 'syncCountries'
+          | 'syncCoaches';
         taskID: string;
         input?:
           | {
@@ -714,7 +758,16 @@ export interface PayloadJob {
       }[]
     | null;
   taskSlug?:
-    | ('inline' | 'syncLeagues' | 'syncTeams' | 'syncMatches' | 'syncPlayers' | 'syncMetadataTypes' | 'syncCountries')
+    | (
+        | 'inline'
+        | 'syncLeagues'
+        | 'syncTeams'
+        | 'syncMatches'
+        | 'syncPlayers'
+        | 'syncMetadataTypes'
+        | 'syncCountries'
+        | 'syncCoaches'
+      )
     | null;
   queue?: string | null;
   waitUntil?: string | null;
@@ -760,6 +813,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'countries';
         value: number | Country;
+      } | null)
+    | ({
+        relationTo: 'coaches';
+        value: number | Coach;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -993,6 +1050,34 @@ export interface CountriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "coaches_select".
+ */
+export interface CoachesSelect<T extends boolean = true> {
+  id?: T;
+  sportmonksId?: T;
+  name?: T;
+  firstName?: T;
+  lastName?: T;
+  dateOfBirth?: T;
+  gender?: T;
+  image?: T;
+  country?: T;
+  nationality?: T;
+  teams?:
+    | T
+    | {
+        teamId?: T;
+        active?: T;
+        startDate?: T;
+        endDate?: T;
+        id?: T;
+      };
+  lastUpdated?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
@@ -1158,6 +1243,25 @@ export interface TaskSyncMetadataTypes {
  * via the `definition` "TaskSyncCountries".
  */
 export interface TaskSyncCountries {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncCoaches".
+ */
+export interface TaskSyncCoaches {
   input?: unknown;
   output: {
     message?: string | null;

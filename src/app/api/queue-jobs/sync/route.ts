@@ -11,8 +11,9 @@ type PayloadTaskSlug =
   | 'syncPlayers'
   | 'syncMetadataTypes'
   | 'syncCountries'
+  | 'syncCoaches'
 
-type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill'
+type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill' | 'dev'
 
 type SyncJob = {
   task: PayloadTaskSlug
@@ -34,6 +35,7 @@ const syncJobs: SyncJob[] = [
   { task: 'syncPlayers', queue: 'nightly' },
   { task: 'syncMetadataTypes' },
   { task: 'syncCountries' },
+  { task: 'syncCoaches', queue: 'nightly' },
 ]
 
 export async function syncAllHandler(req: NextRequest | PayloadRequest) {
@@ -66,6 +68,14 @@ export async function syncAllHandler(req: NextRequest | PayloadRequest) {
     return Response.json({
       message: 'Backfill job has been queued',
       job: { task: 'syncMatches', queue: 'backfill', startDate, endDate },
+    })
+  }
+
+  // If the dev queue is requested, handle dev-specific jobs
+  if (queueParam === 'dev') {
+    // Currently no dev queue jobs - placeholder for future dev testing
+    return Response.json({
+      message: 'No dev queue jobs configured',
     })
   }
 

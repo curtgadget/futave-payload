@@ -172,14 +172,17 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
         if (itemsToCreate.length > 0) {
           try {
             // Direct MongoDB insert for better performance with large datasets
-            // Ensure _id field is set to the numerical id for consistency
+            // Use the Sportmonks ID as the MongoDB _id field (integer instead of ObjectId)
             const result = (await payload.db.collections[syncOptions.collection].insertMany(
-              itemsToCreate.map((item) => ({
-                ...item,
-                _id: item.id, // Set _id to match the numerical id
-                createdAt: new Date(),
-                updatedAt: new Date(),
-              })),
+              itemsToCreate.map((item) => {
+                // We intentionally set _id to the same value as id (the Sportmonks ID)
+                return {
+                  _id: item.id, // Use the integer ID from Sportmonks directly as _id
+                  ...item,
+                  createdAt: new Date(),
+                  updatedAt: new Date(),
+                }
+              }),
               { ordered: false }, // Continue on error
             )) as unknown as { insertedCount?: number }
 

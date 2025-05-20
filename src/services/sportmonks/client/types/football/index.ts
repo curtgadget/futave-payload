@@ -46,6 +46,30 @@ export type SportmonksTeam = {
   standings?: unknown
 }
 
+export type SportmonksCoach = {
+  id: number
+  sport_id: number
+  country_id?: number
+  nationality_id?: number
+  name: string
+  display_name?: string
+  firstname?: string
+  lastname?: string
+  date_of_birth?: string
+  gender?: string
+  image_path?: string
+  country?: { id: number; name: string }
+  nationality?: { id: number; name: string }
+  teams?: Array<{
+    id: number
+    name: string
+    active?: boolean
+    start_date?: string
+    end_date?: string
+  }>
+  statistics?: unknown
+}
+
 export type SportmonksPlayer = {
   id: number
   sport_id: number
