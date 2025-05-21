@@ -95,9 +95,15 @@ export type TeamPlayer = {
 }
 
 export type TeamCoach = {
-  id: string
+  id: number
   name: string
-  // Add other coach fields here
+  firstName?: string
+  lastName?: string
+  dateOfBirth?: Date
+  gender?: string
+  image?: string
+  country_id?: number
+  nationality_id?: number
 }
 
 export type PlayerSeasonStats = {

@@ -1161,15 +1161,22 @@ export function transformCoach(rawCoach: any): TeamCoach {
   if (!rawCoach) {
     // Return a placeholder coach object when data is missing
     return {
-      id: '0',
+      id: 0,
       name: 'Unknown Coach',
     }
   }
 
   // Handle when id or name is missing
   return {
-    id: String(rawCoach.id || 0),
+    id: rawCoach.id,
     name: rawCoach.name || 'Unknown Coach',
+    firstName: rawCoach.firstName,
+    lastName: rawCoach.lastName,
+    dateOfBirth: rawCoach.dateOfBirth,
+    gender: rawCoach.gender,
+    image: rawCoach.image,
+    country_id: rawCoach.country,
+    nationality_id: rawCoach.nationality,
   }
 }
 
