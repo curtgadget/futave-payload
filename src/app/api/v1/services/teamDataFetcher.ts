@@ -9,6 +9,7 @@ import {
   transformTeamStats,
   transformTeamTable,
   transformFixture,
+  transformCoach,
 } from '../transformers/teamTransformers'
 import type {
   TabDataFetcher,
@@ -30,6 +31,25 @@ import type {
   MinimalNextMatch,
 } from '../types/team'
 
+// Team raw data types
+type RawTeam = {
+  id: number
+  players?: Array<{
+    player_id: number
+    captain?: boolean
+    jersey_number?: number
+    position_id?: number
+    detailed_position_id?: number
+  }>
+  coaches?: Array<{
+    coach_id: number
+    active?: boolean
+    start?: string
+    end?: string
+    temporary?: boolean
+  }>
+}
+
 // Create a utility function to validate team ID
 function validateTeamId(teamId: string): number {
   const numericId = parseInt(teamId, 10)
@@ -37,6 +57,156 @@ function validateTeamId(teamId: string): number {
     throw new Error('Invalid team ID format')
   }
   return numericId
+}
+
+// Helper function to get empty squad response
+function getEmptySquadResponse(): TeamSquadResponse {
+  return {
+    players: {
+      goalkeepers: [],
+      defenders: [],
+      midfielders: [],
+      forwards: [],
+    },
+    coaches: [],
+  }
+}
+
+// Helper function to get and process coach data
+async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
+  // If no coaches, return empty array
+  if (!team.coaches || team.coaches.length === 0) {
+    return []
+  }
+
+  // Get all coach IDs from the team
+  const coachIds = team.coaches.map((coach: any) => coach.coach_id)
+
+  // Fetch coaches from the coaches collection
+  const coachesResult = await payload.find({
+    collection: 'coaches',
+    where: {
+      id: { in: coachIds },
+    },
+  })
+
+  // Transform and merge coach data
+  const transformedCoaches = coachesResult.docs.map((coach) => transformCoach(coach))
+  return transformedCoaches.map((coach) => {
+    // Find matching coach data from team.coaches
+    const teamCoachData = team.coaches.find((tc: any) => tc.coach_id === coach.id)
+
+    if (teamCoachData) {
+      // Merge the data, preserving the transformed coach data but adding team-specific fields
+      return {
+        ...coach,
+        ...(teamCoachData.active !== undefined && { active: teamCoachData.active }),
+        ...(teamCoachData.start && { start: teamCoachData.start }),
+        ...(teamCoachData.end && { end: teamCoachData.end }),
+        ...(teamCoachData.temporary !== undefined && { temporary: teamCoachData.temporary }),
+      }
+    }
+
+    return coach
+  })
+}
+
+// Helper function to get and process player data
+async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosition> {
+  // If no players, return empty structure
+  if (!team.players || team.players.length === 0) {
+    return {
+      goalkeepers: [],
+      defenders: [],
+      midfielders: [],
+      forwards: [],
+    }
+  }
+
+  // Get all player IDs from the team
+  const playerIds = team.players.map((player: any) => player.player_id)
+
+  // Fetch detailed player information
+  const playersResult = await payload.find({
+    collection: 'players',
+    where: {
+      id: {
+        in: playerIds,
+      },
+    },
+    pagination: false,
+  })
+
+  // Create a map of player details for quick lookup
+  const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
+
+  // Initialize squad structure by position groups
+  const squadByPosition: TeamSquadByPosition = {
+    goalkeepers: [],
+    defenders: [],
+    midfielders: [],
+    forwards: [],
+  }
+
+  // Transform and organize players by position
+  organizePlayersByPosition(team.players, playerDetailsMap, squadByPosition)
+  
+  // Sort each position group
+  sortPlayerGroups(squadByPosition)
+  
+  return squadByPosition
+}
+
+// Helper function to transform and organize players by position
+function organizePlayersByPosition(
+  squadMembers: any[],
+  playerDetailsMap: Map<number, any>,
+  squadByPosition: TeamSquadByPosition
+): void {
+  squadMembers.forEach((squadMember) => {
+    const playerDetails = playerDetailsMap.get(squadMember.player_id)
+    let transformedPlayer: TeamPlayer
+
+    if (!playerDetails) {
+      // Handle missing player details
+      transformedPlayer = {
+        id: String(squadMember.player_id),
+        name: '',
+        captain: squadMember.captain,
+        jersey_number: squadMember.jersey_number,
+        position_id: squadMember.position_id,
+        detailed_position_id: squadMember.detailed_position_id,
+      }
+    } else {
+      // Transform player details and override with squad-specific data
+      const basePlayer = transformPlayer(playerDetails)
+      transformedPlayer = {
+        ...basePlayer,
+        captain: squadMember.captain ?? basePlayer.captain,
+        jersey_number: squadMember.jersey_number ?? basePlayer.jersey_number,
+        position_id: squadMember.position_id ?? basePlayer.position_id,
+        detailed_position_id: squadMember.detailed_position_id ?? basePlayer.detailed_position_id,
+      }
+    }
+
+    // Add to the appropriate position group
+    const group = getPositionGroup(transformedPlayer.position_id)
+    squadByPosition[group].push(transformedPlayer)
+  })
+}
+
+// Helper function to sort player groups
+function sortPlayerGroups(squadByPosition: TeamSquadByPosition): void {
+  Object.values(squadByPosition).forEach((players) => {
+    players.sort((a, b) => {
+      // Put players with jersey numbers first
+      if (a.jersey_number && !b.jersey_number) return -1
+      if (!a.jersey_number && b.jersey_number) return 1
+      if (a.jersey_number && b.jersey_number) return a.jersey_number - b.jersey_number
+      // If no jersey numbers, sort by name
+      return a.name.localeCompare(b.name)
+    })
+  })
 }
 
 /**
@@ -408,129 +578,40 @@ export const teamDataFetcher: TabDataFetcher = {
   },
 
   async getSquad(teamId: string): Promise<TeamSquadResponse> {
-    const payload = await getPayload({ config })
+    try {
+      const payload = await getPayload({ config })
 
-    type RawTeam = {
-      id: number
-      players?: Array<{
-        player_id: number
-        captain?: boolean
-        jersey_number?: number
-        position_id?: number
-        detailed_position_id?: number
-      }>
-    }
-
-    // First get the team data
-    const teamResult = await payload.find({
-      collection: 'teams',
-      where: {
-        id: {
-          equals: parseInt(teamId, 10),
+      // First get the team data
+      const teamResult = await payload.find({
+        collection: 'teams',
+        where: {
+          id: {
+            equals: parseInt(teamId, 10),
+          },
         },
-      },
-      depth: 1,
-    })
-
-    const team = teamResult.docs[0] as unknown as RawTeam
-
-    if (!team || !team.players) {
-      return {
-        players: {
-          goalkeepers: [],
-          defenders: [],
-          midfielders: [],
-          forwards: [],
-        },
-        coaches: [],
-      }
-    }
-
-    // Get all player IDs from the team
-    const playerIds = team.players.map((player) => player.player_id)
-
-    if (playerIds.length === 0) {
-      return {
-        players: {
-          goalkeepers: [],
-          defenders: [],
-          midfielders: [],
-          forwards: [],
-        },
-        coaches: [],
-      }
-    }
-
-    // Fetch detailed player information with pagination handling
-    const playersResult = await payload.find({
-      collection: 'players',
-      where: {
-        id: {
-          in: playerIds,
-        },
-      },
-      pagination: false,
-    })
-
-    // Create a map of player details for quick lookup
-    const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
-
-    // Initialize squad structure
-    const squadByPosition: TeamSquadByPosition = {
-      goalkeepers: [],
-      defenders: [],
-      midfielders: [],
-      forwards: [],
-    }
-
-    // Transform and group players by position
-    team.players.forEach((squadMember) => {
-      const playerDetails = playerDetailsMap.get(squadMember.player_id)
-      let transformedPlayer: TeamPlayer
-
-      if (!playerDetails) {
-        transformedPlayer = {
-          id: String(squadMember.player_id),
-          name: '',
-          captain: squadMember.captain,
-          jersey_number: squadMember.jersey_number,
-          position_id: squadMember.position_id,
-          detailed_position_id: squadMember.detailed_position_id,
-        }
-      } else {
-        // Transform the player details
-        const basePlayer = transformPlayer(playerDetails)
-
-        // Override with squad-specific data
-        transformedPlayer = {
-          ...basePlayer,
-          captain: squadMember.captain ?? basePlayer.captain,
-          jersey_number: squadMember.jersey_number ?? basePlayer.jersey_number,
-          position_id: squadMember.position_id ?? basePlayer.position_id,
-          detailed_position_id: squadMember.detailed_position_id ?? basePlayer.detailed_position_id,
-        }
-      }
-
-      // Add to the appropriate position group
-      const group = getPositionGroup(transformedPlayer.position_id)
-      squadByPosition[group].push(transformedPlayer)
-    })
-
-    // Sort each position group by jersey number if available
-    Object.values(squadByPosition).forEach((players) => {
-      players.sort((a, b) => {
-        // Put players with jersey numbers first
-        if (a.jersey_number && !b.jersey_number) return -1
-        if (!a.jersey_number && b.jersey_number) return 1
-        if (a.jersey_number && b.jersey_number) return a.jersey_number - b.jersey_number
-        // If no jersey numbers, sort by name
-        return a.name.localeCompare(b.name)
+        depth: 1,
       })
-    })
 
-    return {
-      players: squadByPosition,
-      coaches: [], // We're not handling coaches in this update
+      const team = teamResult.docs[0]
+
+      // Return empty response if no team found
+      if (!team) {
+        return getEmptySquadResponse()
+      }
+
+      // Process coaches
+      const coaches = await getTeamCoaches(payload, team)
+      
+      // Process players
+      const players = await getTeamPlayers(payload, team)
+      
+      return {
+        players,
+        coaches,
+      }
+    } catch (error) {
+      console.error('Error fetching team squad:', error)
+      return getEmptySquadResponse()
     }
   },
 
