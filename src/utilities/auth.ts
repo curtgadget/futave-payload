@@ -52,8 +52,8 @@ export function createAuthMiddleware() {
     console.log('📝 Request URL:', req.url)
     console.log('📝 Request Method:', req.method)
 
-    // Bypass authentication in development mode
-    if (process.env.NODE_ENV === 'development') {
+    // Bypass authentication in development mode (unless FORCE_AUTH is set)
+    if (process.env.NODE_ENV === 'development' && !process.env.FORCE_AUTH) {
       console.log('🚀 Development mode: Bypassing API key authentication')
       return null // Continue to next middleware/handler
     }
