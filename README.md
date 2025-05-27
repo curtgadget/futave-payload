@@ -58,6 +58,29 @@ The CMS exposes RESTful endpoints for:
 - Managing media assets
 Additionally, there are specific endpoints for managing data synchronization queues (e.g., `/api/queue-jobs/sync`, `/api/queue-jobs/preview`) and a versioned API (e.g., `/api/v1/...`) for broader data access.
 
+## Environment Variables
+
+Before running the application, create a `.env` file in the root directory with the following required variables:
+
+```env
+# Required
+DATABASE_URI=mongodb://localhost:27017/futave
+PAYLOAD_SECRET=your-payload-secret-key-here
+SPORTMONKS_API_KEY=your-sportmonks-api-key-here
+
+# Optional (handled automatically by Next.js/deployment platforms)
+NEXT_RUNTIME=nodejs
+CI=false
+```
+
+### Variable Descriptions
+
+- `DATABASE_URI` - MongoDB connection string. For local development with Docker: `mongodb://mongo:27017/futave`
+- `PAYLOAD_SECRET` - A secure secret key for Payload CMS authentication and encryption
+- `SPORTMONKS_API_KEY` - Your API key from [Sportmonks](https://sportmonks.com/) for fetching soccer data
+- `NEXT_RUNTIME` - Next.js runtime environment (automatically set by Next.js)
+- `CI` - Continuous Integration flag (automatically set by CI/CD platforms)
+
 ## Development
 
 This backend system is designed to support multiple frontend clients (React Native, Next.js, etc.) while maintaining a single source of truth for soccer data.
