@@ -80,6 +80,33 @@ CI=false
 - `SPORTMONKS_API_KEY` - Your API key from [Sportmonks](https://sportmonks.com/) for fetching soccer data
 - `NEXT_RUNTIME` - Next.js runtime environment (automatically set by Next.js)
 - `CI` - Continuous Integration flag (automatically set by CI/CD platforms)
+- `FORCE_AUTH` - Set to `true` to test API key authentication in development mode
+
+## API Authentication
+
+The API endpoints under `/api/v1/` require API key authentication in production. 
+
+### Setting up API Keys
+
+1. **Access the admin panel**: Navigate to `http://localhost:3000/admin` (or your deployment URL)
+2. **Create or edit a user**: Go to the Users collection
+3. **Enable API Key**: Check the "Enable API Key" option in the user form
+4. **Copy the generated key**: Payload will generate a unique API key for that user
+
+### Using API Keys
+
+Include the API key in the Authorization header:
+
+```bash
+curl -H "Authorization: API-Key your-generated-key-here" \
+     http://localhost:3000/api/v1/leagues
+```
+
+### Development vs Production
+
+- **Development mode**: API key authentication is bypassed by default (when `NODE_ENV=development`)
+- **Test authentication locally**: Set `FORCE_AUTH=true` in your `.env` file to test API key authentication in development
+- **Production**: API key authentication is always enforced
 
 ## Development
 
