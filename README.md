@@ -71,6 +71,7 @@ SPORTMONKS_API_KEY=your-sportmonks-api-key-here
 # Optional (handled automatically by Next.js/deployment platforms)
 NEXT_RUNTIME=nodejs
 CI=false
+FORCE_AUTH=true
 ```
 
 ### Variable Descriptions
@@ -84,7 +85,7 @@ CI=false
 
 ## API Authentication
 
-The API endpoints under `/api/v1/` require API key authentication in production. 
+The API endpoints under `/api/v1/` require API key authentication in production.
 
 ### Setting up API Keys
 
