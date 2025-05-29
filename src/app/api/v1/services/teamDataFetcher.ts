@@ -111,6 +111,23 @@ async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
   })
 }
 
+// Helper function to fetch position metadata
+async function getPositionMetadata(payload: any, positionIds: number[]): Promise<Map<number, any>> {
+  if (positionIds.length === 0) return new Map()
+
+  try {
+    const metadataResult = await payload.db.collections['metadata-types']
+      .find({ _id: { $in: positionIds } })
+      .lean()
+      .exec()
+
+    return new Map(metadataResult.map((metadata: any) => [metadata._id, metadata]))
+  } catch (error) {
+    console.error('Error fetching position metadata:', error)
+    return new Map()
+  }
+}
+
 // Helper function to get and process player data
 async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosition> {
   // If no players, return empty structure
@@ -140,6 +157,16 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   // Create a map of player details for quick lookup
   const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
 
+  // Collect all unique position IDs for metadata lookup
+  const positionIds = new Set<number>()
+  team.players.forEach((player: any) => {
+    if (player.position_id) positionIds.add(player.position_id)
+    if (player.detailed_position_id) positionIds.add(player.detailed_position_id)
+  })
+
+  // Fetch position metadata
+  const positionMetadata = await getPositionMetadata(payload, Array.from(positionIds))
+
   // Initialize squad structure by position groups
   const squadByPosition: TeamSquadByPosition = {
     goalkeepers: [],
@@ -149,7 +176,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   }
 
   // Transform and organize players by position
-  organizePlayersByPosition(team.players, playerDetailsMap, squadByPosition)
+  organizePlayersByPosition(team.players, playerDetailsMap, squadByPosition, positionMetadata)
   
   // Sort each position group
   sortPlayerGroups(squadByPosition)
@@ -161,7 +188,8 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
 function organizePlayersByPosition(
   squadMembers: any[],
   playerDetailsMap: Map<number, any>,
-  squadByPosition: TeamSquadByPosition
+  squadByPosition: TeamSquadByPosition,
+  positionMetadata: Map<number, any>,
 ): void {
   squadMembers.forEach((squadMember) => {
     const playerDetails = playerDetailsMap.get(squadMember.player_id)
@@ -186,6 +214,21 @@ function organizePlayersByPosition(
         jersey_number: squadMember.jersey_number ?? basePlayer.jersey_number,
         position_id: squadMember.position_id ?? basePlayer.position_id,
         detailed_position_id: squadMember.detailed_position_id ?? basePlayer.detailed_position_id,
+      }
+    }
+
+    // Add position names from metadata
+    if (transformedPlayer.position_id) {
+      const positionMeta = positionMetadata.get(transformedPlayer.position_id)
+      if (positionMeta) {
+        transformedPlayer.position_name = positionMeta.name
+      }
+    }
+
+    if (transformedPlayer.detailed_position_id) {
+      const detailedPositionMeta = positionMetadata.get(transformedPlayer.detailed_position_id)
+      if (detailedPositionMeta) {
+        transformedPlayer.detailed_position_name = detailedPositionMeta.name
       }
     }
 

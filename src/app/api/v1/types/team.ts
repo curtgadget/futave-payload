@@ -80,6 +80,8 @@ export type TeamPlayer = {
   name: string
   position_id?: number
   detailed_position_id?: number
+  position_name?: string // User-friendly position name from metadata
+  detailed_position_name?: string // User-friendly detailed position name from metadata
   common_name?: string
   firstname?: string
   lastname?: string
