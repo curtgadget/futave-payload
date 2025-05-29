@@ -84,3 +84,80 @@ Required:
 - `DATABASE_URI`: MongoDB connection string
 - `PAYLOAD_SECRET`: Secret key for Payload CMS
 - `SPORTMONKS_API_KEY`: API key for Sportmonks football data
+
+## Development Guidelines
+
+### Technology Stack Expertise
+- **Backend**: Payload CMS, MongoDB, Node.js, Express, TypeScript
+- **Frontend**: Next.js, React, React Native, Remix.js, TypeScript
+- **Database**: MongoDB, Mongoose, MongoDB Atlas, aggregation pipelines
+- **APIs**: RESTful APIs, GraphQL, Webhook integrations
+
+### Payload CMS Patterns
+- Structure collections with clear relationships and field validation
+- Implement field-level access control and permissions
+- Create reusable field groups and blocks for content modeling
+- Follow Payload hooks pattern for extending functionality
+- Implement custom endpoints instead of overriding core functionality
+- Use migrations for database schema changes
+- Organize collections by domain/feature
+- Implement proper upload handling and image processing
+
+### File Structure Conventions
+- Collections: `src/collections/{feature}.ts`
+- Globals: `src/globals/{feature}.ts`
+- Fields: `src/fields/{type}.ts`
+- Hooks: `src/hooks/{collection}/{operation}.ts`
+- Endpoints: `src/endpoints/{feature}.ts`
+- Utilities: `src/utilities/{function}.ts`
+
+### MongoDB Best Practices
+- Design schemas with proper indexing for performance
+- Use aggregation pipelines for complex data transformations
+- Implement proper error handling for database operations
+- Follow data validation at both application and database levels
+- Consider document size limits when designing schemas
+- Use MongoDB transactions for operations requiring atomicity
+- Implement pagination for large datasets
+
+### TypeScript Code Style
+- Use TypeScript for all code; prefer types over interfaces except for public APIs
+- Create precise types that reflect data models
+- Avoid 'any' or 'unknown'; look for existing type definitions
+- Avoid type assertions ('as' or '!') unless absolutely necessary
+- Use mapped and conditional types for advanced transformations
+- Export types from central locations for reuse
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (isLoaded, hasError)
+
+### Naming Conventions
+- Prefer named exports for components and utilities
+- PascalCase for components, interfaces, and types
+- camelCase for variables, functions, and methods
+- Prefix GraphQL query files with 'use' (e.g., useSiteMetadata.ts)
+- Use meaningful names describing function/variable purpose
+
+### Security Requirements
+- Implement proper authentication and authorization
+- Sanitize user inputs to prevent injection attacks
+- Use environment variables for sensitive configuration
+- Implement rate limiting to prevent abuse
+- Follow principle of least privilege for API access
+- Use HTTPS for all communications
+- Validate and sanitize inputs, especially from external sources
+
+### Performance Optimization
+- Optimize database queries with proper indexing
+- Implement caching strategies for frequently accessed data
+- Use lazy loading and pagination for large datasets
+- Optimize image and asset delivery
+- Use server-side rendering or static generation when appropriate
+- Monitor and optimize API response times
+
+### Testing Strategy
+- Write unit tests for business logic
+- Implement integration tests for API endpoints
+- Use mocking for external dependencies
+- Write end-to-end tests for critical user flows
+- Follow test-driven development when appropriate
