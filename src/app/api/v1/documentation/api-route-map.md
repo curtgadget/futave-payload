@@ -142,14 +142,13 @@ Get overview information about a specific team.
 
 #### GET /api/v1/team/:id/fixtures
 
-Get fixtures/results for a specific team with cursor-based pagination for easy chronological navigation.
+Get fixtures/results for a specific team optimized for mobile and web app UX. Smart default shows upcoming fixtures when available, otherwise shows past results.
 
 **Query Parameters:**
-- `limit` (number, optional): Number of fixtures to return (default: 10)
-- `before` (string, optional): Fetch fixtures chronologically before the fixture with this ID
-- `after` (string, optional): Fetch fixtures chronologically after the fixture with this ID
-- `type` (string, optional): Filter by match type. Options: `all`, `past`, `upcoming` (default: `all`)
-- `includeResults` (boolean, optional): Whether to include upcoming match in response (default: true)
+- `page` (number, optional): Page number for pagination (default: 1)
+- `limit` (number, optional): Number of fixtures to return (default: 10, max: 100)
+- `type` (string, optional): Filter by match type. Options: `all`, `past`, `upcoming` (default: smart auto-detection)
+- `includeNextMatch` (boolean, optional): Whether to include next upcoming match details in response (default: false)
 
 **Response:**
 ```json
@@ -158,47 +157,99 @@ Get fixtures/results for a specific team with cursor-based pagination for easy c
     {
       "id": "12345",
       "starting_at": "2023-05-20T15:00:00Z",
+      "starting_at_timestamp": 1684594800,
+      "name": "Team A vs Team B",
       "state": {
         "id": 1,
-        "state": "finished",
         "name": "Finished",
         "short_name": "FT"
       },
-      "league": { "id": 789, "name": "Premier League", "short_code": "PL" },
+      "league": {
+        "id": 789,
+        "name": "Premier League",
+        "short_code": "PL",
+        "image_path": "https://example.com/league.png"
+      },
       "season": { "id": 101, "name": "2023/2024" },
       "participants": [
         {
-          "id": "123",
+          "id": 123,
           "name": "Team A",
           "short_code": "TAM",
-          "score": 2,
-          "is_home": true
+          "image_path": "https://example.com/team-a.png",
+          "meta": { "location": "home" }
         },
         {
-          "id": "456",
+          "id": 456,
           "name": "Team B",
           "short_code": "TBM",
-          "score": 1,
-          "is_home": false
+          "image_path": "https://example.com/team-b.png",
+          "meta": { "location": "away" }
         }
       ],
-      "venue": { "id": "789", "name": "Stadium Name" }
+      "final_score": {
+        "home": 2,
+        "away": 1
+      }
     }
     // More fixtures...
   ],
-  "pagination": {
-    "totalDocs": 42,
-    "totalPages": 0, // Not relevant for cursor-based pagination
-    "hasNextPage": true,
-    "hasPrevPage": true,
-    "nextPageUrl": "/api/v1/team/123/fixtures?after=12346&limit=10",
-    "prevPageUrl": "/api/v1/team/123/fixtures?before=12344&limit=10"
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 15,
+      "totalPages": 2,
+      "type": "upcoming",
+      "hasMorePages": true,
+      "hasPreviousPages": false,
+      "nextPage": "/api/v1/team/123/fixtures?page=2&limit=10&type=upcoming",
+      "previousPage": null,
+      "hasNewer": true,
+      "hasOlder": true,
+      "newerUrl": "/api/v1/team/123/fixtures?page=2&limit=10&type=upcoming",
+      "olderUrl": "/api/v1/team/123/fixtures?page=1&limit=10&type=past"
+    }
   },
   "nextMatch": {
-    // Details of the next upcoming match (structure same as fixture objects above)
+    "starting_at": "2023-05-25T19:30:00Z",
+    "league": { "id": 789, "name": "Premier League" },
+    "home_team": {
+      "id": 123,
+      "name": "Team A",
+      "image_path": "https://example.com/team-a.png"
+    },
+    "away_team": {
+      "id": 789,
+      "name": "Team C",
+      "image_path": "https://example.com/team-c.png"
+    },
+    "home_position": 3,
+    "away_position": 7,
+    "home_goals_per_match": 2.1,
+    "away_goals_per_match": 1.8,
+    "home_goals_conceded_per_match": 1.2,
+    "away_goals_conceded_per_match": 1.5
   }
 }
 ```
+
+**UX-Optimized Navigation:**
+- **Smart defaults**: Automatically shows upcoming fixtures when available, falls back to past results
+- **Always shows content**: No empty pages - users always see relevant fixtures
+- **Smart sorting**: Upcoming fixtures sorted soonest-first, past fixtures most-recent-first
+- **Temporal navigation**: `newerUrl`/`olderUrl` for intuitive time-based browsing
+- **Client-friendly buttons**: 
+  - Use `newerUrl` for "Show more upcoming" or "Future →" buttons
+  - Use `olderUrl` for "Show past results" or "← Past" buttons
+- **Standard pagination**: `nextPage`/`previousPage` for traditional page navigation
+- **Complete URLs**: All navigation URLs are provided ready-to-use
+- **Optional next match**: Rich next match data only when `includeNextMatch=true`
+
+**Smart Default Logic:**
+1. **Has upcoming fixtures?** → Show upcoming (soonest first)
+2. **No upcoming, has past?** → Show past (most recent first)  
+3. **No fixtures at all?** → Show empty with helpful navigation
 
 #### GET /api/v1/team/:id/squad
 

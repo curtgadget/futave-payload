@@ -256,12 +256,21 @@ export type TeamOverviewResponse = TeamBase & {
 }
 
 export type Pagination = {
-  totalFixtures: number
-  hasNextPage: boolean
-  hasPrevPage: boolean
-  nextPageUrl: string | null
-  prevPageUrl: string | null
-  cursor?: string | null
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+  type: string
+  // Standard pagination
+  hasMorePages: boolean
+  hasPreviousPages: boolean
+  nextPage: string | null
+  previousPage: string | null
+  // Temporal navigation (UX-friendly)
+  hasNewer: boolean
+  hasOlder: boolean
+  newerUrl: string | null
+  olderUrl: string | null
 }
 
 // Minimal fixture type for UI (Fotmob-style)
@@ -335,11 +344,10 @@ export type TabDataFetcher = {
   getFixtures: (
     teamId: string,
     options?: {
+      page?: number
       limit?: number
-      before?: string
-      after?: string
       type?: 'all' | 'past' | 'upcoming'
-      includeResults?: boolean
+      includeNextMatch?: boolean
     },
   ) => Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>>
   getSquad: (teamId: string) => Promise<TeamSquadResponse>

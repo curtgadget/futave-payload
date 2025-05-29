@@ -29,6 +29,7 @@ export function createTeamSubResourceEndpoint({
       const data = await fetcher(id, options)
       return Response.json(data)
     } catch (error) {
+      console.error(`Error in ${resource} endpoint:`, error)
       return Response.json(
         { error: `An unexpected error occurred while fetching team ${resource}` },
         { status: 500 },

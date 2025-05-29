@@ -29,6 +29,7 @@ import type {
   TeamFixture,
   MinimalTeamFixture,
   MinimalNextMatch,
+  TeamCoach,
 } from '../types/team'
 
 // Team raw data types
@@ -91,8 +92,8 @@ async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
   })
 
   // Transform and merge coach data
-  const transformedCoaches = coachesResult.docs.map((coach) => transformCoach(coach))
-  return transformedCoaches.map((coach) => {
+  const transformedCoaches = coachesResult.docs.map((coach: any) => transformCoach(coach))
+  return transformedCoaches.map((coach: any) => {
     // Find matching coach data from team.coaches
     const teamCoachData = team.coaches.find((tc: any) => tc.coach_id === coach.id)
 
@@ -155,7 +156,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   })
 
   // Create a map of player details for quick lookup
-  const playerDetailsMap = new Map(playersResult.docs.map((player) => [player.id, player]))
+  const playerDetailsMap = new Map(playersResult.docs.map((player: any) => [player.id, player]))
 
   // Collect all unique position IDs for metadata lookup
   const positionIds = new Set<number>()
@@ -165,7 +166,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   })
 
   // Fetch position metadata
-  const positionMetadata = await getPositionMetadata(payload, Array.from(positionIds))
+  const positionMetadata: Map<number, any> = await getPositionMetadata(payload, Array.from(positionIds))
 
   // Initialize squad structure by position groups
   const squadByPosition: TeamSquadByPosition = {
@@ -253,21 +254,146 @@ function sortPlayerGroups(squadByPosition: TeamSquadByPosition): void {
 }
 
 /**
+ * Helper function to combine and deduplicate fixtures from upcoming and latest arrays
+ */
+function combineAndDedupeFixtures(upcoming: any[], latest: any[]): any[] {
+  const upcomingArray = Array.isArray(upcoming) ? upcoming : []
+  const latestArray = Array.isArray(latest) ? latest : []
+  
+  // Combine arrays
+  const allFixtures = [...upcomingArray, ...latestArray]
+  
+  // Deduplicate by fixture ID (keep first occurrence)
+  const seen = new Set<string>()
+  return allFixtures.filter((fixture) => {
+    const id = typeof fixture === 'string' ? fixture : fixture?.id
+    if (!id || seen.has(String(id))) return false
+    seen.add(String(id))
+    return true
+  })
+}
+
+/**
+ * Helper function to enrich fixtures with match details from matches collection
+ */
+async function enrichWithMatchDetails(payload: any, fixtures: any[]): Promise<any[]> {
+  if (fixtures.length === 0) return []
+  
+  const fixtureIds = fixtures.map((f) => (typeof f === 'string' ? f : f.id)).filter(Boolean)
+  
+  if (fixtureIds.length === 0) return fixtures
+  
+  const matchesResult = await payload.find({
+    collection: 'matches',
+    where: { id: { in: fixtureIds } },
+    limit: fixtureIds.length,
+    pagination: false,
+  })
+  
+  const matchMap = new Map(matchesResult.docs.map((m: any) => [String(m.id), m]))
+  
+  return fixtures.map((fixture) => {
+    const id = typeof fixture === 'string' ? fixture : fixture.id
+    const match = matchMap.get(String(id))
+    // Merge: prefer match fields, fallback to fixture fields
+    return match ? { ...fixture, ...match } : fixture
+  })
+}
+
+/**
+ * Helper function to filter fixtures by type (past/upcoming/all)
+ */
+function filterFixturesByType(fixtures: any[], type: 'all' | 'past' | 'upcoming'): any[] {
+  if (type === 'all') return fixtures
+  
+  const now = Date.now()
+  
+  return fixtures.filter((fixture) => {
+    const timestamp = fixture.starting_at_timestamp * 1000
+    return type === 'past' ? timestamp < now : timestamp >= now
+  })
+}
+
+/**
+ * Helper function to build temporal navigation URLs
+ */
+function buildTemporalNavigationUrls(
+  baseUrl: string,
+  currentPage: number,
+  totalPages: number,
+  queryParams: Record<string, any>,
+  type: string
+): { 
+  next: string | null; 
+  previous: string | null;
+  newer: string | null;
+  older: string | null;
+} {
+  const buildUrl = (page: number, newType?: string) => {
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    
+    // Add other query parameters
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (key === 'type' && newType) {
+        params.set(key, newType)
+      } else if (value !== undefined && value !== null) {
+        params.set(key, String(value))
+      }
+    })
+    
+    return `${baseUrl}?${params.toString()}`
+  }
+  
+  // Standard pagination
+  const next = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+  const previous = currentPage > 1 ? buildUrl(currentPage - 1) : null
+  
+  // Temporal navigation based on fixture type
+  let newer: string | null = null
+  let older: string | null = null
+  
+  if (type === 'upcoming') {
+    // For upcoming: newer = more future fixtures, older = past results
+    newer = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+    older = buildUrl(1, 'past') // Switch to past results
+  } else if (type === 'past') {
+    // For past: newer = upcoming fixtures, older = more past fixtures  
+    newer = buildUrl(1, 'upcoming') // Switch to upcoming
+    older = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+  } else {
+    // For 'all': use standard pagination
+    newer = next
+    older = previous
+  }
+  
+  return { next, previous, newer, older }
+}
+
+/**
  * Fetches paginated fixtures for a team using both 'latest' and 'upcoming' arrays from the teams collection.
- * Combines, deduplicates, sorts, and paginates fixtures. Supports filtering by type and cursor-based navigation.
+ * Uses simple page/limit pagination with comprehensive metadata for client URL construction.
  */
 export async function getTeamFixturesCombined(
   teamId: string,
   options: {
+    page?: number
     limit?: number
-    after?: string // Fixture ID to get fixtures after (newer)
-    before?: string // Fixture ID to get fixtures before (older)
-    type?: 'all' | 'past' | 'upcoming'
-    includeResults?: boolean
+    type?: 'all' | 'past' | 'upcoming' | 'auto'
+    includeNextMatch?: boolean
   } = {},
 ): Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>> {
   const payload = await getPayload({ config })
-  const { limit = 10, after, before, type = 'all' } = options
+  const { 
+    page = 1, 
+    limit = 10, 
+    type: requestedType = 'auto',
+    includeNextMatch = false 
+  } = options
+
+  // Validate pagination parameters
+  const validatedPage = Math.max(1, page)
+  const validatedLimit = Math.max(1, Math.min(100, limit)) // Cap at 100
 
   // Fetch the team document
   const team = await payload.findByID({
@@ -275,183 +401,113 @@ export async function getTeamFixturesCombined(
     id: teamId,
   })
 
-  // Combine upcoming and latest arrays, but reverse upcoming first
-  const upcoming = Array.isArray(team?.upcoming) ? [...team.upcoming].reverse() : []
-  const latest = Array.isArray(team?.latest) ? team.latest : []
-  const allFixtures = [...upcoming, ...latest]
+  if (!team) {
+    throw new Error(`Team with ID ${teamId} not found`)
+  }
 
-  // Deduplicate by fixture ID (favor the first occurrence, i.e., upcoming if present)
-  const fixtureMap = new Map<string, any>()
-  for (const fixture of allFixtures as any[]) {
-    const id = typeof fixture === 'string' ? fixture : fixture.id
-    if (id && !fixtureMap.has(id)) {
-      fixtureMap.set(id, fixture)
+  // 1. Combine and deduplicate fixtures
+  const combinedFixtures = combineAndDedupeFixtures(team.upcoming, team.latest)
+  
+  // 2. Enrich with match details
+  const enrichedFixtures = await enrichWithMatchDetails(payload, combinedFixtures)
+  
+  // 3. Sort chronologically (will be re-sorted after type determination)
+  const sortedFixtures = enrichedFixtures.sort((a, b) => {
+    const aTime = a.starting_at_timestamp || 0
+    const bTime = b.starting_at_timestamp || 0
+    return bTime - aTime // Most recent first initially
+  })
+  
+  // 4. Smart default: try upcoming first, fall back to past if empty
+  let actualType = requestedType
+  let filteredFixtures = sortedFixtures
+  
+  if (requestedType === 'auto') {
+    // Try upcoming first
+    const upcomingFixtures = filterFixturesByType(sortedFixtures, 'upcoming')
+    if (upcomingFixtures.length > 0) {
+      actualType = 'upcoming'
+      filteredFixtures = upcomingFixtures
+    } else {
+      // Fall back to past fixtures
+      const pastFixtures = filterFixturesByType(sortedFixtures, 'past')
+      if (pastFixtures.length > 0) {
+        actualType = 'past'
+        filteredFixtures = pastFixtures
+      } else {
+        // Show all if no upcoming or past
+        actualType = 'all'
+        filteredFixtures = sortedFixtures
+      }
     }
-  }
-  let fixtures = Array.from(fixtureMap.values())
-
-  // --- Merge with match details from matches collection ---
-  const fixtureIds = fixtures.map((f) => (typeof f === 'string' ? f : f.id))
-  const matchesResult = await payload.find({
-    collection: 'matches',
-    where: { id: { in: fixtureIds } },
-    limit: fixtureIds.length,
-  })
-  const matchMap = new Map(matchesResult.docs.map((m: any) => [String(m.id), m]))
-  fixtures = fixtures.map((fixture) => {
-    const id = typeof fixture === 'string' ? fixture : fixture.id
-    const match = matchMap.get(String(id))
-    // Merge: prefer match fields, fallback to fixture fields
-    return { ...fixture, ...match }
-  })
-
-  // Do NOT sort fixtures. Use the order as provided (upcoming first, then latest)
-
-  // Filter by type if specified (convert to ms for comparison)
-  const now = Date.now()
-  if (type === 'past') {
-    fixtures = fixtures.filter((f) => f.starting_at_timestamp * 1000 < now)
-  } else if (type === 'upcoming') {
-    fixtures = fixtures.filter((f) => f.starting_at_timestamp * 1000 >= now)
-  }
-
-  // Find the index for cursor-based pagination
-  let startIdx = 0
-  let endIdx = fixtures.length
-
-  if (after) {
-    const idx = fixtureIds.indexOf(after)
-    startIdx = idx >= 0 ? idx + 1 : 0
-    endIdx = Math.min(startIdx + limit, fixtures.length)
-  } else if (before) {
-    const idx = fixtureIds.indexOf(before)
-    endIdx = idx >= 0 ? idx : fixtures.length
-    startIdx = Math.max(0, endIdx - limit)
   } else {
-    endIdx = Math.min(limit, fixtures.length)
+    actualType = requestedType
+    filteredFixtures = filterFixturesByType(sortedFixtures, requestedType)
   }
-
-  let paginatedFixtures = fixtures.slice(startIdx, endIdx)
-
-  // Map fixtures to minimal UI shape
+  
+  // 5. Calculate pagination
+  const totalFixtures = filteredFixtures.length
+  const totalPages = Math.ceil(totalFixtures / validatedLimit)
+  const offset = (validatedPage - 1) * validatedLimit
+  const paginatedFixtures = filteredFixtures.slice(offset, offset + validatedLimit)
+  
+  // 6. Transform fixtures
   const docs = paginatedFixtures.map(transformFixture)
-
-  // Pagination meta
-  const totalFixtures = fixtures.length
-  const hasNextPage = endIdx < fixtures.length
-  const hasPrevPage = startIdx > 0
-  const nextPageCursor = hasNextPage && docs.length > 0 ? fixtureIds[endIdx] : null
-  const prevPageCursor = hasPrevPage && docs.length > 0 ? fixtureIds[startIdx - 1] : null
-
-  // Find the next upcoming match (true soonest future fixture, regardless of array order)
-  const nextFixture =
-    [...fixtures]
-      .filter((f) => f.starting_at_timestamp * 1000 >= now)
-      .sort((a, b) => a.starting_at_timestamp - b.starting_at_timestamp)[0] || null
-
+  
+  // 6. Re-sort based on determined type for better UX
+  if (actualType === 'upcoming') {
+    // For upcoming: soonest first (ascending order)
+    filteredFixtures = filteredFixtures.sort((a, b) => {
+      const aTime = a.starting_at_timestamp || 0
+      const bTime = b.starting_at_timestamp || 0
+      return aTime - bTime
+    })
+  }
+  // Past and all remain in descending order (most recent first)
+  
+  // 7. Build temporal navigation URLs
+  const baseUrl = `/api/v1/team/${teamId}/fixtures`
+  const navigationUrls = buildTemporalNavigationUrls(baseUrl, validatedPage, totalPages, {
+    limit: validatedLimit,
+    type: actualType,
+    includeNextMatch: includeNextMatch ? 'true' : undefined,
+  }, actualType)
+  
+  // 8. Optional next match calculation
   let nextMatch: MinimalNextMatch | null = null
-  if (nextFixture) {
-    // Extract home/away participants
-    const home = Array.isArray(nextFixture.participants)
-      ? nextFixture.participants.find((p: any) => p.meta?.location === 'home')
-      : null
-    const away = Array.isArray(nextFixture.participants)
-      ? nextFixture.participants.find((p: any) => p.meta?.location === 'away')
-      : null
-    // Fetch both teams' info (name, image, table position, stats)
-    let homeTeam = null
-    let awayTeam = null
-    let home_position = null
-    let away_position = null
-    let home_goals_per_match = null
-    let away_goals_per_match = null
-    let home_goals_conceded_per_match = null
-    let away_goals_conceded_per_match = null
-    if (home && away) {
-      // Fetch both teams from the teams collection
-      const teamsResult = await payload.find({
-        collection: 'teams',
-        where: { id: { in: [home.id, away.id] } },
-        limit: 2,
-      })
-      const teamMap = new Map(teamsResult.docs.map((t: any) => [String(t.id), t]))
-      homeTeam = teamMap.get(String(home.id))
-      awayTeam = teamMap.get(String(away.id))
-      // Get league/season for standings lookup
-      const leagueId = nextFixture.league?.id
-      const seasonId = nextFixture.season?.id
-      // Fetch standings for both teams
-      let homeStanding = null
-      let awayStanding = null
-      if (leagueId && seasonId) {
-        // Try to get standings from the teams' standings field
-        const getStanding = (team: any) => {
-          const standings = team?.standings?.[String(seasonId)]
-          if (standings && Array.isArray(standings)) {
-            return standings.find((row: any) => row.participant_id === team.id)
-          }
-          // Try nested structure
-          if (standings?.standings?.[0]?.standings) {
-            return standings.standings[0].standings.find((row: any) => row.team_id === team.id)
-          }
-          return null
-        }
-        homeStanding = getStanding(homeTeam)
-        awayStanding = getStanding(awayTeam)
+  if (includeNextMatch) {
+    const now = Date.now()
+    const nextFixture = sortedFixtures
+      .filter((f) => f.starting_at_timestamp * 1000 >= now)
+      .sort((a, b) => a.starting_at_timestamp - b.starting_at_timestamp)[0]
+    
+    if (nextFixture) {
+      // Simplified next match calculation (can be expanded as needed)
+      const home = Array.isArray(nextFixture.participants)
+        ? nextFixture.participants.find((p: any) => p.meta?.location === 'home')
+        : null
+      const away = Array.isArray(nextFixture.participants)
+        ? nextFixture.participants.find((p: any) => p.meta?.location === 'away')
+        : null
+        
+      nextMatch = {
+        starting_at: nextFixture.starting_at,
+        league: nextFixture.league
+          ? { id: nextFixture.league.id, name: nextFixture.league.name }
+          : { id: 0, name: '' },
+        home_team: home
+          ? { id: home.id, name: home.name, image_path: home.image_path ?? null }
+          : { id: 0, name: '', image_path: null },
+        away_team: away
+          ? { id: away.id, name: away.name, image_path: away.image_path ?? null }
+          : { id: 0, name: '', image_path: null },
+        home_position: null, // Can be enhanced later
+        away_position: null,
+        home_goals_per_match: null,
+        away_goals_per_match: null,
+        home_goals_conceded_per_match: null,
+        away_goals_conceded_per_match: null,
       }
-      home_position = homeStanding?.position ?? null
-      away_position = awayStanding?.position ?? null
-      // Get goals per match and conceded per match from team stats
-      const getStats = (team: any) => {
-        const stats = team?.statistics
-        if (!stats) return {}
-        // Try to find the right season
-        let seasonStats = null
-        for (const key in stats) {
-          if (stats[key]?.season?.id === seasonId) {
-            seasonStats = stats[key]
-            break
-          }
-        }
-        if (!seasonStats) return {}
-        const details = seasonStats.details || []
-        // Find avg goals scored/conceded
-        let avg_goals_scored = null
-        let avg_goals_conceded = null
-        details.forEach((d: any) => {
-          if (d.type_id === 45 && d.value?.all?.average) {
-            avg_goals_scored = d.value.all.average
-          }
-          if (d.type_id === 46 && d.value?.all?.average) {
-            avg_goals_conceded = d.value.all.average
-          }
-        })
-        return { avg_goals_scored, avg_goals_conceded }
-      }
-      const homeStats = getStats(homeTeam)
-      const awayStats = getStats(awayTeam)
-      home_goals_per_match = homeStats.avg_goals_scored ?? null
-      away_goals_per_match = awayStats.avg_goals_scored ?? null
-      home_goals_conceded_per_match = homeStats.avg_goals_conceded ?? null
-      away_goals_conceded_per_match = awayStats.avg_goals_conceded ?? null
-    }
-    nextMatch = {
-      starting_at: nextFixture.starting_at,
-      league: nextFixture.league
-        ? { id: nextFixture.league.id, name: nextFixture.league.name }
-        : { id: 0, name: '' },
-      home_team: home
-        ? { id: home.id, name: home.name, image_path: home.image_path ?? null }
-        : { id: 0, name: '', image_path: null },
-      away_team: away
-        ? { id: away.id, name: away.name, image_path: away.image_path ?? null }
-        : { id: 0, name: '', image_path: null },
-      home_position,
-      away_position,
-      home_goals_per_match,
-      away_goals_per_match,
-      home_goals_conceded_per_match,
-      away_goals_conceded_per_match,
     }
   }
 
@@ -459,14 +515,21 @@ export async function getTeamFixturesCombined(
     docs,
     meta: {
       pagination: {
-        totalFixtures,
-        hasNextPage,
-        hasPrevPage,
-        nextPageUrl:
-          hasNextPage && nextPageCursor ? `?after=${nextPageCursor}&limit=${limit}` : null,
-        prevPageUrl:
-          hasPrevPage && prevPageCursor ? `?before=${prevPageCursor}&limit=${limit}` : null,
-        cursor: docs.length > 0 ? docs[docs.length - 1].id : null,
+        page: validatedPage,
+        limit: validatedLimit,
+        total: totalFixtures,
+        totalPages,
+        type: actualType,
+        // Standard pagination
+        hasMorePages: validatedPage < totalPages,
+        hasPreviousPages: validatedPage > 1,
+        nextPage: navigationUrls.next,
+        previousPage: navigationUrls.previous,
+        // Temporal navigation (UX-friendly)
+        hasNewer: navigationUrls.newer !== null,
+        hasOlder: navigationUrls.older !== null,
+        newerUrl: navigationUrls.newer,
+        olderUrl: navigationUrls.older,
       },
     },
     nextMatch,
@@ -609,14 +672,13 @@ export const teamDataFetcher: TabDataFetcher = {
   async getFixtures(
     teamId: string,
     options: {
+      page?: number
       limit?: number
-      before?: string // Fixture ID to get fixtures before (older)
-      after?: string // Fixture ID to get fixtures after (newer)
       type?: 'all' | 'past' | 'upcoming'
-      includeResults?: boolean
+      includeNextMatch?: boolean
     } = {},
   ): Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>> {
-    // Use the new combined latest+upcoming fetcher
+    // Use the new simplified fixtures fetcher
     return getTeamFixturesCombined(teamId, options)
   },
 
