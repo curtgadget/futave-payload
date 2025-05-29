@@ -121,24 +121,161 @@ List all teams with pagination.
 }
 ```
 
-#### GET /api/v1/team/:id
+#### GET /api/v1/team/:id/overview
 
-Get overview information about a specific team.
+Get a streamlined team overview optimized for dashboard-style display, similar to FotMob's team overview page. Combines key data from multiple endpoints into a single response.
+
+**Features:**
+- Team form (last 5 matches as W/L/D)
+- Next upcoming match details
+- Current league position and form
+- Top season statistics (top rated players, scorers, assists)
+- Recent fixture results
 
 **Response:**
 ```json
 {
-  "data": {
-    "id": "1",
-    "name": "Team Name",
-    "logo": {
-      "url": "https://example.com/logo.png"
+  "id": "62",
+  "name": "Team Name",
+  "season_id": 12345,
+  "season_name": "2024/25",
+  "form": [
+    {
+      "id": "match123",
+      "result": "W",
+      "final_score": {
+        "home": 2,
+        "away": 1
+      },
+      "opponent": {
+        "id": 45,
+        "name": "Opponent Team",
+        "image_path": "https://example.com/opponent-logo.png"
+      },
+      "home_away": "home",
+      "starting_at": "2024-01-15T15:00:00Z"
+    }
+    // 4 more recent matches
+  ],
+  "next_match": {
+    "starting_at": "2024-02-01T19:30:00Z",
+    "league": {
+      "id": 789,
+      "name": "Premier League"
     },
-    "stadium": "Stadium Name",
-    // Additional overview properties
-  }
+    "home_team": {
+      "id": 62,
+      "name": "Team Name",
+      "image_path": "https://example.com/team-logo.png"
+    },
+    "away_team": {
+      "id": 123,
+      "name": "Opponent Team",
+      "image_path": "https://example.com/opponent-logo.png"
+    },
+    "home_position": 2,
+    "away_position": 7
+  },
+  "current_position": {
+    "position": 2,
+    "points": 75,
+    "played": 38,
+    "goal_difference": 39,
+    "form": ["D", "D", "W", "W", "D"],
+    "qualification_status": {
+      "type": "champions_league",
+      "name": "Champions League Qualification",
+      "color": "#1f77b4"
+    }
+  },
+  "stats": {
+    "top_rated": [
+      {
+        "player_id": "1001",
+        "name": "Top Player",
+        "image_path": "https://example.com/player1.png",
+        "value": 8.5,
+        "position": "Midfielder"
+      }
+      // 2 more top rated players
+    ],
+    "top_scorers": [
+      {
+        "player_id": "1002",
+        "name": "Goal Scorer",
+        "image_path": "https://example.com/player2.png",
+        "value": 18,
+        "position": "Forward"
+      }
+      // 2 more top scorers
+    ],
+    "top_assists": [
+      {
+        "player_id": "1003",
+        "name": "Playmaker",
+        "image_path": "https://example.com/player3.png",
+        "value": 12,
+        "position": "Midfielder"
+      }
+      // 2 more top assist providers
+    ]
+  },
+  "recent_fixtures": [
+    {
+      "id": "match456",
+      "starting_at": "2024-01-15T15:00:00Z",
+      "starting_at_timestamp": 1705332000,
+      "name": "Team Name vs Opponent",
+      "league": {
+        "id": 789,
+        "name": "Premier League",
+        "short_code": "PL",
+        "image_path": "https://example.com/league.png"
+      },
+      "season": {
+        "id": 12345,
+        "name": "2024/25"
+      },
+      "participants": [
+        {
+          "id": 62,
+          "name": "Team Name",
+          "image_path": "https://example.com/team-logo.png",
+          "meta": {
+            "location": "home"
+          }
+        },
+        {
+          "id": 45,
+          "name": "Opponent Team",
+          "image_path": "https://example.com/opponent-logo.png",
+          "meta": {
+            "location": "away"
+          }
+        }
+      ],
+      "final_score": {
+        "home": 2,
+        "away": 1
+      },
+      "state": {
+        "id": 3,
+        "name": "Finished",
+        "short_name": "FT"
+      }
+    }
+    // 2 more recent fixtures
+  ]
 }
 ```
+
+**Key Features:**
+- **Compact Response**: Single endpoint for dashboard views
+- **Form Analysis**: Last 5 matches with results, scores, and opponents
+- **League Context**: Current position, points, and qualification status
+- **Player Highlights**: Top 3 players in key categories (rating, goals, assists)
+- **Smart Data**: Combines data from fixtures, table, and stats endpoints
+- **Performance Optimized**: Parallel data fetching for fast response times
 
 #### GET /api/v1/team/:id/fixtures
 

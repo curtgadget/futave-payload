@@ -247,13 +247,6 @@ export type TeamFixture = {
   }
 }
 
-export type TeamOverviewResponse = TeamBase & {
-  squad: TeamSquadResponse
-  table: TeamTableResponse
-  fixtures: TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>
-  results: MinimalTeamFixture[]
-  stats: TeamStatsResponse
-}
 
 export type Pagination = {
   page: number
@@ -339,7 +332,6 @@ export type TeamSquadResponse = {
 export type TeamStatsResponse = TeamStatistics
 
 export type TabDataFetcher = {
-  getOverview: (teamId: string) => Promise<TeamOverviewResponse>
   getTable: (teamId: string) => Promise<TeamTableResponse>
   getFixtures: (
     teamId: string,
@@ -379,4 +371,60 @@ export type TeamListDataFetcher = {
     countryId?: string
     search?: string
   }) => Promise<TeamsListResponse>
+}
+
+// New streamlined overview types
+export type TeamFormMatch = {
+  id: string
+  result: 'W' | 'L' | 'D'
+  final_score: {
+    home: number
+    away: number
+  }
+  opponent: {
+    id: number
+    name: string
+    image_path?: string | null
+  }
+  home_away: 'home' | 'away'
+  starting_at: string
+}
+
+export type TeamCurrentPosition = {
+  position: number
+  points: number
+  played: number
+  goal_difference: number
+  form: string[] // Array of recent results: ['W', 'L', 'D', 'W', 'D']
+  qualification_status?: {
+    type: string
+    name: string
+    color?: string
+  }
+}
+
+export type TopStatPlayer = {
+  player_id: string
+  name: string
+  image_path?: string | null
+  value: number
+  position?: string
+}
+
+export type TeamOverviewStats = {
+  top_rated: TopStatPlayer[]
+  top_scorers: TopStatPlayer[]
+  top_assists: TopStatPlayer[]
+}
+
+export type TeamOverviewCompact = {
+  id: string
+  name: string
+  season_id: number
+  season_name: string
+  form: TeamFormMatch[] // Last 5 matches
+  next_match: MinimalNextMatch | null
+  current_position: TeamCurrentPosition | null
+  stats: TeamOverviewStats
+  recent_fixtures: MinimalTeamFixture[] // Last 3 completed matches
 }

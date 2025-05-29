@@ -388,42 +388,6 @@ export function transformTeamBase(rawTeam: RawTeam) {
   }
 }
 
-export function transformTeamOverview(rawTeam: RawTeam): TeamOverviewResponse {
-  // Transform squad, table, fixtures, etc.
-  const squadData = transformTeamSquad(rawTeam)
-  const tableData = transformTeamTable(rawTeam)
-  const fixturesData = transformTeamFixtures(rawTeam)
-  const statsData = transformTeamStats(rawTeam)
-
-  // Get results directly from rawTeam.latest or similar property
-  // We'll use the current date as the cutoff point to filter matches
-  const now = new Date()
-
-  // Use rawTeam.latest or upcoming fixture data
-  const fixtures = [...(rawTeam.latest || []), ...(rawTeam.upcoming || [])]
-
-  // Filter for past matches (results)
-  const resultFixtures = fixtures
-    .filter((fixture) => fixture?.starting_at && new Date(fixture.starting_at) < now)
-    .sort((a, b) => {
-      // Sort by date descending (newest first)
-      const dateA = a?.starting_at ? new Date(a.starting_at).getTime() : 0
-      const dateB = b?.starting_at ? new Date(b.starting_at).getTime() : 0
-      return dateB - dateA
-    })
-    .slice(0, 5) // Take the 5 most recent matches
-    .map(transformFixture)
-
-  // Combine all the data into a team overview response
-  return {
-    ...transformTeamBase(rawTeam),
-    squad: squadData,
-    table: tableData,
-    fixtures: fixturesData,
-    results: resultFixtures,
-    stats: statsData,
-  }
-}
 
 export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
   const transformedStandings: TeamTableResponse = {}

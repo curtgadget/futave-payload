@@ -5,7 +5,6 @@ import { getPositionGroup, PlayerStatisticTypeIds } from '@/constants/team'
 import { calculateTopPlayerStats } from '../utils/statsUtils'
 import {
   transformPlayer,
-  transformTeamOverview,
   transformTeamStats,
   transformTeamTable,
   transformFixture,
@@ -14,7 +13,6 @@ import {
 import type {
   TabDataFetcher,
   TeamFixturesResponse,
-  TeamOverviewResponse,
   TeamPlayer,
   TeamSquadByPosition,
   TeamSquadResponse,
@@ -537,54 +535,6 @@ export async function getTeamFixturesCombined(
 }
 
 export const teamDataFetcher: TabDataFetcher = {
-  async getOverview(teamId: string): Promise<TeamOverviewResponse> {
-    try {
-      const numericId = validateTeamId(teamId)
-      const payload = await getPayload({ config })
-
-      const result = await payload.find({
-        collection: 'teams',
-        where: {
-          id: {
-            equals: numericId,
-          },
-        },
-        depth: 1,
-      })
-
-      if (!result.docs.length) {
-        throw new Error(`No team found with ID: ${teamId}`)
-      }
-
-      const team = result.docs[0]
-      if (!team.id || !team.name) {
-        throw new Error(`Invalid team data structure for ID: ${teamId}`)
-      }
-
-      const rawTeam = {
-        id: team.id,
-        name: team.name,
-        activeseasons: Array.isArray(team.activeseasons) ? team.activeseasons : null,
-        seasons: Array.isArray(team.seasons) ? team.seasons : null,
-        upcoming: Array.isArray(team.upcoming) ? team.upcoming : null,
-        latest: Array.isArray(team.latest) ? team.latest : null,
-        players: Array.isArray(team.players) ? team.players : null,
-        coaches: Array.isArray(team.coaches) ? team.coaches : null,
-        statistics: team.statistics || null,
-        season_map: Array.isArray(team.season_map) ? team.season_map : null,
-      }
-
-      return transformTeamOverview(rawTeam)
-    } catch (error) {
-      console.error('Error in getOverview:', {
-        teamId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-      throw error
-    }
-  },
-
   async getTable(teamId: string): Promise<TeamTableResponse> {
     try {
       const numericId = validateTeamId(teamId)
