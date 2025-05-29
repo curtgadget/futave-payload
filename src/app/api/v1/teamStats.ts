@@ -5,8 +5,13 @@ const parseStatsQuery = (url: URL) => ({
   season: url.searchParams.get('season') || undefined,
 })
 
+// Wrapper function to properly pass parameters to getStats
+const statsWrapper = async (teamId: string, options?: { season?: string }) => {
+  return teamDataFetcher.getStats(teamId, options?.season)
+}
+
 export default createTeamSubResourceEndpoint({
   resource: 'stats',
-  fetcher: teamDataFetcher.getStats,
+  fetcher: statsWrapper,
   parseQuery: parseStatsQuery,
 })

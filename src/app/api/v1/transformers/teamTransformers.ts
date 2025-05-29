@@ -1305,7 +1305,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   const availableSeasons: { id: string; name: string }[] = []
   const statisticsData = rawTeam.statistics as Record<string, any>
 
-  // Process statistics by season
+  // First pass: collect all available seasons
   for (const [key, value] of Object.entries(statisticsData)) {
     // Skip if this is not a valid season entry
     if (typeof value !== 'object' || !value) continue
@@ -1317,18 +1317,48 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         name: value.season.name,
       })
     }
+  }
 
-    // If seasonId is provided, only process the matching season
-    if (seasonId && String(value.season?.id) !== seasonId) {
+  // Helper function to determine the best season to use when no seasonId is provided
+  const getBestDefaultSeason = (): string | null => {
+    if (availableSeasons.length === 0) return null
+
+    // 1. Try to find current active season from rawTeam.activeseasons
+    if (Array.isArray(rawTeam.activeseasons) && rawTeam.activeseasons.length > 0) {
+      for (const activeSeason of rawTeam.activeseasons) {
+        const activeSeasonId = String(activeSeason?.id || activeSeason)
+        const matchingSeason = availableSeasons.find(s => s.id === activeSeasonId)
+        if (matchingSeason) {
+          console.log(`Using active season: ${matchingSeason.name} (ID: ${matchingSeason.id})`)
+          return matchingSeason.id
+        }
+      }
+    }
+
+    // 2. Fallback to most recent season (highest season ID, assuming IDs are chronological)
+    const mostRecentSeason = availableSeasons.reduce((latest, current) => {
+      return parseInt(current.id) > parseInt(latest.id) ? current : latest
+    })
+    
+    console.log(`Using most recent season: ${mostRecentSeason.name} (ID: ${mostRecentSeason.id})`)
+    return mostRecentSeason.id
+  }
+
+  // Determine which season to use
+  const targetSeasonId = seasonId || getBestDefaultSeason()
+
+  // Process statistics by season
+  for (const [key, value] of Object.entries(statisticsData)) {
+    // Skip if this is not a valid season entry
+    if (typeof value !== 'object' || !value) continue
+
+    // If targetSeasonId is provided, only process the matching season
+    if (targetSeasonId && String(value.season?.id) !== targetSeasonId) {
       continue
     }
 
-    // If we've found a matching season or no seasonId was specified and this is the first entry,
-    // process the statistics
-    if (
-      (seasonId && String(value.season?.id) === seasonId) ||
-      (!seasonId && availableSeasons.length === 1)
-    ) {
+    // Process the statistics for the target season
+    if (targetSeasonId && String(value.season?.id) === targetSeasonId) {
       // Set the season_id in the result
       result.season_id = value.season?.id || 0
 
@@ -1661,24 +1691,21 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         }
       }
 
-      // We've processed the requested season, so break out of the loop
-      if (seasonId) {
-        break
-      }
+      // We've processed the target season, so break out of the loop
+      break
     }
   }
 
   // Set available seasons for dropdown selection
   result.seasons = availableSeasons
 
-  // Default to first season if no seasonId was specified or matching season was found
-  if ((!seasonId || result.season_id === 0) && availableSeasons.length > 0) {
-    const firstSeason = availableSeasons[0]
-    result.season_id = parseInt(firstSeason.id)
-
-    // If we defaulted to the first season, we need to process its statistics
-    if (result.team_stats.matches_played === 0) {
-      return transformTeamStats(rawTeam, firstSeason.id)
+  // If no statistics were processed but we have available seasons, 
+  // this means the target season wasn't found, so fallback to the best default
+  if (result.season_id === 0 && availableSeasons.length > 0) {
+    const fallbackSeasonId = getBestDefaultSeason()
+    if (fallbackSeasonId) {
+      console.log(`Fallback: recursively processing season ${fallbackSeasonId}`)
+      return transformTeamStats(rawTeam, fallbackSeasonId)
     }
   }
 
