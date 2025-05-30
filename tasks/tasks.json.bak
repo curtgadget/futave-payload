@@ -261,14 +261,171 @@
       "id": 5,
       "title": "Create RESTful API Endpoints",
       "description": "Develop RESTful API endpoints to expose soccer data to client applications, implementing the necessary routes, controllers, and middleware.",
-      "details": "1. Design API routes for all data entities\n2. Implement controllers for each route\n3. Add authentication middleware\n4. Implement pagination for large datasets\n5. Add filtering and sorting capabilities\n6. Implement rate limiting\n7. Add error handling middleware\n8. Create API documentation\n\n```typescript\n// api/matches.ts\nimport { NextApiRequest, NextApiResponse } from 'next';\nimport payload from 'payload';\nimport { authenticateRequest } from '../middleware/auth';\n\nexport default async function handler(req: NextApiRequest, res: NextApiResponse) {\n  // Apply authentication middleware\n  const authResult = await authenticateRequest(req, res);\n  if (!authResult.success) return;\n  \n  try {\n    switch (req.method) {\n      case 'GET':\n        // Parse query parameters\n        const { page = 1, limit = 10, league, team, status } = req.query;\n        \n        // Build query\n        const query: any = {};\n        if (league) query.league = { equals: league };\n        if (team) query['or'] = [\n          { homeTeam: { equals: team } },\n          { awayTeam: { equals: team } },\n        ];\n        if (status) query.status = { equals: status };\n        \n        // Execute query with pagination\n        const matches = await payload.find({\n          collection: 'matches',\n          where: query,\n          page: Number(page),\n          limit: Number(limit),\n          sort: '-startTime',\n        });\n        \n        return res.status(200).json(matches);\n        \n      default:\n        return res.status(405).json({ error: 'Method not allowed' });\n    }\n  } catch (error) {\n    console.error('API error:', error);\n    return res.status(500).json({ error: 'Internal server error' });\n  }\n}\n```",
-      "testStrategy": "1. Test all API endpoints with valid requests\n2. Verify authentication works correctly\n3. Test pagination with large datasets\n4. Verify filtering and sorting functionality\n5. Test error handling with invalid requests\n6. Verify rate limiting functionality\n7. Test API performance under load\n8. Validate API documentation against actual implementation",
-      "priority": "high",
+      "status": "in-progress",
       "dependencies": [
         2
       ],
-      "status": "in-progress",
-      "subtasks": []
+      "priority": "high",
+      "details": "1. Design API routes for all data entities\n2. Implement controllers for each route\n3. Add authentication middleware\n4. Implement pagination for large datasets\n5. Add filtering and sorting capabilities\n6. Implement rate limiting\n7. Add error handling middleware\n8. Create API documentation\n\nCurrent Implementation Status (~65% complete):\n- Team endpoints are production-ready with sophisticated features\n- Authentication, error handling, and architectural patterns are solid\n- Match detail endpoint works with real database integration\n- League/player endpoints exist but use placeholder data fetchers\n- Missing core endpoints: matches listing, countries, search\n- Advanced features (Wave Detector, Memory Avenues) not started\n\n```typescript\n// api/matches.ts\nimport { NextApiRequest, NextApiResponse } from 'next';\nimport payload from 'payload';\nimport { authenticateRequest } from '../middleware/auth';\n\nexport default async function handler(req: NextApiRequest, res: NextApiResponse) {\n  // Apply authentication middleware\n  const authResult = await authenticateRequest(req, res);\n  if (!authResult.success) return;\n  \n  try {\n    switch (req.method) {\n      case 'GET':\n        // Parse query parameters\n        const { page = 1, limit = 10, league, team, status } = req.query;\n        \n        // Build query\n        const query: any = {};\n        if (league) query.league = { equals: league };\n        if (team) query['or'] = [\n          { homeTeam: { equals: team } },\n          { awayTeam: { equals: team } },\n        ];\n        if (status) query.status = { equals: status };\n        \n        // Execute query with pagination\n        const matches = await payload.find({\n          collection: 'matches',\n          where: query,\n          page: Number(page),\n          limit: Number(limit),\n          sort: '-startTime',\n        });\n        \n        return res.status(200).json(matches);\n        \n      default:\n        return res.status(405).json({ error: 'Method not allowed' });\n    }\n  } catch (error) {\n    console.error('API error:', error);\n    return res.status(500).json({ error: 'Internal server error' });\n  }\n}\n```",
+      "testStrategy": "1. Test all API endpoints with valid requests\n2. Verify authentication works correctly\n3. Test pagination with large datasets\n4. Verify filtering and sorting functionality\n5. Test error handling with invalid requests\n6. Verify rate limiting functionality\n7. Test API performance under load\n8. Validate API documentation against actual implementation\n9. Implement comprehensive integration tests for all endpoints\n10. Set up monitoring for API performance and error rates\n11. Create automated test suites for regression testing",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Design API Route Structure and Authentication Flow",
+          "description": "Define the complete API route structure for all entities (leagues, teams, players, matches, countries, Wave Detector, Memory Avenues) and design the authentication flow for securing these endpoints.",
+          "dependencies": [],
+          "details": "Create a comprehensive API route map document that outlines all endpoints, HTTP methods, required parameters, and expected responses. Define authentication requirements for each endpoint, specifying which routes require authentication and what permission levels are needed. Design JWT token structure and authentication flow.\n<info added on 2025-05-04T03:07:25.931Z>\nCreate a comprehensive API route map document that outlines all endpoints, HTTP methods, required parameters, and expected responses. Define authentication requirements for each endpoint, specifying which routes require authentication and what permission levels are needed. Design JWT token structure and authentication flow.\n\nProgress has been made with the initial API structure setup in the /src/app/api/v1 directory. The first endpoint for teams with various views has been implemented, and an authentication utility has been established in utilities/auth.js.\n\nRemaining tasks include:\n1. Complete the comprehensive API route map document covering all entities (leagues, teams, players, matches, countries, Wave Detector, Memory Avenues)\n2. Finalize the JWT-based authentication flow design with special consideration for mobile client requirements\n3. Define detailed parameter structures and standardized response formats for all endpoints\n4. Document the relationships and dependencies between different entity endpoints\n5. Ensure the authentication utility in utilities/auth.js properly integrates with all planned endpoints\n6. Prepare for handoff to the Core Entity Controllers implementation team\n</info added on 2025-05-04T03:07:25.931Z>\n<info added on 2025-05-04T03:15:59.843Z>\nThe comprehensive API route map has been successfully created and stored in `src/app/api/v1/documentation/api-route-map.md`. This document provides a complete specification of all API endpoints required for the application, including:\n\n1. Core entity endpoints (teams, leagues, players, matches) with detailed HTTP methods, parameters, and response formats\n2. Specialized feature endpoints for Wave Detector and Memory Avenues functionality\n3. User preference management endpoints to handle personalization features\n4. Reference data endpoints for supporting information like countries and other static data\n5. Detailed request/response format examples in JSON\n6. Implementation guidelines for maintaining consistency when adding new endpoints\n\nThe authentication approach has been standardized using the `createAuthMiddleware` function from `src/utilities/auth.ts`, with clear documentation on which endpoints require authentication and what permission levels are needed.\n\nThe next implementation phase will follow this sequence:\n1. Leagues endpoint implementation (following the teams endpoint pattern)\n2. Players endpoint implementation\n3. Matches endpoint implementation\n4. Specialized feature endpoints implementation\n\nThis API route map document will serve as the definitive reference for the Core Entity Controllers implementation team to ensure consistent API design across all endpoints.\n</info added on 2025-05-04T03:15:59.843Z>",
+          "status": "done",
+          "testStrategy": "Create Postman collection with authentication tests and document expected responses for each endpoint."
+        },
+        {
+          "id": 2,
+          "title": "Implement Core Entity Controllers (Teams, Leagues, Players)",
+          "description": "Develop controllers for the core entities including teams, leagues, and players with full CRUD operations where appropriate.",
+          "dependencies": [
+            1
+          ],
+          "details": "Create separate controller files for each entity. Implement GET (list and detail), POST, PUT, and DELETE methods as needed. Include query parameter handling for filtering, sorting, and pagination. Ensure proper error handling and response formatting.\n<info added on 2025-05-04T03:07:08.905Z>\nCreate separate controller files for each entity. Implement GET (list and detail), POST, PUT, and DELETE methods as needed. Include query parameter handling for filtering, sorting, and pagination. Ensure proper error handling and response formatting.\n\nProgress Update:\n- Teams API endpoint has been implemented in src/app/api/v1/teams.ts\n- Teams endpoint supports multiple views (overview, fixtures, stats)\n- Implemented pagination, filtering, and proper error handling for Teams\n- Following established API development best practices\n\nRemaining Tasks:\n1. Implement Leagues API endpoints:\n   - Create controller file at src/app/api/v1/leagues.ts\n   - Implement GET endpoints for list and detail views\n   - Add specialized views (standings, seasons, participating teams)\n   - Implement POST, PUT, DELETE operations\n   - Add pagination, filtering, and sorting functionality\n   - Ensure proper error handling and response formatting\n\n2. Implement Players API endpoints:\n   - Create controller file at src/app/api/v1/players.ts\n   - Implement GET endpoints for list and detail views\n   - Add specialized views (stats, career history, current team)\n   - Implement POST, PUT, DELETE operations\n   - Add pagination, filtering, and sorting functionality\n   - Ensure proper error handling and response formatting\n\n3. Review and complete any remaining CRUD operations:\n   - Verify all required operations are implemented for each entity\n   - Ensure consistent response formatting across all endpoints\n   - Check that error handling is comprehensive\n</info added on 2025-05-04T03:07:08.905Z>\n<info added on 2025-05-04T03:32:38.672Z>\nImplementation completed for all core entity controllers following a consistent pattern:\n\n1. League Endpoints Implementation:\n   - Created src/app/api/v1/leagues.ts for individual league data with multiple views:\n     * Overview view with basic league information\n     * Standings view showing team rankings\n     * Teams view listing participating teams\n     * Seasons view showing historical seasons\n   - Implemented src/app/api/v1/leaguesList.ts for listing leagues with filtering\n   - Added TypeScript type definitions in src/app/api/v1/types/league.ts\n   - Created service layer with src/app/api/v1/services/leagueDataFetcher.ts (placeholder implementation)\n\n2. Player Endpoints Implementation:\n   - Created src/app/api/v1/players.ts for individual player data with multiple views:\n     * Overview view with basic player information\n     * Stats view showing performance metrics\n     * Career view showing historical team affiliations\n   - Implemented src/app/api/v1/playersList.ts for listing players with filtering\n   - Added TypeScript type definitions in src/app/api/v1/types/player.ts\n   - Created service layer with src/app/api/v1/services/playerDataFetcher.ts (placeholder implementation)\n\n3. Integration and Consistency:\n   - Updated index.ts to register all new endpoints\n   - Maintained consistent error handling patterns across all controllers\n   - Implemented pagination for list endpoints\n   - Applied authentication middleware consistently\n   - Ensured query parameter handling for filtering, sorting, and pagination\n   - Followed tab view pattern established in the Teams implementation\n\nAll controllers now provide appropriate CRUD operations and specialized views as specified in the API route documentation. The implementation uses placeholder functions for data fetching that would need to be connected to the actual database or external API in production.\n</info added on 2025-05-04T03:32:38.672Z>",
+          "status": "done",
+          "testStrategy": "Unit test each controller method with mock data. Test pagination, filtering, and sorting functionality."
+        },
+        {
+          "id": 3,
+          "title": "Complete Data Implementations for League and Player Endpoints",
+          "description": "Replace placeholder data fetchers with real database integrations for league and player endpoints to make them production-ready.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Replace placeholder implementation in src/app/api/v1/services/leagueDataFetcher.ts with real database queries\n2. Replace placeholder implementation in src/app/api/v1/services/playerDataFetcher.ts with real database queries\n3. Ensure all specialized views (standings, seasons, stats, career) use real data\n4. Optimize database queries for performance with appropriate indexes\n5. Add caching for frequently accessed data\n6. Implement data validation and error handling for database operations\n7. Update type definitions if needed to match actual database schema\n8. Ensure consistent data transformation between database and API response formats",
+          "status": "pending",
+          "testStrategy": "1. Create integration tests with real database connections\n2. Test all views with realistic data volumes\n3. Verify performance with production-like data loads\n4. Test edge cases like missing data or malformed records\n5. Validate data integrity across related entities"
+        },
+        {
+          "id": 4,
+          "title": "Implement Matches Listing Endpoint",
+          "description": "Develop a comprehensive matches listing endpoint with filtering, sorting, and pagination capabilities to complement the existing match detail endpoint.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Create src/app/api/v1/matchesList.ts endpoint for listing matches\n2. Implement filtering by:\n   - Date range\n   - League\n   - Team participation\n   - Match status (upcoming, live, completed)\n   - Season\n3. Add sorting options (by date, relevance, etc.)\n4. Implement pagination with customizable page size\n5. Add specialized views or filters:\n   - Today's matches\n   - Live matches\n   - Upcoming fixtures\n   - Recent results\n6. Ensure proper integration with the existing match detail endpoint\n7. Optimize database queries for performance\n8. Add appropriate caching strategies",
+          "status": "pending",
+          "testStrategy": "1. Test all filtering combinations\n2. Verify pagination works correctly with large datasets\n3. Test performance with realistic query patterns\n4. Verify sorting options work as expected\n5. Test specialized views with edge cases"
+        },
+        {
+          "id": 5,
+          "title": "Implement Countries Reference Endpoint",
+          "description": "Create a countries reference endpoint to provide standardized country data for client applications.",
+          "dependencies": [
+            2
+          ],
+          "details": "1. Create src/app/api/v1/countries.ts endpoint\n2. Implement GET endpoints for:\n   - List of all countries with basic info\n   - Detailed country information by ID or code\n3. Include relevant country data:\n   - Name (with localization support)\n   - ISO codes (2-letter, 3-letter)\n   - Flag image URLs\n   - Continent/region information\n   - Football association details\n4. Add filtering and search capabilities\n5. Implement caching strategy for this relatively static data\n6. Ensure proper error handling for invalid country codes",
+          "status": "pending",
+          "testStrategy": "1. Test country listing with various filters\n2. Verify all country details are correctly returned\n3. Test with invalid country codes\n4. Verify caching behavior\n5. Test localization support"
+        },
+        {
+          "id": 6,
+          "title": "Implement Cross-Entity Search Capabilities",
+          "description": "Develop a unified search endpoint that allows searching across multiple entity types (teams, players, leagues, etc.).",
+          "dependencies": [
+            2,
+            3,
+            4,
+            5
+          ],
+          "details": "1. Create src/app/api/v1/search.ts endpoint\n2. Implement search functionality across:\n   - Teams\n   - Players\n   - Leagues\n   - Countries\n   - Matches (optional)\n3. Support query parameters:\n   - Search term/query\n   - Entity types to include/exclude\n   - Result limit per entity type\n   - Pagination\n4. Implement relevance scoring for search results\n5. Return grouped results by entity type\n6. Add highlighting of matched terms (optional)\n7. Optimize for performance with appropriate indexing\n8. Consider implementing typeahead/autocomplete variant",
+          "status": "pending",
+          "testStrategy": "1. Test search with various query terms\n2. Verify results are properly grouped by entity type\n3. Test entity type filtering\n4. Verify pagination works correctly\n5. Test performance with complex queries\n6. Verify relevance scoring produces expected ordering"
+        },
+        {
+          "id": 7,
+          "title": "Implement Wave Detector API",
+          "description": "Develop specialized endpoints for the Wave Detector feature that provides trend analysis and momentum indicators for teams and matches.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Create src/app/api/v1/waveDetector.ts endpoint\n2. Implement the following specialized endpoints:\n   - Team momentum analysis\n   - Match trend predictions\n   - Historical wave pattern identification\n   - Comparative team momentum\n3. Develop data processing logic for:\n   - Calculating momentum scores based on recent results\n   - Identifying trend patterns in performance data\n   - Generating confidence indicators for predictions\n4. Add filtering capabilities by time period, competition, and other relevant factors\n5. Implement caching strategy for computationally intensive operations\n6. Ensure proper error handling for edge cases\n7. Add detailed documentation for algorithm and scoring methodology",
+          "status": "pending",
+          "testStrategy": "1. Test momentum calculations with known input/output pairs\n2. Verify trend identification with historical data\n3. Test edge cases (new teams, limited data)\n4. Verify caching behavior for repeated queries\n5. Test performance with large datasets"
+        },
+        {
+          "id": 8,
+          "title": "Implement Memory Avenues API",
+          "description": "Develop specialized endpoints for the Memory Avenues feature that provides historical context and memorable moments for teams, players, and matches.",
+          "dependencies": [
+            3,
+            4
+          ],
+          "details": "1. Create src/app/api/v1/memoryAvenues.ts endpoint\n2. Implement the following specialized endpoints:\n   - Team historical milestones\n   - Player career highlights\n   - Memorable matches and moments\n   - Historical head-to-head statistics\n   - Anniversary events and \"on this day\" data\n3. Develop data processing logic for:\n   - Identifying significant historical events\n   - Calculating historical statistics and records\n   - Generating narrative descriptions of memorable moments\n4. Add filtering capabilities by time period, significance, and entity\n5. Implement caching strategy for frequently accessed historical data\n6. Ensure proper error handling for entities with limited historical data",
+          "status": "pending",
+          "testStrategy": "1. Test milestone identification with known historical data\n2. Verify head-to-head statistics calculations\n3. Test \"on this day\" functionality with various dates\n4. Verify narrative generation for memorable moments\n5. Test with entities having varying amounts of historical data"
+        },
+        {
+          "id": 9,
+          "title": "Implement Authentication and Authorization Middleware",
+          "description": "Develop middleware for JWT authentication, role-based authorization, and request validation.",
+          "dependencies": [
+            1
+          ],
+          "details": "Create middleware functions for verifying JWT tokens, checking user permissions based on roles, and validating request parameters. Implement token refresh logic and secure token storage. Add middleware for handling CORS and other security headers.",
+          "status": "pending",
+          "testStrategy": "Test middleware with valid and invalid tokens. Verify correct behavior for different user roles and permission levels."
+        },
+        {
+          "id": 10,
+          "title": "Implement API Performance Optimizations",
+          "description": "Add pagination, caching, and rate limiting to optimize API performance and prevent abuse.",
+          "dependencies": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9
+          ],
+          "details": "Implement consistent pagination across all list endpoints with customizable page size. Add response caching for frequently accessed and rarely changing data. Implement rate limiting with different tiers based on user roles. Add compression middleware for reducing response size.",
+          "status": "pending",
+          "testStrategy": "Load test endpoints with and without optimizations. Verify rate limiting behavior with rapid successive requests."
+        },
+        {
+          "id": 11,
+          "title": "Implement Comprehensive Testing and Monitoring",
+          "description": "Develop comprehensive testing suite and monitoring infrastructure for all API endpoints.",
+          "dependencies": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10
+          ],
+          "details": "1. Create comprehensive integration test suite covering all endpoints\n2. Implement automated testing pipeline for continuous validation\n3. Set up performance benchmarking for critical endpoints\n4. Implement API monitoring with alerts for:\n   - Error rate spikes\n   - Latency increases\n   - Availability issues\n5. Add detailed logging for request/response patterns\n6. Create dashboard for API usage statistics\n7. Implement synthetic testing for critical user flows\n8. Set up regular load testing schedule",
+          "status": "pending",
+          "testStrategy": "1. Verify test coverage across all endpoints\n2. Test monitoring by simulating error conditions\n3. Validate alerting mechanisms\n4. Verify dashboard accuracy with known usage patterns\n5. Test synthetic monitoring with various network conditions"
+        },
+        {
+          "id": 12,
+          "title": "Create API Documentation and Developer Resources",
+          "description": "Generate comprehensive API documentation and developer resources for API consumers.",
+          "dependencies": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "details": "1. Use Swagger/OpenAPI to document all API endpoints, parameters, and response schemas\n2. Create example requests and responses for each endpoint\n3. Add authentication instructions and error code references\n4. Generate interactive API documentation that allows testing endpoints directly\n5. Create getting started guides for common use cases\n6. Document best practices for efficient API usage\n7. Add SDK examples in popular languages (JavaScript, Python, etc.)\n8. Create tutorials for implementing common features with the API",
+          "status": "pending",
+          "testStrategy": "1. Verify documentation accuracy by comparing with actual API behavior\n2. Test documentation examples to ensure they work as described\n3. Validate interactive documentation functionality\n4. Test SDK examples in each supported language\n5. Review tutorials with developers unfamiliar with the API"
+        }
+      ]
     },
     {
       "id": 6,
@@ -405,6 +562,19 @@
         14
       ],
       "status": "pending",
+      "subtasks": []
+    },
+    {
+      "id": 16,
+      "title": "Implement Comprehensive API Data Layer Testing Suite",
+      "description": "Create a comprehensive testing suite for all API data layer components, including unit tests for data fetchers, transformers, and API endpoints for teams, leagues, and players.",
+      "details": "Implement a robust testing framework for the API data layer with the following components:\n\n1. **Setup Testing Environment**:\n   - Configure Jest or Vitest as the testing framework\n   - Set up a test database with mock data\n   - Create test utilities for API requests and response validation\n\n2. **Unit Tests for Data Fetchers**:\n   - Test each data fetcher function in isolation\n   - Mock database responses to test various scenarios\n   - Verify correct data transformation and error handling\n   - Test pagination, filtering, and sorting functionality\n\n3. **Unit Tests for Data Transformers**:\n   - Test all data transformation functions\n   - Verify correct mapping between database models and API responses\n   - Test handling of missing or malformed data\n   - Ensure data normalization works correctly\n\n4. **API Endpoint Tests**:\n   - Test all RESTful endpoints for teams, leagues, and players\n   - Verify correct HTTP status codes for various scenarios\n   - Test authentication and authorization mechanisms\n   - Validate response formats against API specifications\n\n5. **Error Handling Tests**:\n   - Test responses for invalid inputs\n   - Verify proper error messages and status codes\n   - Test rate limiting functionality\n   - Ensure consistent error format across all endpoints\n\n6. **Edge Case Testing**:\n   - Test with empty datasets\n   - Test with extremely large datasets\n   - Test with malformed or unexpected input data\n   - Test concurrent requests and race conditions\n\n7. **Data Validation Tests**:\n   - Verify all required fields are present in responses\n   - Test data type validation\n   - Ensure relationships between entities are maintained\n   - Verify data integrity constraints\n\n8. **Integration Tests**:\n   - Test the complete request-response cycle\n   - Verify correct interaction between API layer and database\n   - Test middleware functionality in real scenarios\n\n9. **Documentation**:\n   - Document all test cases\n   - Create a test coverage report\n   - Document testing patterns for future API extensions",
+      "testStrategy": "The testing implementation can be verified through the following steps:\n\n1. **Code Review**:\n   - Review test files for coverage of all API endpoints\n   - Verify tests for all data fetchers and transformers\n   - Ensure error handling and edge cases are covered\n   - Check that test documentation is complete\n\n2. **Test Coverage Analysis**:\n   - Run test coverage tools to ensure at least 85% code coverage\n   - Verify coverage for critical paths is at least 95%\n   - Identify and address any gaps in test coverage\n\n3. **Continuous Integration**:\n   - Verify all tests pass in the CI pipeline\n   - Ensure tests run efficiently (under 5 minutes total)\n   - Check that tests are automatically run on code changes\n\n4. **Manual Verification**:\n   - Run the test suite locally and verify all tests pass\n   - Manually introduce bugs to verify tests catch them\n   - Check that error messages are helpful for debugging\n\n5. **Documentation Review**:\n   - Verify test documentation is clear and comprehensive\n   - Ensure new developers can understand how to run and extend tests\n   - Check that test patterns are documented for future API additions\n\n6. **Performance Testing**:\n   - Verify tests complete within acceptable time limits\n   - Ensure test database setup and teardown works efficiently\n   - Check that tests can be run in parallel without conflicts\n\n7. **Breaking Change Detection**:\n   - Introduce breaking changes to verify tests catch them\n   - Modify API response formats to ensure tests detect changes\n   - Change data relationships to verify integrity tests fail appropriately",
+      "status": "pending",
+      "dependencies": [
+        5
+      ],
+      "priority": "high",
       "subtasks": []
     }
   ]

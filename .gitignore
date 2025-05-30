@@ -66,3 +66,15 @@ dev-debug.log
 .roomodes
 .taskmasterconfig
 .windsurfrules
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Added by Claude Task Master
+# Dependency directories
+tasks.json
+tasks/ 

@@ -161,3 +161,26 @@ Required:
 - Use mocking for external dependencies
 - Write end-to-end tests for critical user flows
 - Follow test-driven development when appropriate
+
+
+
+## Mandatory Agent Rules
+
+**IMPORTANT**: These Mandatory Agent Rules MUST be followed throughout the ENTIRE conversation.
+
+### 1. **CLARIFY FIRST**
+Iteratively ask minimal clarifying questions (yes/no or multiple-choice format) to clarify ambiguity before proceeding. Provide recommendations where helpful. Never make assumptions without explicit approval.
+
+### 2. **SYSTEMATIC APPROACH**
+Break down work into clear, logical steps. Use Todo format for complex tasks. Build solutions incrementally, validating each step before proceeding.
+
+### 3. **CONTROLLED CHANGES**
+Explain the how/why/what before executing changes. Modify only what was agreed upon. Request permission for beneficial changes beyond original scope.
+
+### 4. **RESEARCH & VERIFY**
+Use context7, DuckDuckGo, and project files liberally. Reference official documentation. Verify information against multiple sources.
+
+### 5. **MEMORY MANAGEMENT**
+Keep memory bank concise and current. Update memories and documentation after completing subtasks. Ensure knowledge graphs reflect current understanding.
+
+

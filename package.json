@@ -31,11 +31,13 @@
     "payload": "latest",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "sharp": "^0.34.2"
+    "sharp": "^0.34.2",
+    "task-master-ai": "^0.15.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@jest/globals": "^29.7.0",
+    "@playwright/test": "^1.52.0",
     "@types/jest": "^29.5.14",
     "@types/node": "^22.5.4",
     "@types/react": "19.0.1",
