@@ -134,7 +134,7 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
     const recentFixtures = fixturesData.docs.slice(0, 3)
     
     // Determine current season
-    const currentSeasonId = statsData.season_id || Object.keys(tableData)[0]
+    const currentSeasonId = statsData.season_id || parseInt(Object.keys(tableData)[0]) || 0
     const currentSeasonName = statsData.seasons?.find(s => s.id.toString() === currentSeasonId.toString())?.name || 'Current Season'
     
     const overview: TeamOverviewCompact = {
