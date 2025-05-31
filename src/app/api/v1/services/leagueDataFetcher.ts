@@ -16,6 +16,49 @@ import type {
   StandingsData,
 } from '../types/league'
 
+// Import the team transformer since leagues use the same structure
+import { transformTeamTable } from '../transformers/teamTransformers'
+
+// Transform league table for current season only
+function transformLeagueTable(
+  rawLeague: { id: number; name: string; standings: Record<string, any> | null; current_season?: any },
+  seasonId?: string,
+): LeagueStandingsResponse {
+  // Determine which season to use
+  let targetSeasonId = seasonId || (rawLeague.current_season?.id ? String(rawLeague.current_season.id) : null)
+  
+  // If no current season, try to use the most recent season from standings
+  if (!targetSeasonId && rawLeague.standings) {
+    const availableSeasons = Object.keys(rawLeague.standings)
+    if (availableSeasons.length > 0) {
+      // Sort seasons descending and take the most recent
+      targetSeasonId = availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0]
+      console.log(`No current season set for league ${rawLeague.id}, using most recent season: ${targetSeasonId}`)
+    }
+  }
+  
+  if (!targetSeasonId) {
+    throw new Error('No current season available for this league and no standings data found')
+  }
+
+  // Only process the specific season's standings
+  if (!rawLeague.standings || !rawLeague.standings[targetSeasonId]) {
+    const availableSeasons = rawLeague.standings ? Object.keys(rawLeague.standings) : []
+    throw new Error(`No standings data available for season ${targetSeasonId}. Available seasons: ${availableSeasons.join(', ')}`)
+  }
+
+  // Create a temporary object with only the target season for transformation
+  const seasonOnlyLeague = {
+    ...rawLeague,
+    standings: { [targetSeasonId]: rawLeague.standings[targetSeasonId] }
+  }
+
+  // Use the team transformer but only for the specific season
+  const transformedStandings = transformTeamTable(seasonOnlyLeague as any)
+  
+  return transformedStandings
+}
+
 // Define types for Payload documents
 type League = {
   id: string | number
@@ -102,70 +145,51 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
   getStandings: async (leagueId: string, seasonId?: string): Promise<LeagueStandingsResponse> => {
     console.log(`Fetching standings for league ${leagueId}, season ${seasonId || 'current'}`)
-    const currentSeasonId = seasonId || '2023'
+    
+    try {
+      const numericId = parseInt(leagueId, 10)
+      if (isNaN(numericId) || numericId <= 0) {
+        throw new Error('Invalid league ID format')
+      }
 
-    // Create sample standing rows for demonstration
-    const standingRows: StandingTableRow[] = [
-      {
-        position: 1,
-        team_id: 1,
-        team_name: 'Team A',
-        team_logo_path: 'https://example.com/logos/team-1.png',
-        points: 30,
-        played: 10,
-        won: 10,
-        draw: 0,
-        lost: 0,
-        goals_for: 30,
-        goals_against: 5,
-        goal_difference: 25,
-        form: 'WWWWW',
-        qualification_status: {
-          type: 'champions_league',
-          name: 'Champions League',
-          color: '#0000FF',
+      const payload = await getPayload({ config })
+      const leagueResult = await payload.find({
+        collection: 'leagues',
+        where: {
+          id: {
+            equals: numericId,
+          },
         },
-      },
-      {
-        position: 2,
-        team_id: 2,
-        team_name: 'Team B',
-        team_logo_path: 'https://example.com/logos/team-2.png',
-        points: 25,
-        played: 10,
-        won: 8,
-        draw: 1,
-        lost: 1,
-        goals_for: 20,
-        goals_against: 8,
-        goal_difference: 12,
-        form: 'WDWWW',
-      },
-    ]
+        depth: 1,
+      })
 
-    // Create a standing table with the rows
-    const standingTable: StandingTable = {
-      id: 1,
-      name: 'Regular Season',
-      type: 'regular',
-      standings: standingRows,
-    }
+      if (!leagueResult.docs.length) {
+        throw new Error(`No league found with ID: ${leagueId}`)
+      }
 
-    // In a real implementation, this would fetch data from a database or external API
-    return {
-      id: leagueId,
-      name: `League ${leagueId}`,
-      season_id: currentSeasonId,
-      standings: {
-        id: 1,
-        name: 'Regular Season',
-        type: 'regular',
-        league_id: parseInt(leagueId),
-        season_id: parseInt(currentSeasonId),
-        stage_id: null,
-        stage_name: null,
-        standings: [standingTable],
-      },
+      const league = leagueResult.docs[0]
+
+      // Create a properly structured raw league object
+      const rawLeague = {
+        id: league.id as number,
+        name: league.name as string,
+        standings:
+          typeof league.standings === 'object' ? (league.standings as Record<string, any>) : null,
+        current_season: league.current_season || null,
+      }
+
+      // Transform the standings using the same logic as team standings
+      const transformedStandings = transformLeagueTable(rawLeague, seasonId)
+
+      return transformedStandings
+    } catch (error) {
+      console.error('Error in getStandings:', {
+        leagueId,
+        seasonId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      throw error
     }
   },
 

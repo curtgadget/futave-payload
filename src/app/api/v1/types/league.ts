@@ -87,10 +87,7 @@ export type LeagueOverviewResponse = LeagueBase & {
   seasons?: LeagueSeason[]
 }
 
-export type LeagueStandingsResponse = LeagueBase & {
-  season_id: string
-  standings: StandingsData
-}
+export type LeagueStandingsResponse = Record<string, StandingsData> // Map of seasonId -> standings data, same as TeamTableResponse
 
 export type LeagueTeamsResponse = LeagueBase & {
   teams: LeagueTeam[]
