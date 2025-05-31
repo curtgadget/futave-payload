@@ -36,6 +36,7 @@ describe('League Transformer', () => {
         today: [{ id: 103, name: 'Today Match' }],
         currentseason: { id: 20, name: '2023-24' },
         seasons: [{ id: 19, name: '2022-23' }, { id: 20, name: '2023-24' }],
+        standings: null,
       })
     })
 
@@ -57,6 +58,7 @@ describe('League Transformer', () => {
         today: null,
         currentseason: null,
         seasons: null,
+        standings: null,
       })
     })
 
@@ -101,6 +103,7 @@ describe('League Transformer', () => {
       expect(result.today).toBeNull()
       expect(result.currentseason).toBeNull()
       expect(result.seasons).toBeNull()
+      expect(result.standings).toBeNull()
     })
 
     it('should handle falsy optional fields by converting to null', () => {
@@ -123,6 +126,7 @@ describe('League Transformer', () => {
       expect(result.today).toBeNull()
       expect(result.currentseason).toBeNull()
       expect(result.seasons).toBeNull()
+      expect(result.standings).toBeNull()
     })
 
     it('should preserve truthy optional field values', () => {
@@ -145,6 +149,30 @@ describe('League Transformer', () => {
       expect(result.today).toBe('today data')
       expect(result.currentseason).toEqual({ active: true })
       expect(result.seasons).toEqual([{ id: 1 }, { id: 2 }])
+    })
+
+    it('should handle standings field correctly', () => {
+      // Test with no standings
+      const leagueWithoutStandings = createMockLeague({
+        id: 1,
+        name: 'League Without Standings',
+      })
+
+      const resultWithoutStandings = transformLeague(leagueWithoutStandings)
+      expect(resultWithoutStandings.standings).toBeNull()
+
+      // Test with standings data
+      const standingsData = {
+        20: [{ position: 1, team: 'Team A' }],
+        21: [{ position: 1, team: 'Team B' }],
+      }
+      const leagueWithStandings = {
+        ...createMockLeague({ id: 2, name: 'League With Standings' }),
+        standings: standingsData,
+      }
+
+      const resultWithStandings = transformLeague(leagueWithStandings as any)
+      expect(resultWithStandings.standings).toEqual(standingsData)
     })
   })
 

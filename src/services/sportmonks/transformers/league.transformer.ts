@@ -13,6 +13,7 @@ export type TransformedLeague = {
   today: unknown | null
   currentseason: unknown | null
   seasons: unknown | null
+  standings: Record<number, unknown> | null
 }
 
 export function transformLeague(league: SportmonksLeague): TransformedLeague {
@@ -29,6 +30,7 @@ export function transformLeague(league: SportmonksLeague): TransformedLeague {
     today: league.today || null,
     currentseason: league.currentseason || null,
     seasons: league.seasons || null,
+    standings: (league as any).standings || null,
   }
 }
 

@@ -62,5 +62,10 @@ export const Leagues: CollectionConfig = {
       type: 'json',
       required: false,
     },
+    {
+      name: 'standings',
+      type: 'json',
+      required: false,
+    },
   ],
 }
