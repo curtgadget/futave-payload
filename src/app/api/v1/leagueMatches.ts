@@ -1,17 +1,16 @@
 import type { APIRouteV1 } from '@/app/api/v1/index'
 import type { PayloadRequest } from 'payload'
-import type { LeagueTab } from './types/league'
 import { createAuthMiddleware } from '@/utilities/auth'
 import { leagueDataFetcher } from './services/leagueDataFetcher'
 
-const getLeagueDataHandler = async (req: PayloadRequest) => {
+const getLeagueMatchesHandler = async (req: PayloadRequest) => {
   if (!req.url) {
     return Response.json({ error: 'Invalid request URL' }, { status: 400 })
   }
 
   const url = new URL(req.url)
-  const id = url.pathname.split('/').pop()
-  const tab = url.searchParams.get('tab') as LeagueTab | null
+  const pathParts = url.pathname.split('/').filter(Boolean)
+  const id = pathParts[pathParts.length - 2] // Get the ID before 'matches'
   const page = parseInt(url.searchParams.get('page') || '1', 10)
   const limit = parseInt(url.searchParams.get('limit') || '50', 10)
   const seasonId = url.searchParams.get('season_id')
@@ -21,34 +20,11 @@ const getLeagueDataHandler = async (req: PayloadRequest) => {
   }
 
   try {
-    const tabName = tab || 'overview'
-    const fetcherName =
-      `get${tabName.charAt(0).toUpperCase()}${tabName.slice(1)}` as keyof typeof leagueDataFetcher
-
-    if (!(fetcherName in leagueDataFetcher)) {
-      return Response.json({ error: 'Invalid tab specified' }, { status: 400 })
-    }
-
-    // Determine which parameters to pass based on the tab
-    let data
-    if (tabName === 'teams') {
-      // Cast to the correct function type for teams listing
-      const getTeams = leagueDataFetcher[fetcherName] as typeof leagueDataFetcher.getTeams
-      data = await getTeams(id, page, limit)
-    } else if (tabName === 'standings') {
-      // Cast to the correct function type for standings
-      const getStandings = leagueDataFetcher[fetcherName] as typeof leagueDataFetcher.getStandings
-      data = await getStandings(id, seasonId || undefined)
-    } else {
-      // For other tabs, just pass the league ID
-      data = await leagueDataFetcher[fetcherName](id)
-    }
-
+    const data = await leagueDataFetcher.getMatches(id, page, limit, seasonId || undefined)
     return Response.json(data)
   } catch (error) {
-    console.error('Error in league data handler:', {
+    console.error('Error in league matches handler:', {
       id,
-      tab,
       page,
       limit,
       seasonId,
@@ -70,13 +46,13 @@ const getLeagueDataHandler = async (req: PayloadRequest) => {
     }
 
     return Response.json(
-      { error: 'An unexpected error occurred while fetching league data' },
+      { error: 'An unexpected error occurred while fetching league matches' },
       { status: 500 },
     )
   }
 }
 
-const getLeaguePageHandler = async (req: PayloadRequest) => {
+const getLeagueMatchesPageHandler = async (req: PayloadRequest) => {
   const authMiddleware = createAuthMiddleware()
   const authResult = await authMiddleware(req)
 
@@ -84,13 +60,13 @@ const getLeaguePageHandler = async (req: PayloadRequest) => {
     return authResult
   }
 
-  return getLeagueDataHandler(req)
+  return getLeagueMatchesHandler(req)
 }
 
-const getLeaguePage: APIRouteV1 = {
-  path: '/v1/league/:id',
+const getLeagueMatchesPage: APIRouteV1 = {
+  path: '/v1/league/:id/matches',
   method: 'get',
-  handler: getLeaguePageHandler,
+  handler: getLeagueMatchesPageHandler,
 }
 
-export default getLeaguePage
+export default getLeagueMatchesPage

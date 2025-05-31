@@ -2,8 +2,12 @@ import type { Endpoint } from 'payload'
 import type { PayloadRequest } from 'payload'
 import getTeamOverviewPage from './teams'
 import getTeamsPage from './teamsList'
-import getLeaguePage from './leagues'
 import getLeaguesPage from './leaguesList'
+import getLeagueOverviewPage from './leagueOverview'
+import getLeagueTablePage from './leagueTable'
+import getLeagueMatchesPage from './leagueMatches'
+import getLeagueTeamsPage from './leagueTeams'
+import getLeagueStatsPage from './leagueStats'
 import getPlayerPage from './players'
 import getPlayersPage from './playersList'
 import getTeamFixtures from './teamFixtures'
@@ -20,8 +24,12 @@ export type APIRouteV1 = Omit<Endpoint, 'path'> & {
 const apiV1Routes: APIRouteV1[] = [
   getTeamOverviewPage,
   getTeamsPage,
-  getLeaguePage,
   getLeaguesPage,
+  getLeagueOverviewPage,
+  getLeagueTablePage,
+  getLeagueMatchesPage,
+  getLeagueTeamsPage,
+  getLeagueStatsPage,
   getPlayerPage,
   getPlayersPage,
   getTeamFixtures,

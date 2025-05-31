@@ -119,11 +119,46 @@ export type LeaguesListResponse = {
   }
 }
 
+// Response type for league matches
+export type LeagueMatchesResponse = LeagueBase & {
+  matches: any[] // TODO: Define proper match type
+  pagination: {
+    page: number
+    limit: number
+    totalItems: number
+    totalPages: number
+  }
+}
+
+// Response type for league stats
+export type LeagueStatsResponse = LeagueBase & {
+  stats: {
+    teams_count: number
+    matches_played: number
+    goals_scored: number
+    goals_conceded: number
+    yellow_cards: number
+    red_cards: number
+    top_scorer?: {
+      player_id: number
+      player_name: string
+      goals: number
+    }
+    top_assists?: {
+      player_id: number
+      player_name: string
+      assists: number
+    }
+  }
+}
+
 // Data fetcher type for league operations
 export type LeagueDataFetcher = {
   getOverview: (leagueId: string) => Promise<LeagueOverviewResponse>
   getStandings: (leagueId: string, seasonId?: string) => Promise<LeagueStandingsResponse>
   getTeams: (leagueId: string, page?: number, limit?: number) => Promise<LeagueTeamsResponse>
+  getMatches: (leagueId: string, page?: number, limit?: number, seasonId?: string) => Promise<LeagueMatchesResponse>
+  getStats: (leagueId: string, seasonId?: string) => Promise<LeagueStatsResponse>
   getSeasons: (leagueId: string) => Promise<LeagueSeasonsResponse>
 }
 

@@ -6,6 +6,8 @@ import type {
   LeagueOverviewResponse,
   LeagueStandingsResponse,
   LeagueTeamsResponse,
+  LeagueMatchesResponse,
+  LeagueStatsResponse,
   LeagueSeasonsResponse,
   LeagueListDataFetcher,
   LeaguesListResponse,
@@ -258,6 +260,58 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           totalPages: 0,
         },
       }
+    }
+  },
+
+  getMatches: async (
+    leagueId: string,
+    page: number = 1,
+    limit: number = 50,
+    seasonId?: string,
+  ): Promise<LeagueMatchesResponse> => {
+    console.log(`Fetching matches for league ${leagueId}, page ${page}, limit ${limit}, season ${seasonId || 'current'}`)
+    
+    // TODO: Implement real match fetching from database
+    // This is a placeholder implementation
+    return {
+      id: leagueId,
+      name: `League ${leagueId}`,
+      matches: [], // Empty for now - will be implemented later
+      pagination: {
+        page,
+        limit,
+        totalItems: 0,
+        totalPages: 0,
+      },
+    }
+  },
+
+  getStats: async (leagueId: string, seasonId?: string): Promise<LeagueStatsResponse> => {
+    console.log(`Fetching stats for league ${leagueId}, season ${seasonId || 'current'}`)
+    
+    // TODO: Implement real stats calculation from database
+    // This is a placeholder implementation with sample data
+    return {
+      id: leagueId,
+      name: `League ${leagueId}`,
+      stats: {
+        teams_count: 20,
+        matches_played: 380,
+        goals_scored: 1024,
+        goals_conceded: 1024,
+        yellow_cards: 1567,
+        red_cards: 89,
+        top_scorer: {
+          player_id: 12345,
+          player_name: 'Sample Player',
+          goals: 28,
+        },
+        top_assists: {
+          player_id: 54321,
+          player_name: 'Another Player',
+          assists: 18,
+        },
+      },
     }
   },
 

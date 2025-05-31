@@ -197,6 +197,15 @@ export interface League {
     | number
     | boolean
     | null;
+  standings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -917,6 +926,7 @@ export interface LeaguesSelect<T extends boolean = true> {
   today?: T;
   currentseason?: T;
   seasons?: T;
+  standings?: T;
   updatedAt?: T;
   createdAt?: T;
 }

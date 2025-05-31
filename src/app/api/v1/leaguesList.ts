@@ -60,7 +60,7 @@ const getLeaguesPageHandler = async (req: PayloadRequest) => {
 }
 
 const getLeaguesPage: APIRouteV1 = {
-  path: '/v1/leagues',
+  path: '/v1/league',
   method: 'get',
   handler: getLeaguesPageHandler,
 }
