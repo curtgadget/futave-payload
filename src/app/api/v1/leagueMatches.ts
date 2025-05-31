@@ -14,13 +14,24 @@ const getLeagueMatchesHandler = async (req: PayloadRequest) => {
   const page = parseInt(url.searchParams.get('page') || '1', 10)
   const limit = parseInt(url.searchParams.get('limit') || '50', 10)
   const seasonId = url.searchParams.get('season_id')
+  const type = ['all', 'past', 'upcoming'].includes(url.searchParams.get('type') || '')
+    ? url.searchParams.get('type') as 'all' | 'past' | 'upcoming'
+    : 'auto' // Smart default: upcoming first, fall back to past
+  const includeNextMatch = url.searchParams.get('includeNextMatch') === 'true'
 
   if (!id) {
     return Response.json({ error: 'League ID is required' }, { status: 400 })
   }
 
   try {
-    const data = await leagueDataFetcher.getMatches(id, page, limit, seasonId || undefined)
+    const data = await leagueDataFetcher.getMatches(
+      id, 
+      page, 
+      limit, 
+      seasonId || undefined, 
+      type, 
+      includeNextMatch
+    )
     return Response.json(data)
   } catch (error) {
     console.error('Error in league matches handler:', {
@@ -28,6 +39,8 @@ const getLeagueMatchesHandler = async (req: PayloadRequest) => {
       page,
       limit,
       seasonId,
+      type,
+      includeNextMatch,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
     })

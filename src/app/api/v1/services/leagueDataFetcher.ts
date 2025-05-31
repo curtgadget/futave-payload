@@ -19,6 +19,125 @@ import type {
 // Import the team transformer since leagues use the same structure
 import { transformTeamTable } from '../transformers/teamTransformers'
 
+// Build temporal navigation URLs for league matches (copied from team logic)
+function buildTemporalNavigationUrls(
+  baseUrl: string,
+  currentPage: number,
+  totalPages: number,
+  queryParams: Record<string, any>,
+  type: string
+): { 
+  next: string | null; 
+  previous: string | null;
+  newer: string | null;
+  older: string | null;
+} {
+  const buildUrl = (page: number, newType?: string) => {
+    const params = new URLSearchParams()
+    params.set('page', String(page))
+    
+    // Add other query parameters
+    Object.entries(queryParams).forEach(([key, value]) => {
+      if (key === 'type' && newType) {
+        params.set(key, newType)
+      } else if (value !== undefined && value !== null) {
+        params.set(key, String(value))
+      }
+    })
+    
+    return `${baseUrl}?${params.toString()}`
+  }
+  
+  // Standard pagination
+  const next = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+  const previous = currentPage > 1 ? buildUrl(currentPage - 1) : null
+  
+  // Temporal navigation based on fixture type
+  let newer: string | null = null
+  let older: string | null = null
+  
+  if (type === 'upcoming') {
+    // For upcoming: newer = more future fixtures, older = past results
+    newer = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+    older = buildUrl(1, 'past') // Switch to past results
+  } else if (type === 'past') {
+    // For past: newer = upcoming fixtures, older = more past fixtures  
+    newer = buildUrl(1, 'upcoming') // Switch to upcoming
+    older = currentPage < totalPages ? buildUrl(currentPage + 1) : null
+  } else {
+    // For 'all': use standard pagination
+    newer = next
+    older = previous
+  }
+  
+  return { next, previous, newer, older }
+}
+
+// Transform match document to MinimalTeamFixture format
+function transformMatchToFixture(match: any): any {
+  // Extract team information from participants
+  const participants = Array.isArray(match.participants) ? match.participants : []
+  const homeTeam = participants.find((p: any) => p.meta?.location === 'home')
+  const awayTeam = participants.find((p: any) => p.meta?.location === 'away')
+
+  // Convert starting_at date to timestamp for compatibility
+  const startingAtTimestamp = match.starting_at ? Math.floor(new Date(match.starting_at).getTime() / 1000) : null
+
+  return {
+    id: match.id,
+    starting_at: match.starting_at,
+    starting_at_timestamp: startingAtTimestamp,
+    league: match.league ? {
+      id: match.league.id,
+      name: match.league.name,
+    } : null,
+    home_team: homeTeam ? {
+      id: homeTeam.id,
+      name: homeTeam.name,
+      image_path: homeTeam.image_path || null,
+    } : null,
+    away_team: awayTeam ? {
+      id: awayTeam.id, 
+      name: awayTeam.name,
+      image_path: awayTeam.image_path || null,
+    } : null,
+    result_info: match.result_info || null,
+    state: match.state || null,
+    // Add other fields as needed
+  }
+}
+
+// Transform match document to MinimalNextMatch format
+function transformMatchToNextMatch(match: any): any {
+  const participants = Array.isArray(match.participants) ? match.participants : []
+  const homeTeam = participants.find((p: any) => p.meta?.location === 'home')
+  const awayTeam = participants.find((p: any) => p.meta?.location === 'away')
+
+  return {
+    starting_at: match.starting_at,
+    league: match.league ? {
+      id: match.league.id,
+      name: match.league.name,
+    } : { id: 0, name: '' },
+    home_team: homeTeam ? {
+      id: homeTeam.id,
+      name: homeTeam.name,
+      image_path: homeTeam.image_path || null,
+    } : { id: 0, name: '', image_path: null },
+    away_team: awayTeam ? {
+      id: awayTeam.id,
+      name: awayTeam.name,
+      image_path: awayTeam.image_path || null,
+    } : { id: 0, name: '', image_path: null },
+    home_position: null, // Can be enhanced later with league position
+    away_position: null,
+    home_goals_per_match: null,
+    away_goals_per_match: null,
+    home_goals_conceded_per_match: null,
+    away_goals_conceded_per_match: null,
+  }
+}
+
 // Transform league table for current season only
 function transformLeagueTable(
   rawLeague: { id: number; name: string; standings: Record<string, any> | null; current_season?: any },
@@ -292,21 +411,181 @@ export const leagueDataFetcher: LeagueDataFetcher = {
     page: number = 1,
     limit: number = 50,
     seasonId?: string,
+    type: 'all' | 'past' | 'upcoming' | 'auto' = 'auto',
+    includeNextMatch: boolean = false,
   ): Promise<LeagueMatchesResponse> => {
-    console.log(`Fetching matches for league ${leagueId}, page ${page}, limit ${limit}, season ${seasonId || 'current'}`)
+    console.log(`Fetching matches for league ${leagueId}, page ${page}, limit ${limit}, season ${seasonId || 'current'}, type ${type}`)
     
-    // TODO: Implement real match fetching from database
-    // This is a placeholder implementation
-    return {
-      id: leagueId,
-      name: `League ${leagueId}`,
-      matches: [], // Empty for now - will be implemented later
-      pagination: {
+    try {
+      const numericId = parseInt(leagueId, 10)
+      if (isNaN(numericId) || numericId <= 0) {
+        throw new Error('Invalid league ID format')
+      }
+
+      const payload = await getPayload({ config })
+      
+      // Validate pagination parameters
+      const validatedPage = Math.max(1, page)
+      const validatedLimit = Math.max(1, Math.min(100, limit)) // Cap at 100
+
+      // Build the query for matches in this league
+      const where: any = {
+        league_id: {
+          equals: numericId,
+        },
+      }
+
+      // Add season filter if provided
+      if (seasonId) {
+        where.season_id = {
+          equals: parseInt(seasonId, 10),
+        }
+      }
+
+      // Add time-based filtering based on type
+      const now = new Date() // Current date
+      if (type === 'past') {
+        where.starting_at = {
+          less_than: now,
+        }
+      } else if (type === 'upcoming') {
+        where.starting_at = {
+          greater_than_equal: now,
+        }
+      }
+      // 'all' and 'auto' don't add time filtering
+
+      // Fetch matches with pagination
+      // Always sort by most recent first (descending), except for upcoming which should be soonest first
+      const sortOrder = type === 'upcoming' ? 'starting_at' : '-starting_at'
+      
+      const matchesResult = await payload.find({
+        collection: 'matches',
+        where,
+        page: validatedPage,
+        limit: validatedLimit,
+        sort: sortOrder,
+      })
+
+      // Transform matches to MinimalTeamFixture format
+      const docs = matchesResult.docs.map(transformMatchToFixture)
+
+      // Handle auto type logic - try upcoming first, then past if no upcoming matches
+      let finalDocs = docs
+      let actualType = type
+      let finalPagination = {
+        page: matchesResult.page || validatedPage,
+        limit: matchesResult.limit || validatedLimit,
+        total: matchesResult.totalDocs || 0,
+        totalPages: matchesResult.totalPages || 0,
+      }
+
+      if (type === 'auto') {
+        // First try upcoming matches
+        const upcomingResult = await payload.find({
+          collection: 'matches',
+          where: {
+            ...where,
+            starting_at: { greater_than_equal: now },
+          },
+          page: validatedPage,
+          limit: validatedLimit,
+          sort: 'starting_at', // Soonest upcoming first
+        })
+
+        if (upcomingResult.docs.length > 0) {
+          finalDocs = upcomingResult.docs.map(transformMatchToFixture)
+          actualType = 'upcoming'
+          finalPagination = {
+            page: upcomingResult.page || validatedPage,
+            limit: upcomingResult.limit || validatedLimit,
+            total: upcomingResult.totalDocs || 0,
+            totalPages: upcomingResult.totalPages || 0,
+          }
+        } else {
+          // Fall back to past matches (most recent first)
+          const pastResult = await payload.find({
+            collection: 'matches',
+            where: {
+              ...where,
+              starting_at: { less_than: now },
+            },
+            page: validatedPage,
+            limit: validatedLimit,
+            sort: '-starting_at', // Most recent past first
+          })
+          finalDocs = pastResult.docs.map(transformMatchToFixture)
+          actualType = 'past'
+          finalPagination = {
+            page: pastResult.page || validatedPage,
+            limit: pastResult.limit || validatedLimit,
+            total: pastResult.totalDocs || 0,
+            totalPages: pastResult.totalPages || 0,
+          }
+        }
+      }
+
+      // Calculate next match if requested
+      let nextMatch: any = null
+      if (includeNextMatch) {
+        const nextMatchResult = await payload.find({
+          collection: 'matches',
+          where: {
+            league_id: { equals: numericId },
+            starting_at: { greater_than_equal: now },
+          },
+          limit: 1,
+          sort: 'starting_at',
+        })
+
+        if (nextMatchResult.docs.length > 0) {
+          nextMatch = transformMatchToNextMatch(nextMatchResult.docs[0])
+        }
+      }
+
+      // Build temporal navigation URLs
+      const baseUrl = `/api/v1/league/${leagueId}/matches`
+      const navigationUrls = buildTemporalNavigationUrls(baseUrl, finalPagination.page, finalPagination.totalPages, {
+        limit: finalPagination.limit,
+        type: actualType,
+        season_id: seasonId || undefined,
+        includeNextMatch: includeNextMatch ? 'true' : undefined,
+      }, actualType)
+
+      return {
+        docs: finalDocs,
+        meta: {
+          pagination: {
+            page: finalPagination.page,
+            limit: finalPagination.limit,
+            total: finalPagination.total,
+            totalPages: finalPagination.totalPages,
+            type: actualType,
+            // Standard pagination
+            hasMorePages: finalPagination.page < finalPagination.totalPages,
+            hasPreviousPages: finalPagination.page > 1,
+            nextPage: navigationUrls.next,
+            previousPage: navigationUrls.previous,
+            // Temporal navigation (UX-friendly)
+            hasNewer: navigationUrls.newer !== null,
+            hasOlder: navigationUrls.older !== null,
+            newerUrl: navigationUrls.newer,
+            olderUrl: navigationUrls.older,
+          },
+        },
+        nextMatch,
+      }
+    } catch (error) {
+      console.error('Error in getMatches:', {
+        leagueId,
         page,
         limit,
-        totalItems: 0,
-        totalPages: 0,
-      },
+        seasonId,
+        type,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+      throw error
     }
   },
 

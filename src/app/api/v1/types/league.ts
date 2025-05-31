@@ -1,3 +1,6 @@
+// Import types from team types since they're reusable
+import type { MinimalTeamFixture, MinimalNextMatch, Pagination } from './team'
+
 export type LeagueTab = 'overview' | 'standings' | 'teams' | 'seasons'
 
 export type LeagueBase = {
@@ -116,15 +119,13 @@ export type LeaguesListResponse = {
   }
 }
 
-// Response type for league matches
-export type LeagueMatchesResponse = LeagueBase & {
-  matches: any[] // TODO: Define proper match type
-  pagination: {
-    page: number
-    limit: number
-    totalItems: number
-    totalPages: number
+// Response type for league matches (similar to TeamFixturesResponse)
+export type LeagueMatchesResponse = {
+  docs: MinimalTeamFixture[]
+  meta: {
+    pagination: Pagination
   }
+  nextMatch: MinimalNextMatch | null
 }
 
 // Response type for league stats
@@ -154,7 +155,7 @@ export type LeagueDataFetcher = {
   getOverview: (leagueId: string) => Promise<LeagueOverviewResponse>
   getStandings: (leagueId: string, seasonId?: string) => Promise<LeagueStandingsResponse>
   getTeams: (leagueId: string, page?: number, limit?: number) => Promise<LeagueTeamsResponse>
-  getMatches: (leagueId: string, page?: number, limit?: number, seasonId?: string) => Promise<LeagueMatchesResponse>
+  getMatches: (leagueId: string, page?: number, limit?: number, seasonId?: string, type?: 'all' | 'past' | 'upcoming' | 'auto', includeNextMatch?: boolean) => Promise<LeagueMatchesResponse>
   getStats: (leagueId: string, seasonId?: string) => Promise<LeagueStatsResponse>
   getSeasons: (leagueId: string) => Promise<LeagueSeasonsResponse>
 }
