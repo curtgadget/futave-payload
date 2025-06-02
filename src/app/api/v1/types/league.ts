@@ -1,5 +1,5 @@
 // Import types from team types since they're reusable
-import type { MinimalTeamFixture, MinimalNextMatch, Pagination } from './team'
+import type { MinimalTeamFixture, MinimalNextMatch, Pagination, PlayerSeasonStats, TopPlayersStat } from './team'
 
 export type LeagueTab = 'overview' | 'standings' | 'teams' | 'seasons'
 
@@ -128,26 +128,73 @@ export type LeagueMatchesResponse = {
   nextMatch: MinimalNextMatch | null
 }
 
-// Response type for league stats
-export type LeagueStatsResponse = LeagueBase & {
-  stats: {
+// Enhanced league player stats for specific categories
+export type LeaguePlayerStatCategory = {
+  category: 'goals' | 'assists' | 'minutes' | 'goals_assists'
+  label: string
+  players: Array<{
+    player_id: string
+    name: string
+    team_id?: string
+    team_name?: string
+    team_logo?: string
+    position_id?: number
+    position_name?: string
+    jersey_number?: number | null
+    image_path?: string | null
+    value: number
+    appearances?: number
+    rank: number
+  }>
+}
+
+// Enhanced team stats for league standings/performance
+export type LeagueTeamStatCategory = {
+  category: 'attack' | 'defense' | 'discipline' | 'performance'
+  label: string
+  teams: Array<{
+    team_id: string
+    team_name: string
+    team_logo?: string
+    value: number
+    rank: number
+    additional_stats?: Record<string, number>
+  }>
+}
+
+// Enhanced response type for league stats with tabbed structure
+export type LeagueStatsResponse = {
+  id: string
+  name: string
+  season_id: number
+  season_name?: string
+  overview: {
     teams_count: number
-    matches_played: number
-    goals_scored: number
-    goals_conceded: number
-    yellow_cards: number
-    red_cards: number
-    top_scorer?: {
-      player_id: number
-      player_name: string
-      goals: number
-    }
-    top_assists?: {
-      player_id: number
-      player_name: string
-      assists: number
-    }
+    total_players: number
+    total_goals: number
+    total_assists: number
+    total_yellow_cards: number
+    total_red_cards: number
+    total_appearances: number
+    total_minutes_played: number
+    average_goals_per_player: number
+    average_assists_per_player: number
   }
+  player_stats: {
+    top_scorers: LeaguePlayerStatCategory
+    top_assists: LeaguePlayerStatCategory
+    most_minutes: LeaguePlayerStatCategory
+    top_goals_assists: LeaguePlayerStatCategory
+  }
+  team_stats: {
+    attack: LeagueTeamStatCategory
+    defense: LeagueTeamStatCategory
+    discipline: LeagueTeamStatCategory
+    performance: LeagueTeamStatCategory
+  }
+  // Keep legacy fields for backward compatibility
+  top_stats?: TopPlayersStat[]
+  legacy_player_stats?: PlayerSeasonStats[]
 }
 
 // Data fetcher type for league operations

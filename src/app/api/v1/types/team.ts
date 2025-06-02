@@ -111,6 +111,7 @@ export type TeamCoach = {
 export type PlayerSeasonStats = {
   player_id: string
   name: string
+  team_id?: string
   position?: string
   position_id?: number
   jersey_number?: number
