@@ -27,6 +27,8 @@ export const TeamStatisticTypeIds = {
   GOALS_AGAINST: 88,
   RED_CARDS: 83,
   YELLOW_CARDS: 84,
+  SHOTS_TOTAL: 41, // Total shots taken
+  SHOTS_ON_TARGET: 113, // Shots on target
 } as const
 
 export type TeamStatisticTypeId = (typeof TeamStatisticTypeIds)[keyof typeof TeamStatisticTypeIds]

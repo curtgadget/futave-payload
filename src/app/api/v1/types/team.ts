@@ -150,6 +150,11 @@ export type TeamSeasonStats = {
   avg_goals_scored?: number
   avg_goals_conceded?: number
 
+  // Shot statistics
+  shots_total?: number
+  shots_on_target?: number
+  shot_conversion_percentage?: number // (goals_for / shots_total) * 100
+
   // Additional team stats
   yellow_cards?: number
   red_cards?: number

@@ -1341,6 +1341,9 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
           failed_to_score: 0,
           yellow_cards: 0,
           red_cards: 0,
+          shots_total: 0,
+          shots_on_target: 0,
+          shot_conversion_percentage: 0,
           home_record: {
             wins: 0,
             draws: 0,
@@ -1535,6 +1538,12 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
             case TeamStatisticTypeIds.YELLOW_CARDS:
               teamStats.yellow_cards = statValue
               break
+            case TeamStatisticTypeIds.SHOTS_TOTAL:
+              teamStats.shots_total = statValue
+              break
+            case TeamStatisticTypeIds.SHOTS_ON_TARGET:
+              teamStats.shots_on_target = statValue
+              break
             // Add more cases for other statistics as needed
           }
         })
@@ -1546,6 +1555,13 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         if (teamStats.matches_played > 0) {
           teamStats.avg_goals_scored = teamStats.goals_for / teamStats.matches_played
           teamStats.avg_goals_conceded = teamStats.goals_against / teamStats.matches_played
+        }
+
+        // Calculate shot conversion percentage
+        if (teamStats.shots_total && teamStats.shots_total > 0) {
+          teamStats.shot_conversion_percentage = (teamStats.goals_for / teamStats.shots_total) * 100
+          // Round to 2 decimal places
+          teamStats.shot_conversion_percentage = Math.round(teamStats.shot_conversion_percentage * 100) / 100
         }
 
         result.team_stats = teamStats
