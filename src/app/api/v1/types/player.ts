@@ -1,5 +1,28 @@
 export type PlayerTab = 'overview' | 'stats' | 'career'
 
+export type PlayerTrophy = {
+  team: {
+    id: string
+    name: string
+    logo?: string
+    country?: string
+  }
+  league: {
+    id: string
+    name: string
+    logo?: string
+  }
+  season: {
+    id: string
+    name: string
+  }
+  trophy: {
+    id: string
+    position: number
+    name: string
+  }
+}
+
 export type PlayerBase = {
   id: string
   name: string
@@ -22,6 +45,7 @@ export type PlayerBase = {
     imperial: string // e.g., "176 lbs"
   }
   foot?: 'left' | 'right' | 'both'
+  trophies?: PlayerTrophy[]
 }
 
 export type PlayerCareerItem = {
