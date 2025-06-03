@@ -12,6 +12,7 @@ export type PlayerBase = {
   photo?: string
   jersey_number?: number
   date_of_birth?: string
+  age?: number
   height?: {
     metric: string // e.g., "185 cm"
     imperial: string // e.g., "6'1""
