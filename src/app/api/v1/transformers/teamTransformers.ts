@@ -899,7 +899,7 @@ function calculateFinalScore(
 }
 
 /**
- * Minimal fixture transformer for UI (Fotmob-style):
+ * Minimal fixture transformer for UI:
  * Returns only the fields needed for the fixture list UI.
  */
 export function transformFixture(rawFixture: any) {

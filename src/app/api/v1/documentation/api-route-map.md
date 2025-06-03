@@ -123,7 +123,7 @@ List all teams with pagination.
 
 #### GET /api/v1/team/:id/overview
 
-Get a streamlined team overview optimized for dashboard-style display, similar to FotMob's team overview page. Combines key data from multiple endpoints into a single response.
+Get a streamlined team overview optimized for dashboard-style display. Combines key data from multiple endpoints into a single response.
 
 **Features:**
 - Team form (last 5 matches as W/L/D)
@@ -506,7 +506,7 @@ List all leagues with pagination.
 
 #### GET /api/v1/league/:id/overview
 
-Get a compact league overview optimized for dashboard-style display, similar to FotMob's league overview. Aggregates key data from table, stats, and matches into a single response.
+Get a compact league overview optimized for dashboard-style display. Aggregates key data from table, stats, and matches into a single response.
 
 **Query Parameters:**
 - `season_id` (string, optional): Season ID to display data for. If not provided, uses the current season or most recent available season.

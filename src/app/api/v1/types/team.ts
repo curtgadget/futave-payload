@@ -272,7 +272,7 @@ export type Pagination = {
   olderUrl: string | null
 }
 
-// Minimal fixture type for UI (Fotmob-style)
+// Minimal fixture type for UI
 export type MinimalTeamFixture = {
   id: string | number
   starting_at: string
