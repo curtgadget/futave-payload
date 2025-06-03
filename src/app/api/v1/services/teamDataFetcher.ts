@@ -818,7 +818,7 @@ export const teamDataFetcher: TabDataFetcher = {
                 // Calculate top_stats using the shared utility function
                 teamStatsResponse.top_stats = calculateTopPlayerStats(playerStats, {
                   maxPlayersPerCategory: 3,
-                  verbose: true,
+                  verbose: false,
                 })
 
                 // Log the results
