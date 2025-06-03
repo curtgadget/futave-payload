@@ -12,8 +12,14 @@ export type PlayerBase = {
   photo?: string
   jersey_number?: number
   date_of_birth?: string
-  height?: string // e.g., "185 cm"
-  weight?: string // e.g., "80 kg"
+  height?: {
+    metric: string // e.g., "185 cm"
+    imperial: string // e.g., "6'1""
+  }
+  weight?: {
+    metric: string // e.g., "80 kg"
+    imperial: string // e.g., "176 lbs"
+  }
   foot?: 'left' | 'right' | 'both'
 }
 

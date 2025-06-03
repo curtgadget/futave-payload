@@ -10,6 +10,7 @@ import type {
 import { getPayload } from 'payload'
 import config from '@/payload.config'
 import { MetadataTypeIds } from '@/constants/metadataType'
+import { convertCmToFeetInches, convertKgToPounds } from '../utils'
 
 // Types for statistics data from Sportmonks
 type StatisticDetail = {
@@ -58,8 +59,14 @@ function formatPlayerData(player: any): {
   photo?: string
   jersey_number?: number
   date_of_birth?: string
-  height?: string
-  weight?: string
+  height?: {
+    metric: string
+    imperial: string
+  }
+  weight?: {
+    metric: string
+    imperial: string
+  }
   foot?: 'left' | 'right' | 'both'
 } {
   return {
@@ -70,8 +77,14 @@ function formatPlayerData(player: any): {
     photo: player.image_path || undefined,
     jersey_number: undefined, // This comes from team statistics
     date_of_birth: player.date_of_birth ? new Date(player.date_of_birth).toISOString().split('T')[0] : undefined,
-    height: player.height ? `${player.height} cm` : undefined,
-    weight: player.weight ? `${player.weight} kg` : undefined,
+    height: player.height ? {
+      metric: `${player.height} cm`,
+      imperial: convertCmToFeetInches(player.height)
+    } : undefined,
+    weight: player.weight ? {
+      metric: `${player.weight} kg`,
+      imperial: convertKgToPounds(player.weight)
+    } : undefined,
     foot: getFootPreference(player.metadata),
   }
 }
