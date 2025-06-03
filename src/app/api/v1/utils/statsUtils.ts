@@ -24,7 +24,7 @@ export function calculateTopPlayerStats(
 ): TopPlayersStat[] {
   // Apply default options
   const maxPlayers = options.maxPlayersPerCategory || 3
-  const verbose = options.verbose || process.env.NODE_ENV === 'development'
+  const verbose = options.verbose || false
 
   if (!playerStats || playerStats.length === 0) {
     if (verbose) console.log('calculateTopPlayerStats: No player stats provided')
