@@ -9,6 +9,7 @@ import type {
 } from '../types/player'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
+import { MetadataTypeIds } from '@/constants/metadataType'
 
 // Types for statistics data from Sportmonks
 type StatisticDetail = {
@@ -31,6 +32,21 @@ type PlayerStatistic = {
 function getStatValue(details: StatisticDetail[], typeId: number): any {
   const detail = details.find(d => d.type_id === typeId)
   return detail?.value || null
+}
+
+// Helper function to extract foot preference from metadata
+function getFootPreference(metadata: any[]): 'left' | 'right' | 'both' | undefined {
+  if (!metadata || !Array.isArray(metadata)) return undefined
+  
+  const footMetadata = metadata.find(m => m.type_id === MetadataTypeIds.PREFERRED_FOOT)
+  if (!footMetadata || !footMetadata.values) return undefined
+  
+  const foot = footMetadata.values.toLowerCase()
+  if (foot === 'left' || foot === 'right' || foot === 'both') {
+    return foot as 'left' | 'right' | 'both'
+  }
+  
+  return undefined
 }
 
 // Helper function to convert player data to API format
@@ -56,7 +72,7 @@ function formatPlayerData(player: any): {
     date_of_birth: player.date_of_birth ? new Date(player.date_of_birth).toISOString().split('T')[0] : undefined,
     height: player.height ? `${player.height} cm` : undefined,
     weight: player.weight ? `${player.weight} kg` : undefined,
-    foot: undefined, // Not available in current data
+    foot: getFootPreference(player.metadata),
   }
 }
 
