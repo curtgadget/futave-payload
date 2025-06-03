@@ -1010,9 +1010,6 @@ function processPlayerStats(
   // Create a map of player IDs to player data for better debugging
   const playerMap = new Map(players.map((p) => [String(p.id), p]))
 
-  // Create a map of player IDs to player data for better debugging
-  const playerMap = new Map(players.map((p) => [String(p.id), p]))
-
   players.forEach((player) => {
     if (!player.id) {
       return
