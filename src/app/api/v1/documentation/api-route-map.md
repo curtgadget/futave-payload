@@ -504,29 +504,542 @@ List all leagues with pagination.
 }
 ```
 
-#### GET /api/v1/league/:id
+#### GET /api/v1/league/:id/overview
 
-Get details for a specific league.
+Get a compact league overview optimized for dashboard-style display, similar to FotMob's league overview. Aggregates key data from table, stats, and matches into a single response.
 
 **Query Parameters:**
-- `tab`: View type (options: "overview", "standings", "teams", "seasons")
-- `season_id`: Season ID for standings view (defaults to current season)
+- `season_id` (string, optional): Season ID to display data for. If not provided, uses the current season or most recent available season.
+
+**Features:**
+- League table summary (top teams, promotion zone, relegation zone)
+- Upcoming matches and recent results
+- Top players (scorers, assists, overall performers)
+- League metadata (teams count, goals, averages)
+- Season switching support for historical data
 
 **Response:**
 ```json
 {
-  "data": {
-    "id": 789,
-    "name": "League Name",
-    "logo": "https://...",
-    "country": {
-      "id": 456,
-      "name": "Country Name"
+  "id": "501",
+  "name": "Premiership",
+  "logo": "https://example.com/league-logo.png",
+  "country": {
+    "id": "237",
+    "name": "Scotland",
+    "flag": "https://example.com/scotland-flag.png"
+  },
+  "season_id": 23614,
+  "season_name": "2024/25",
+  "seasons": [
+    {
+      "id": "23614",
+      "name": "2024/25"
     },
-    "seasons": [...],    // List of seasons
-    "teams": [...],      // Only included in teams view
-    "standings": [...]   // Only included in standings view
+    {
+      "id": "22100",
+      "name": "2023/24"
+    },
+    {
+      "id": "19735",
+      "name": "2022/23"
+    }
+    // More seasons...
+  ],
+  "table_summary": {
+    "top_teams": [
+      {
+        "id": "62",
+        "name": "Rangers",
+        "logo": "https://example.com/rangers-logo.png",
+        "position": 1,
+        "points": 75,
+        "played": 38,
+        "goal_difference": 39,
+        "form": ["W", "W", "D", "W", "L"],
+        "qualification_status": {
+          "type": "champions_league",
+          "name": "Champions League Qualification",
+          "color": "#1f77b4"
+        }
+      }
+      // 2 more top teams
+    ],
+    "promotion_teams": [
+      {
+        "id": "123",
+        "name": "Hibernian",
+        "logo": "https://example.com/hibs-logo.png",
+        "position": 3,
+        "points": 68,
+        "played": 38,
+        "goal_difference": 25,
+        "form": ["D", "W", "W", "L", "W"],
+        "qualification_status": {
+          "type": "europa_playoff",
+          "name": "Europa League Playoffs",
+          "color": "#ff7f0e"
+        }
+      }
+      // More promotion/playoff teams
+    ],
+    "relegation_teams": [
+      {
+        "id": "456",
+        "name": "Livingston",
+        "logo": "https://example.com/livi-logo.png",
+        "position": 12,
+        "points": 25,
+        "played": 38,
+        "goal_difference": -35,
+        "form": ["L", "L", "D", "L", "L"],
+        "qualification_status": {
+          "type": "relegation",
+          "name": "Relegation",
+          "color": "#d62728"
+        }
+      }
+      // More relegation zone teams
+    ]
+  },
+  "upcoming_matches": [
+    {
+      "id": "match123",
+      "starting_at": "2024-02-03T15:00:00Z",
+      "starting_at_timestamp": 1706972400,
+      "home_team": {
+        "id": 62,
+        "name": "Rangers",
+        "image_path": "https://example.com/rangers-logo.png",
+        "position": 1
+      },
+      "away_team": {
+        "id": 53,
+        "name": "Celtic",
+        "image_path": "https://example.com/celtic-logo.png",
+        "position": 2
+      },
+      "state": {
+        "id": 1,
+        "name": "Not Started",
+        "short_name": "NS"
+      }
+    }
+    // 4 more upcoming matches
+  ],
+  "recent_results": [
+    {
+      "id": "match456",
+      "starting_at": "2024-01-27T15:00:00Z",
+      "starting_at_timestamp": 1706367600,
+      "home_team": {
+        "id": 53,
+        "name": "Celtic",
+        "image_path": "https://example.com/celtic-logo.png"
+      },
+      "away_team": {
+        "id": 62,
+        "name": "Rangers", 
+        "image_path": "https://example.com/rangers-logo.png"
+      },
+      "state": {
+        "id": 3,
+        "name": "Finished",
+        "short_name": "FT"
+      },
+      "final_score": {
+        "home": 2,
+        "away": 3
+      }
+    }
+    // 4 more recent results
+  ],
+  "stats_summary": {
+    "top_scorers": [
+      {
+        "player_id": "1001",
+        "name": "Cyriel Dessers",
+        "team_name": "Rangers",
+        "team_logo": "https://example.com/rangers-logo.png",
+        "image_path": "https://example.com/dessers.png",
+        "value": 18,
+        "position": "Forward"
+      }
+      // 4 more top scorers
+    ],
+    "top_assists": [
+      {
+        "player_id": "1002",
+        "name": "James Tavernier",
+        "team_name": "Rangers",
+        "team_logo": "https://example.com/rangers-logo.png",
+        "image_path": "https://example.com/tavernier.png",
+        "value": 12,
+        "position": "Defender"
+      }
+      // 4 more top assist providers
+    ],
+    "top_rated": [
+      {
+        "player_id": "1003",
+        "name": "Todd Cantwell",
+        "team_name": "Rangers",
+        "team_logo": "https://example.com/rangers-logo.png",
+        "image_path": "https://example.com/cantwell.png",
+        "value": 25,
+        "position": "Midfielder"
+      }
+      // 4 more top performers (goals + assists)
+    ]
+  },
+  "metadata": {
+    "total_teams": 12,
+    "total_matches_played": 228,
+    "total_goals": 598,
+    "average_goals_per_match": 2.62
   }
+}
+```
+
+**Key Features:**
+- **Compact Response**: Single endpoint for dashboard views
+- **Table Context**: Shows top performers, promotion candidates, and relegation battles
+- **Match Schedule**: Next 5 upcoming matches and last 5 results
+- **Player Rankings**: Top 5 players in key categories with team context
+- **Smart Data**: Aggregates data from table, stats, and matches endpoints
+- **Performance Optimized**: Parallel data fetching for fast response times
+
+#### GET /api/v1/league/:id/table
+
+Get the current league table/standings.
+
+**Query Parameters:**
+- `season_id`: Season ID (optional, defaults to current season)
+
+**Response:**
+```json
+{
+  "23614": {
+    "id": 23614,
+    "name": "Premiership",
+    "type": "domestic",
+    "league_id": 501,
+    "season_id": 23614,
+    "stage_id": null,
+    "stage_name": null,
+    "standings": [
+      {
+        "id": 501,
+        "name": "Premiership",
+        "type": "league",
+        "standings": [
+          {
+            "position": 1,
+            "team_id": 62,
+            "team_name": "Rangers",
+            "team_logo_path": "https://example.com/rangers-logo.png",
+            "points": 75,
+            "played": 38,
+            "won": 24,
+            "draw": 3,
+            "lost": 11,
+            "goals_for": 85,
+            "goals_against": 46,
+            "goal_difference": 39,
+            "form": "WWDWL",
+            "current_streak": "L1",
+            "clean_sheets": 15,
+            "failed_to_score": 5,
+            "qualification_status": {
+              "type": "champions_league",
+              "name": "Champions League Qualification",
+              "color": "#1f77b4"
+            }
+          }
+          // More teams...
+        ]
+      }
+    ]
+  }
+}
+```
+
+#### GET /api/v1/league/:id/matches
+
+Get matches for a specific league with smart defaults and temporal navigation.
+
+**Query Parameters:**
+- `page` (number, optional): Page number for pagination (default: 1)
+- `limit` (number, optional): Number of matches to return (default: 50, max: 100)
+- `season_id` (string, optional): Filter by season ID
+- `type` (string, optional): Filter by match type. Options: `all`, `past`, `upcoming`, `auto` (default: auto)
+- `includeNextMatch` (boolean, optional): Whether to include next upcoming match details (default: false)
+
+**Response:**
+```json
+{
+  "docs": [
+    {
+      "id": "12345",
+      "starting_at": "2024-02-03T15:00:00Z",
+      "starting_at_timestamp": 1706972400,
+      "league": {
+        "id": 501,
+        "name": "Premiership"
+      },
+      "home_team": {
+        "id": 62,
+        "name": "Rangers",
+        "image_path": "https://example.com/rangers-logo.png"
+      },
+      "away_team": {
+        "id": 53,
+        "name": "Celtic",
+        "image_path": "https://example.com/celtic-logo.png"
+      },
+      "result_info": null,
+      "state": {
+        "id": 1,
+        "name": "Not Started",
+        "short_name": "NS"
+      }
+    }
+    // More matches...
+  ],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "limit": 50,
+      "total": 150,
+      "totalPages": 3,
+      "type": "upcoming",
+      "hasMorePages": true,
+      "hasPreviousPages": false,
+      "nextPage": "/api/v1/league/501/matches?page=2&limit=50&type=upcoming",
+      "previousPage": null,
+      "hasNewer": true,
+      "hasOlder": true,
+      "newerUrl": "/api/v1/league/501/matches?page=2&limit=50&type=upcoming",
+      "olderUrl": "/api/v1/league/501/matches?page=1&limit=50&type=past"
+    }
+  },
+  "nextMatch": {
+    "starting_at": "2024-02-03T15:00:00Z",
+    "league": { "id": 501, "name": "Premiership" },
+    "home_team": {
+      "id": 62,
+      "name": "Rangers",
+      "image_path": "https://example.com/rangers-logo.png"
+    },
+    "away_team": {
+      "id": 53,
+      "name": "Celtic",
+      "image_path": "https://example.com/celtic-logo.png"
+    },
+    "home_position": 1,
+    "away_position": 2
+  }
+}
+```
+
+#### GET /api/v1/league/:id/teams
+
+Get all teams in a specific league.
+
+**Query Parameters:**
+- `page` (number, optional): Page number for pagination (default: 1)
+- `limit` (number, optional): Number of teams to return (default: 50)
+
+**Response:**
+```json
+{
+  "id": "501",
+  "name": "Premiership",
+  "teams": [
+    {
+      "id": "62",
+      "name": "Rangers",
+      "logo": "https://example.com/rangers-logo.png",
+      "venue_name": "Ibrox Stadium",
+      "founded": 1872
+    },
+    {
+      "id": "53",
+      "name": "Celtic",
+      "logo": "https://example.com/celtic-logo.png",
+      "venue_name": "Celtic Park",
+      "founded": 1887
+    }
+    // More teams...
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "totalItems": 12,
+    "totalPages": 1
+  }
+}
+```
+
+#### GET /api/v1/league/:id/stats
+
+Get comprehensive statistics for a league season including player and team rankings.
+
+**Query Parameters:**
+- `season_id` (string, optional): Season ID to filter stats (defaults to current season)
+
+**Response:**
+```json
+{
+  "id": "501",
+  "name": "Premiership",
+  "season_id": 23614,
+  "season_name": "2024/25",
+  "seasons": [
+    {
+      "id": "23614",
+      "name": "2024/25"
+    },
+    {
+      "id": "22100",
+      "name": "2023/24"
+    },
+    {
+      "id": "19735",
+      "name": "2022/23"
+    }
+    // More seasons...
+  ],
+  "overview": {
+    "teams_count": 12,
+    "total_players": 350,
+    "total_goals": 598,
+    "total_assists": 412,
+    "total_yellow_cards": 823,
+    "total_red_cards": 45,
+    "total_appearances": 4560,
+    "total_minutes_played": 342000,
+    "average_goals_per_player": 1.71,
+    "average_assists_per_player": 1.18
+  },
+  "player_stats": {
+    "top_scorers": {
+      "category": "goals",
+      "label": "Top Goal Scorers",
+      "players": [
+        {
+          "player_id": "1001",
+          "name": "Cyriel Dessers",
+          "team_id": "62",
+          "team_name": "Rangers",
+          "team_logo": "https://example.com/rangers-logo.png",
+          "position_id": 27,
+          "jersey_number": 9,
+          "image_path": "https://example.com/dessers.png",
+          "value": 18,
+          "appearances": 35,
+          "rank": 1
+        }
+        // More players...
+      ]
+    },
+    "top_assists": {
+      "category": "assists",
+      "label": "Most Assists",
+      "players": [...]
+    },
+    "most_minutes": {
+      "category": "minutes",
+      "label": "Most Minutes Played",
+      "players": [...]
+    },
+    "top_goals_assists": {
+      "category": "goals_assists",
+      "label": "Goals + Assists",
+      "players": [...]
+    }
+  },
+  "team_stats": {
+    "attack": {
+      "category": "attack",
+      "label": "Goals Scored",
+      "teams": [
+        {
+          "team_id": "62",
+          "team_name": "Rangers",
+          "team_logo": "https://example.com/rangers-logo.png",
+          "value": 85,
+          "rank": 1,
+          "additional_stats": {
+            "shots": 524,
+            "shots_on_target": 213,
+            "corners": 178
+          }
+        }
+        // More teams...
+      ]
+    },
+    "defense": {
+      "category": "defense",
+      "label": "Clean Sheets",
+      "teams": [...]
+    },
+    "discipline": {
+      "category": "discipline",
+      "label": "Best Disciplinary Record",
+      "teams": [...]
+    },
+    "performance": {
+      "category": "performance",
+      "label": "Most Wins",
+      "teams": [...]
+    }
+  }
+}
+```
+
+#### GET /api/v1/league/:id/seasons
+
+Get all available seasons for a league. Useful for populating season selection dropdowns.
+
+**Response:**
+```json
+{
+  "id": "501",
+  "name": "Premiership",
+  "seasons": [
+    {
+      "id": "23614",
+      "name": "2024/25",
+      "start_date": "2024-08-03",
+      "end_date": "2025-05-25",
+      "current": true,
+      "coverage": {
+        "fixtures": true,
+        "standings": true,
+        "players": true,
+        "top_scorers": true,
+        "predictions": false,
+        "odds": false
+      }
+    },
+    {
+      "id": "22100",
+      "name": "2023/24",
+      "start_date": "2023-08-05",
+      "end_date": "2024-05-19",
+      "current": false,
+      "coverage": {
+        "fixtures": true,
+        "standings": true,
+        "players": true,
+        "top_scorers": true,
+        "predictions": false,
+        "odds": false
+      }
+    }
+    // More seasons...
+  ]
 }
 ```
 

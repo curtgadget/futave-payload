@@ -33,6 +33,15 @@ const getLeagueStatsHandler = async (req: PayloadRequest) => {
       if (error.message.includes('Invalid league ID format')) {
         return Response.json({ error: 'Invalid league ID format' }, { status: 400 })
       }
+      if (error.message.includes('No season specified and no current season available')) {
+        return Response.json({ error: error.message }, { status: 400 })
+      }
+      if (error.message.includes('No teams found')) {
+        return Response.json({ error: error.message }, { status: 404 })
+      }
+      if (error.message.includes('No players found')) {
+        return Response.json({ error: error.message }, { status: 404 })
+      }
       if (error.message.includes('No league found')) {
         return Response.json({ error: 'League not found' }, { status: 404 })
       }

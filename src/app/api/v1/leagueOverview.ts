@@ -11,13 +11,14 @@ const getLeagueOverviewHandler = async (req: PayloadRequest) => {
   const url = new URL(req.url)
   const pathParts = url.pathname.split('/').filter(Boolean)
   const id = pathParts[pathParts.length - 2] // Get the ID before 'overview'
+  const seasonId = url.searchParams.get('season_id')
 
   if (!id) {
     return Response.json({ error: 'League ID is required' }, { status: 400 })
   }
 
   try {
-    const data = await leagueDataFetcher.getOverview(id)
+    const data = await leagueDataFetcher.getOverview(id, seasonId || undefined)
     return Response.json(data)
   } catch (error) {
     console.error('Error in league overview handler:', {
@@ -30,6 +31,15 @@ const getLeagueOverviewHandler = async (req: PayloadRequest) => {
     if (error instanceof Error) {
       if (error.message.includes('Invalid league ID format')) {
         return Response.json({ error: 'Invalid league ID format' }, { status: 400 })
+      }
+      if (error.message.includes('Invalid season ID format')) {
+        return Response.json({ error: 'Invalid season ID format' }, { status: 400 })
+      }
+      if (error.message.includes('Season') && error.message.includes('not found')) {
+        return Response.json({ error: error.message }, { status: 400 })
+      }
+      if (error.message.includes('No season available')) {
+        return Response.json({ error: error.message }, { status: 404 })
       }
       if (error.message.includes('No league found')) {
         return Response.json({ error: 'League not found' }, { status: 404 })

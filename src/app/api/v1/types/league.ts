@@ -85,10 +85,97 @@ export type StandingsData = {
   standings: StandingTable[]
 }
 
-// Response types for each endpoint
-export type LeagueOverviewResponse = LeagueBase & {
-  seasons?: LeagueSeason[]
+// Compact league overview types
+export type LeagueOverviewTeam = {
+  id: string
+  name: string
+  logo?: string
+  position: number
+  points: number
+  played: number
+  goal_difference: number
+  form?: string[]
+  qualification_status?: {
+    type: string
+    name: string
+    color?: string
+  }
 }
+
+export type LeagueOverviewMatch = {
+  id: string
+  starting_at: string
+  starting_at_timestamp: number
+  home_team: {
+    id: number
+    name: string
+    image_path?: string
+    position?: number
+  }
+  away_team: {
+    id: number
+    name: string
+    image_path?: string
+    position?: number
+  }
+  state?: {
+    id: number
+    name: string
+    short_name: string
+  }
+  final_score?: {
+    home: number
+    away: number
+  }
+}
+
+export type LeagueOverviewPlayer = {
+  player_id: string
+  name: string
+  team_name: string
+  team_logo?: string
+  image_path?: string | null
+  value: number
+  position?: string
+}
+
+export type LeagueOverviewCompact = {
+  id: string
+  name: string
+  logo?: string
+  country?: {
+    id: string
+    name: string
+    flag?: string
+  }
+  season_id: number
+  season_name: string
+  seasons: Array<{
+    id: string
+    name: string
+  }>
+  table_summary: {
+    top_teams: LeagueOverviewTeam[]
+    promotion_teams: LeagueOverviewTeam[]
+    relegation_teams: LeagueOverviewTeam[]
+  }
+  upcoming_matches: LeagueOverviewMatch[]
+  recent_results: LeagueOverviewMatch[]
+  stats_summary: {
+    top_scorers: LeagueOverviewPlayer[]
+    top_assists: LeagueOverviewPlayer[]
+    top_rated: LeagueOverviewPlayer[]
+  }
+  metadata: {
+    total_teams: number
+    total_matches_played: number
+    total_goals: number
+    average_goals_per_match: number
+  }
+}
+
+// Response types for each endpoint
+export type LeagueOverviewResponse = LeagueOverviewCompact
 
 export type LeagueStandingsResponse = Record<string, StandingsData> // Map of seasonId -> standings data, same as TeamTableResponse
 
@@ -168,6 +255,10 @@ export type LeagueStatsResponse = {
   name: string
   season_id: number
   season_name?: string
+  seasons: Array<{
+    id: string
+    name: string
+  }>
   overview: {
     teams_count: number
     total_players: number
@@ -199,7 +290,7 @@ export type LeagueStatsResponse = {
 
 // Data fetcher type for league operations
 export type LeagueDataFetcher = {
-  getOverview: (leagueId: string) => Promise<LeagueOverviewResponse>
+  getOverview: (leagueId: string, seasonId?: string) => Promise<LeagueOverviewResponse>
   getStandings: (leagueId: string, seasonId?: string) => Promise<LeagueStandingsResponse>
   getTeams: (leagueId: string, page?: number, limit?: number) => Promise<LeagueTeamsResponse>
   getMatches: (leagueId: string, page?: number, limit?: number, seasonId?: string, type?: 'all' | 'past' | 'upcoming' | 'auto', includeNextMatch?: boolean) => Promise<LeagueMatchesResponse>
