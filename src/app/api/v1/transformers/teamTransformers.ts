@@ -178,10 +178,6 @@ function determineQualificationStatus(
     return undefined
   }
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log(`Rule data for position ${row.position}:`, row.rule)
-  }
-
   // Check for type_id field (the approach observed in the logs)
   if (typeof row.rule.type_id === 'number') {
     const typeId = row.rule.type_id
@@ -249,9 +245,6 @@ function determineQualificationStatus(
     }
 
     // If we don't have a mapping but it's a new type ID, log it in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log(`Unknown rule type_id: ${typeId} for position ${row.position}`)
-    }
   }
 
   // Check for type field (this was our original expectation, keeping as fallback)
@@ -1293,7 +1286,6 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         const activeSeasonId = String(activeSeason?.id || activeSeason)
         const matchingSeason = availableSeasons.find(s => s.id === activeSeasonId)
         if (matchingSeason) {
-          console.log(`Using active season: ${matchingSeason.name} (ID: ${matchingSeason.id})`)
           return matchingSeason.id
         }
       }
@@ -1304,7 +1296,6 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
       return parseInt(current.id) > parseInt(latest.id) ? current : latest
     })
     
-    console.log(`Using most recent season: ${mostRecentSeason.name} (ID: ${mostRecentSeason.id})`)
     return mostRecentSeason.id
   }
 
@@ -1569,22 +1560,6 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
 
       // Process player statistics if available
       if (value.players && Array.isArray(value.players)) {
-        // DEBUG: Log sample of raw player data
-        if (process.env.NODE_ENV === 'development') {
-          console.log('DEBUG - Raw player data sample:')
-          const samplePlayers = value.players.slice(0, 3)
-          samplePlayers.forEach((player: any, index: number) => {
-            console.log(`Player ${index + 1}:`, {
-              id: player.player_id || player.id,
-              name: player.player_name || player.name,
-              goals: player.goals,
-              assists: player.assists,
-              minutes: player.minutes || player.minutes_played,
-              cards: player.cards,
-            })
-          })
-        }
-
         result.player_stats = value.players.map((player: any) => {
           const playerStats: PlayerSeasonStats = {
             player_id: String(player.player_id || player.id || 0),
@@ -1620,13 +1595,6 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
             // For current seasons, where we may not have complete data, apply a stricter cap
             const assistsCap = isCurrentSeason ? 15 : 25
 
-            // Debug log for assist capping
-            if (assistValue > assistsCap && process.env.NODE_ENV === 'development') {
-              console.log(
-                `DEBUG: Capping assists for ${player.name}: ${assistValue} -> ${assistsCap}`,
-              )
-            }
-
             playerStats.assists = Math.min(assistValue, assistsCap)
           }
           if (player.shots) {
@@ -1660,14 +1628,9 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         // Calculate top performers in different categories if we have processed player stats
         if (result.player_stats.length > 0) {
           // Calculate top stats using our shared utility function
-          console.log(`Calling calculateTopPlayerStats with ${result.player_stats.length} players`)
           result.top_stats = calculateTopPlayerStats(result.player_stats, {
-            verbose: true,
+            verbose: false,
           })
-          console.log(
-            `calculateTopPlayerStats returned ${result.top_stats.length} stat categories:`,
-            result.top_stats.map((stat) => stat.category).join(', '),
-          )
         }
       }
 
@@ -1684,7 +1647,6 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   if (result.season_id === 0 && availableSeasons.length > 0) {
     const fallbackSeasonId = getBestDefaultSeason()
     if (fallbackSeasonId) {
-      console.log(`Fallback: recursively processing season ${fallbackSeasonId}`)
       return transformTeamStats(rawTeam, fallbackSeasonId)
     }
   }
@@ -1698,18 +1660,12 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   const uniqueCategories = new Set<string>()
   result.top_stats = result.top_stats.filter((stat) => {
     if (uniqueCategories.has(stat.category)) {
-      console.log(`Removing duplicate category: ${stat.category}`)
       return false
     } else {
       uniqueCategories.add(stat.category)
       return true
     }
   })
-
-  // Log final top stats count
-  console.log(
-    `Final top_stats has ${result.top_stats.length} categories: ${result.top_stats.map((stat) => stat.category).join(', ')}`,
-  )
 
   return result
 }

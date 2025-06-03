@@ -1591,7 +1591,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Calculate top player stats using the same utility as team stats (for backward compatibility)
       const topStats = calculateTopPlayerStats(playerStats, {
         maxPlayersPerCategory: 10, // More players for league-wide stats
-        verbose: true,
+        verbose: false,
       })
 
       // Determine season name

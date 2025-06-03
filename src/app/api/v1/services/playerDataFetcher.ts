@@ -13,7 +13,7 @@ import type {
  */
 export const playerDataFetcher: PlayerDataFetcher = {
   getOverview: async (playerId: string): Promise<PlayerOverviewResponse> => {
-    console.log(`Fetching overview for player ${playerId}`)
+    // Fetching overview for player
     // In a real implementation, this would fetch data from a database or external API
     return {
       id: playerId,
@@ -57,7 +57,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
   },
 
   getStats: async (playerId: string, seasonId?: string): Promise<PlayerStatsResponse> => {
-    console.log(`Fetching stats for player ${playerId}, season ${seasonId || 'all'}`)
+    // Fetching stats for player
     // In a real implementation, this would fetch data from a database or external API
     return {
       id: playerId,
@@ -158,7 +158,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
   },
 
   getCareer: async (playerId: string): Promise<PlayerCareerResponse> => {
-    console.log(`Fetching career history for player ${playerId}`)
+    // Fetching career history for player
     // In a real implementation, this would fetch data from a database or external API
     return {
       id: playerId,
@@ -250,7 +250,7 @@ export const playerListDataFetcher: PlayerListDataFetcher = {
     search?: string
   }): Promise<PlayersListResponse> => {
     const { page, limit, teamId, countryId, position, search } = options
-    console.log('Fetching players with options:', {
+    // Fetching players with options
       page,
       limit,
       teamId,

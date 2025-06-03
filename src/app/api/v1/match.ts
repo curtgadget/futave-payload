@@ -149,10 +149,7 @@ const getMatchHandler: APIRouteV1 = {
     const { id, tab } = getParams(req)
     const tabName = tab || 'overview'
 
-    // Debug logging
-    // @ts-ignore
-    console.log('DEBUG Registered collections:', Object.keys(payload.collections || {}))
-    console.log('DEBUG Incoming match handler params:', { id, tabName })
+    // Debug logging removed for production
 
     try {
       // Fetch match by ID, populate relations
@@ -165,9 +162,7 @@ const getMatchHandler: APIRouteV1 = {
         return Response.json({ error: 'Match not found' }, { status: 404 })
       }
 
-      // Debug: print only the top-level keys of match
-      // @ts-ignore
-      console.log('DEBUG match keys:', Object.keys(match))
+      // Debug: print only the top-level keys of match removed for production
 
       // Extract home/away team info from participants
       let homeTeamData: any = null

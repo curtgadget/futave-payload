@@ -574,10 +574,6 @@ export const teamDataFetcher: TabDataFetcher = {
             const teamsWithQualification = table.standings.filter((row) => row.qualification_status)
 
             if (teamsWithQualification.length > 0) {
-              console.log(
-                `Found ${teamsWithQualification.length} teams with qualification status in season ${seasonId}, table ${table.name}`,
-              )
-
               // Group teams by qualification type for more helpful debugging
               const qualificationGroups: Record<string, any[]> = {}
 
@@ -591,14 +587,6 @@ export const teamDataFetcher: TabDataFetcher = {
                   name: team.team_name,
                   qualification: team.qualification_status!.name,
                 })
-              })
-
-              // Log each qualification group
-              Object.entries(qualificationGroups).forEach(([type, teams]) => {
-                console.log(
-                  `  - ${type} (${teams.length} teams):`,
-                  teams.map((t) => `${t.position}. ${t.name}`).join(', '),
-                )
               })
             }
           })
@@ -693,24 +681,11 @@ export const teamDataFetcher: TabDataFetcher = {
       // For comparison, get the squad data
       try {
         const squadResponse = await this.getSquad(teamId)
-        console.log('SQUAD INFO:')
-
+        
         // Count total players in all positions
         let totalPlayers = 0
         Object.values(squadResponse.players).forEach((positionGroup) => {
           totalPlayers += positionGroup.length
-        })
-
-        console.log(`Squad has ${totalPlayers} total players`)
-
-        // Log each position group
-        Object.entries(squadResponse.players).forEach(([position, players]) => {
-          console.log(`${position}: ${players.length} players`)
-          players.forEach((player) => {
-            console.log(
-              `- ${player.name} (ID: ${player.id}, Jersey: ${player.jersey_number || 'none'})`,
-            )
-          })
         })
       } catch (err) {
         console.error('Error fetching squad for comparison:', err)
@@ -737,8 +712,7 @@ export const teamDataFetcher: TabDataFetcher = {
       if (Array.isArray(team.players) && team.players.length > 0) {
         const seasonIdNumber = seasonId ? parseInt(seasonId) : teamStatsResponse.season_id
 
-        // Log how many players we're working with for debugging
-        console.log(`Team ${team.name} has ${team.players.length} players in the team data`)
+        // Get player statistics for the selected season
 
         try {
           // 1. Get player IDs from the team data using multiple extraction methods
@@ -786,7 +760,6 @@ export const teamDataFetcher: TabDataFetcher = {
             })
           })
 
-          console.log(`Found ${playerIdsFromTeamData.size} player IDs from team data`)
 
           // 2. Get player IDs from the squad data as a backup source
           let playerIdsFromSquad = new Set<number>()
@@ -802,7 +775,6 @@ export const teamDataFetcher: TabDataFetcher = {
               })
             })
 
-            console.log(`Found ${playerIdsFromSquad.size} player IDs from squad data`)
           } catch (error) {
             console.error('Error fetching squad data:', error)
           }
@@ -812,7 +784,6 @@ export const teamDataFetcher: TabDataFetcher = {
             ...Array.from(playerIdsFromTeamData),
             ...Array.from(playerIdsFromSquad),
           ]
-          console.log(`Combined ${allPlayerIds.length} unique player IDs from all sources`)
 
           if (allPlayerIds.length > 0) {
             // 4. Fetch player data for all IDs
@@ -829,39 +800,7 @@ export const teamDataFetcher: TabDataFetcher = {
               limit: Math.max(100, allPlayerIds.length),
             })
 
-            console.log(
-              `Retrieved ${playersResult.docs.length} players from the players collection`,
-            )
 
-            // Log detailed information about retrieved player data
-            console.log('PLAYERS DATA QUALITY CHECK:')
-            console.log('-----------------------------------------------------')
-            playersResult.docs.slice(0, 2).forEach((player: any, index) => {
-              console.log(
-                `Player ${index + 1}: ${player.name || player.display_name || 'Unknown'} (ID: ${player.id})`,
-              )
-
-              // Check for statistics structure
-              if (player.statistics && typeof player.statistics === 'object') {
-                const statKeys = Object.keys(player.statistics)
-                console.log(`  Has statistics object with ${statKeys.length} entries`)
-
-                // Check for the season we're looking for
-                const seasonStats = findPlayerSeasonStats(player.statistics, seasonIdNumber)
-
-                if (seasonStats) {
-                  console.log(
-                    `  FOUND STATS FOR SEASON ${seasonIdNumber}:`,
-                    JSON.stringify(seasonStats).substring(0, 100) + '...',
-                  )
-                } else {
-                  console.log(`  NO STATS FOR SEASON ${seasonIdNumber} found`)
-                }
-              } else {
-                console.log('  NO STATISTICS FOUND for this player')
-              }
-              console.log('-----------------------------------------------------')
-            })
 
             // 5. Process player statistics for the selected season
             if (playersResult.docs.length > 0) {
@@ -873,14 +812,9 @@ export const teamDataFetcher: TabDataFetcher = {
 
               // Add player statistics to the response
               teamStatsResponse.player_stats = playerStats
-              console.log(
-                `Processed ${playerStats.length} players with statistics for season ${seasonIdNumber}`,
-              )
 
               // 6. Calculate top stats using the complete player stats data
               if (playerStats.length > 0) {
-                console.log(`Creating top_stats with ${playerStats.length} players`)
-
                 // Calculate top_stats using the shared utility function
                 teamStatsResponse.top_stats = calculateTopPlayerStats(playerStats, {
                   maxPlayersPerCategory: 3,
@@ -888,12 +822,7 @@ export const teamDataFetcher: TabDataFetcher = {
                 })
 
                 // Log the results
-                if (teamStatsResponse.top_stats.length > 0) {
-                  console.log(
-                    `SERVICE: Added ${teamStatsResponse.top_stats.length} stat categories:`,
-                    teamStatsResponse.top_stats.map((stat) => stat.category).join(', '),
-                  )
-                } else {
+                if (teamStatsResponse.top_stats.length === 0) {
                   console.error('SERVICE: calculateTopPlayerStats returned no stats')
                 }
               }
@@ -905,16 +834,12 @@ export const teamDataFetcher: TabDataFetcher = {
         }
       }
 
-      // Final verification
-      console.log(`FINAL CHECK - top_stats after last resort:`, teamStatsResponse.top_stats.length)
 
       // Last attempt - force a known good value directly onto the object if there are no top_stats
       if (
         teamStatsResponse.player_stats.length > 0 &&
         (!teamStatsResponse.top_stats || teamStatsResponse.top_stats.length === 0)
       ) {
-        console.log('LAST RESORT: Forcing top_stats with a hardcoded value')
-
         const testTopStats: TopPlayersStat[] = []
 
         // Find a player with goals and add them
@@ -945,12 +870,6 @@ export const teamDataFetcher: TabDataFetcher = {
           .sort((a, b) => (b.assists || 0) - (a.assists || 0))
 
         if (playersByAssists.length > 0) {
-          console.log('CRITICAL OVERRIDE: Manually fixing assists data')
-          console.log('Top assist players found:')
-          playersByAssists.slice(0, 3).forEach((p) => {
-            console.log(`- ${p.name}: ${p.assists} assists`)
-          })
-
           // Find the assists category in top_stats
           const assistsIndex = teamStatsResponse.top_stats.findIndex(
             (s) => s.category === 'assists',
@@ -972,36 +891,13 @@ export const teamDataFetcher: TabDataFetcher = {
           } else {
             teamStatsResponse.top_stats.push(correctedAssists)
           }
-
-          console.log('CRITICAL OVERRIDE: Assists category fixed/added')
-        } else {
-          console.log('No players with assists found for direct override')
         }
       }
 
       // Final check before returning
       if (!teamStatsResponse.top_stats) {
         teamStatsResponse.top_stats = []
-        console.log('Created top_stats array because it was undefined')
       }
-
-      if (teamStatsResponse.top_stats && teamStatsResponse.top_stats.length === 0) {
-        console.log('WARNING: top_stats is still empty after all processing!')
-      }
-
-      // Explicitly verify the shape of the object right before returning
-      console.log(
-        `FINAL CHECK - teamStatsResponse has these fields:`,
-        Object.keys(teamStatsResponse),
-      )
-      console.log(
-        `FINAL CHECK - top_stats in teamStatsResponse is array:`,
-        Array.isArray(teamStatsResponse.top_stats),
-      )
-      console.log(`FINAL CHECK - top_stats length:`, teamStatsResponse.top_stats.length)
-
-      // Check if player_stats is available
-      console.log(`FINAL CHECK - player_stats length:`, teamStatsResponse.player_stats.length)
 
       // LAST RESORT FOR ASSISTS: Override the assists category
       if (teamStatsResponse.player_stats && teamStatsResponse.player_stats.length > 0) {
@@ -1011,8 +907,6 @@ export const teamDataFetcher: TabDataFetcher = {
           .sort((a, b) => (b.assists || 0) - (a.assists || 0))
 
         if (playersByAssists.length > 0) {
-          console.log('CRITICAL OVERRIDE: Manually fixing assists data')
-
           // Create corrected assists category
           const correctedAssists = {
             category: 'assists' as TopStatCategory,
@@ -1032,8 +926,6 @@ export const teamDataFetcher: TabDataFetcher = {
           } else {
             teamStatsResponse.top_stats.push(correctedAssists)
           }
-
-          console.log('ASSISTS OVERRIDE APPLIED')
         }
       }
 
@@ -1093,17 +985,6 @@ function logAllRuleTypeIds(rawTeam: any): void {
     })
 
     // Log the discovered type IDs
-    if (Object.keys(typeIdMap).length > 0) {
-      console.log(`\n--- RULE TYPE ID DISCOVERY FOR TEAM ${rawTeam.name} (ID: ${rawTeam.id}) ---`)
-      Object.entries(typeIdMap).forEach(([typeId, positions]) => {
-        const posArray = Array.from(positions).sort((a, b) => a - b)
-        const leagueId = leagueInfo[typeId] ? ` (League ID: ${leagueInfo[typeId]})` : ''
-        console.log(`Rule type_id ${typeId}${leagueId} found in positions: ${posArray.join(', ')}`)
-      })
-      console.log('--------------------------------\n')
-    } else {
-      console.log(`\n--- NO RULE TYPE IDS FOUND FOR TEAM ${rawTeam.name} (ID: ${rawTeam.id}) ---\n`)
-    }
   } catch (error) {
     console.error('Error in logAllRuleTypeIds:', error)
   }
@@ -1129,20 +1010,8 @@ function processPlayerStats(
   // Create a map of player IDs to player data for better debugging
   const playerMap = new Map(players.map((p) => [String(p.id), p]))
 
-  // Log total available players
-  console.log(`Processing ${players.length} players for season ${seasonId}`)
-  console.log(`Player IDs available: ${Array.from(playerMap.keys()).join(', ')}`)
-
-  // Debug: Log the raw players data
-  console.log(
-    'Debug - Raw players data sample:',
-    players.slice(0, 2).map((p) => ({
-      id: p.id,
-      name: p.name,
-      stats_keys: p.statistics ? Object.keys(p.statistics) : 'no statistics',
-      first_stat: p.statistics ? JSON.stringify(Object.values(p.statistics)[0]) : 'none',
-    })),
-  )
+  // Create a map of player IDs to player data for better debugging
+  const playerMap = new Map(players.map((p) => [String(p.id), p]))
 
   players.forEach((player) => {
     if (!player.id) {
@@ -1299,11 +1168,6 @@ function processPlayerStats(
         })
 
         if (assistStat && assistStat.value) {
-          console.log(
-            `Found alternate assist stat for player ${player.name} (ID: ${player.id}):`,
-            assistStat,
-          )
-
           // Extract the assist value
           if (typeof assistStat.value === 'number') {
             playerStat.assists = assistStat.value
@@ -1319,7 +1183,6 @@ function processPlayerStats(
 
       // Tertiary scan - deep search in entire player statistics object
       if (playerStat.assists === undefined && player.statistics) {
-        console.log(`Deep scanning player ${player.name} (ID: ${player.id}) for assist statistics`)
 
         // Define a recursive function to search the stats object
         const findAssistValue = (obj: any): number | undefined => {
@@ -1378,7 +1241,6 @@ function processPlayerStats(
         // Try to find assist data in the player statistics
         const assistValue = findAssistValue(player.statistics)
         if (assistValue !== undefined) {
-          console.log(`Found deep-scan assist value for player ${player.name}: ${assistValue}`)
           playerStat.assists = assistValue
         }
       }
@@ -1390,25 +1252,8 @@ function processPlayerStats(
     // Always include all players, no filtering
     playerStats.push(playerStat)
 
-    // Log if player has no stats for debugging purposes
-    if (
-      !(
-        playerStat.appearances > 0 ||
-        playerStat.minutes_played > 0 ||
-        playerStat.jersey_number !== undefined
-      )
-    ) {
-      console.log(
-        `INCLUDED WITHOUT STATS: Player ${playerStat.name} (${playerStat.player_id}) has no stats or jersey number`,
-      )
-    }
   })
 
-  // Log stats about player statistics for debugging
-  console.log(`Player stats summary:`)
-  console.log(`- Players with stats for season ${seasonId}: ${playerIdsWithStats.size}`)
-  console.log(`- Players without stats for season ${seasonId}: ${playerIdsWithoutStats.size}`)
-  console.log(`- Total players returned: ${playerStats.length}`)
 
   // Sort by appearances (descending), then by minutes played (descending)
   return playerStats.sort((a, b) => {
@@ -1530,12 +1375,6 @@ export const teamListDataFetcher: TeamListDataFetcher = {
     search?: string
   }): Promise<TeamsListResponse> => {
     const { page, limit, countryId, search } = options
-    console.log('Fetching teams with options:', {
-      page,
-      limit,
-      countryId,
-      search,
-    })
 
     try {
       const payload = await getPayload({ config })
@@ -1548,16 +1387,13 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         where.country_id = {
           equals: parseInt(countryId, 10),
         }
-        console.log(`Added country filter for ID ${countryId}`)
       }
 
       // Add search filter if provided
       if (search) {
         where.or = [{ name: { like: `%${search}%` } }, { venue_name: { like: `%${search}%` } }]
-        console.log(`Added search filter for term "${search}"`)
       }
 
-      console.log('Final query where clause:', JSON.stringify(where))
 
       // Query the database
       const result = await payload.find({
@@ -1567,7 +1403,6 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         limit,
       })
 
-      console.log(`Query returned ${result.docs.length} teams out of ${result.totalDocs} total`)
 
       // Transform the results to match the expected response format
       const teams = result.docs.map((team) => ({
