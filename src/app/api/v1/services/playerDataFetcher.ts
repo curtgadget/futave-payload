@@ -251,13 +251,6 @@ export const playerListDataFetcher: PlayerListDataFetcher = {
   }): Promise<PlayersListResponse> => {
     const { page, limit, teamId, countryId, position, search } = options
     // Fetching players with options
-      page,
-      limit,
-      teamId,
-      countryId,
-      position,
-      search,
-    })
 
     // In a real implementation, this would fetch data from a database or external API
     // and apply the filtering options
