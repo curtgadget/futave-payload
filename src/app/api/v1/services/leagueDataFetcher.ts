@@ -82,8 +82,6 @@ function buildTemporalNavigationUrls(
 function processLeaguePlayerStats(players: any[], seasonId: number, leagueId: number): PlayerSeasonStats[] {
   const playerStats: PlayerSeasonStats[] = []
 
-  console.log(`Processing ${players.length} players for league stats, season ${seasonId}, league ${leagueId}`)
-
   let playersWithSeasonStats = 0
   let playersWithLeagueSpecificStats = 0
   let playersProcessed = 0
@@ -200,7 +198,6 @@ function processLeaguePlayerStats(players: any[], seasonId: number, leagueId: nu
 
     // Validate and cap assists at reasonable maximum (assists > 50 in a season is highly unlikely)
     if (playerStat.assists && playerStat.assists > 50) {
-      console.warn(`Player ${playerStat.name} has suspicious assist count: ${playerStat.assists}. Capping at 50.`)
       playerStat.assists = 50
     }
 
@@ -208,23 +205,6 @@ function processLeaguePlayerStats(players: any[], seasonId: number, leagueId: nu
     playerStats.push(playerStat)
   })
 
-  // Summary statistics for debugging
-  const playersWithAssists = playerStats.filter(p => (p.assists || 0) > 0)
-  const totalAssists = playerStats.reduce((sum, p) => sum + (p.assists || 0), 0)
-  const avgAssists = playersWithAssists.length > 0 ? (totalAssists / playersWithAssists.length).toFixed(2) : 0
-  
-  console.log(`📊 Player processing summary:`)
-  console.log(`   Players processed: ${playersProcessed}`)
-  console.log(`   Players with season stats: ${playersWithSeasonStats}`)
-  console.log(`   Players with league-specific stats: ${playersWithLeagueSpecificStats}`)
-  console.log(`   Players with assists: ${playersWithAssists.length}`)
-  console.log(`   Total assists: ${totalAssists}, avg: ${avgAssists}`)
-  
-  // Log if we're mostly using fallback stats (indicating data structure issues)
-  if (playersWithSeasonStats > 0 && playersWithLeagueSpecificStats < playersWithSeasonStats * 0.1) {
-    console.log(`⚠️  Most player stats are using season-only fallback (league data may be missing)`)
-  }
-  
   return playerStats
 }
 
@@ -326,9 +306,6 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
       teamsWithNoStats++
     } else {
       teamsWithStats++
-      if (team.name === 'Celtic' || team.name === 'Rangers') {
-        console.log(`🏆 TEAM STATS FOUND - ${team.name}: goals_for=${teamStats.goals_for}, wins=${teamStats.wins}, clean_sheets=${teamStats.clean_sheets}`)
-      }
     }
     
     return {
@@ -338,8 +315,6 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
       stats: teamStats,
     }
   })
-  
-  console.log(`🏆 Team stats summary: ${teamsWithStats} teams with stats, ${teamsWithNoStats} teams without stats`)
   
   const teamsWithStatsFiltered = teamsWithStatsData
 
@@ -493,13 +468,6 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
   // Calculate matches played and points
   extractedStats.matches_played = extractedStats.wins + extractedStats.draws + extractedStats.losses
   extractedStats.points = (extractedStats.wins * 3) + extractedStats.draws
-
-  // Debug logging to verify extraction
-  console.log(`🏆 EXTRACTED TEAM STATS (season ${seasonId}):`, {
-    found_details: seasonStats.details.length,
-    extracted: extractedStats,
-    type_ids_found: seasonStats.details.map(d => d.type_id),
-  })
 
   return extractedStats
 }
@@ -690,7 +658,6 @@ function transformLeagueTable(
     if (availableSeasons.length > 0) {
       // Sort seasons descending and take the most recent
       targetSeasonId = availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0]
-      console.log(`No current season set for league ${rawLeague.id}, using most recent season: ${targetSeasonId}`)
     }
   }
   
@@ -805,8 +772,6 @@ function extractLeagueSeasons(league: any): Array<{ id: string; name: string }> 
  */
 export const leagueDataFetcher: LeagueDataFetcher = {
   getOverview: async (leagueId: string, seasonId?: string): Promise<LeagueOverviewResponse> => {
-    console.log(`Fetching overview for league ${leagueId}, season ${seasonId || 'default'}`)
-    
     try {
       const numericId = parseInt(leagueId, 10)
       if (isNaN(numericId) || numericId <= 0) {
@@ -858,7 +823,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           const availableSeasons = Object.keys(league.standings)
           if (availableSeasons.length > 0) {
             targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
-            console.log(`No current season set for league ${leagueId}, using most recent season: ${targetSeasonId}`)
           }
         }
 
@@ -914,13 +878,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       if (standingsData && standingsData[String(targetSeasonId)]) {
         const seasonStandings = standingsData[String(targetSeasonId)]
-        console.log(`League ${leagueId} standings structure:`, {
-          hasStandings: !!seasonStandings.standings,
-          standingsCount: seasonStandings.standings?.length,
-          firstStandingName: seasonStandings.standings?.[0]?.name,
-          firstStandingType: seasonStandings.standings?.[0]?.type,
-          teamsInFirstStanding: seasonStandings.standings?.[0]?.standings?.length
-        })
         
         if (seasonStandings.standings && Array.isArray(seasonStandings.standings)) {
           // Combine all standings groups to get the full table
@@ -1076,11 +1033,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           // Iterate through all standings groups
           seasonStandings.standings.forEach((standingGroup: any, index: number) => {
             if (standingGroup.standings && Array.isArray(standingGroup.standings)) {
-              console.log(`League ${leagueId} standings group ${index}:`, {
-                name: standingGroup.name,
-                type: standingGroup.type,
-                teams_count: standingGroup.standings.length
-              })
               
               standingGroup.standings.forEach((team: any) => {
                 uniqueTeams.add(team.team_id)
@@ -1095,12 +1047,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           metadata.total_teams = uniqueTeams.size
           metadata.total_matches_played = Math.floor(totalPlayedByAllTeams / 2)
           
-          console.log(`League ${leagueId} metadata from standings:`, {
-            standings_groups: seasonStandings.standings.length,
-            unique_teams: uniqueTeams.size,
-            total_played_by_all_teams: totalPlayedByAllTeams,
-            calculated_matches: metadata.total_matches_played
-          })
         }
       }
 
@@ -1112,11 +1058,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         }
         metadata.total_goals = statsData.overview.total_goals || 0
         
-        console.log(`League ${leagueId} metadata from stats:`, {
-          teams_count: statsData.overview.teams_count,
-          total_goals: statsData.overview.total_goals,
-          stats_overview: statsData.overview
-        })
       }
 
       // If we still don't have team count, try to get it from the teams endpoint
@@ -1124,7 +1065,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         try {
           const teamsData = await leagueDataFetcher.getTeams(leagueId, 1, 1)
           metadata.total_teams = teamsData.pagination.totalItems || 0
-          console.log(`League ${leagueId} teams from teams endpoint:`, teamsData.pagination.totalItems)
         } catch (err) {
           console.error('Error fetching teams count:', err)
         }
@@ -1135,7 +1075,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         metadata.average_goals_per_match = Math.round((metadata.total_goals / metadata.total_matches_played) * 100) / 100
       }
 
-      console.log(`League ${leagueId} final metadata:`, metadata)
 
       // Get all available seasons for the dropdown
       const seasons = extractLeagueSeasons(league)
@@ -1172,8 +1111,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
   },
 
   getStandings: async (leagueId: string, seasonId?: string): Promise<LeagueStandingsResponse> => {
-    console.log(`Fetching standings for league ${leagueId}, season ${seasonId || 'current'}`)
-    
     try {
       const numericId = parseInt(leagueId, 10)
       if (isNaN(numericId) || numericId <= 0) {
@@ -1226,8 +1163,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
     page: number = 1,
     limit: number = 50,
   ): Promise<LeagueTeamsResponse> => {
-    console.log(`Fetching teams for league ${leagueId}, page ${page}, limit ${limit}`)
-
     try {
       const payload = await getPayload({ config })
 
@@ -1287,8 +1222,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         totalPages: Math.ceil(totalTeams / limit),
       }
 
-      console.log(`Found ${teamsResult.docs.length} teams for league ${leagueId}`)
-
       // Map the results
       const teams = teamsResult.docs.map((team) => ({
         id: String(team.id),
@@ -1333,8 +1266,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
     type: 'all' | 'past' | 'upcoming' | 'auto' = 'auto',
     includeNextMatch: boolean = false,
   ): Promise<LeagueMatchesResponse> => {
-    console.log(`Fetching matches for league ${leagueId}, page ${page}, limit ${limit}, season ${seasonId || 'current'}, type ${type}`)
-    
     try {
       const numericId = parseInt(leagueId, 10)
       if (isNaN(numericId) || numericId <= 0) {
@@ -1509,8 +1440,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
   },
 
   getStats: async (leagueId: string, seasonId?: string): Promise<LeagueStatsResponse> => {
-    console.log(`Fetching stats for league ${leagueId}, season ${seasonId || 'current'}`)
-    
     try {
       const numericId = parseInt(leagueId, 10)
       if (isNaN(numericId) || numericId <= 0) {
@@ -1548,15 +1477,12 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         if (availableSeasons.length > 0) {
           // Sort seasons descending and take the most recent
           targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
-          console.log(`No current season set for league ${leagueId}, using most recent season: ${targetSeasonId}`)
         }
       }
 
       if (!targetSeasonId) {
         throw new Error('No season specified and no current season available for this league')
       }
-
-      console.log(`Processing league stats for league ${leagueId}, season ${targetSeasonId}`)
 
       // Find all teams in this league using the same MongoDB query approach as league teams endpoint
       const mongoTeams = await payload.db.collections.teams
@@ -1578,8 +1504,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           id: team._id || team.id, // Use _id from MongoDB or fallback to id field
         })),
       }
-
-      console.log(`Found ${teamsResult.docs.length} teams in league ${leagueId}`)
 
       if (teamsResult.docs.length === 0) {
         throw new Error(`No teams found for league ${leagueId}`)
@@ -1605,8 +1529,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         }
       })
 
-      console.log(`Found ${allPlayerIds.size} unique players across all teams`)
-
       if (allPlayerIds.size === 0) {
         throw new Error(`No players found for teams in league ${leagueId}`)
       }
@@ -1623,12 +1545,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         pagination: false,
       })
 
-      console.log(`Retrieved ${playersResult.docs.length} players with statistics`)
-
       // Process player statistics for the target season AND league to avoid cross-competition contamination
       const playerStats = processLeaguePlayerStats(playersResult.docs, targetSeasonId, numericId)
-
-      console.log(`Processed ${playerStats.length} players with stats for season ${targetSeasonId}`)
 
       // Calculate aggregated league statistics
       const leagueAggregatedStats = calculateLeagueAggregatedStats(playerStats)
@@ -1707,12 +1625,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         legacy_player_stats: enhancedPlayerStats.slice(0, 50), // Limit to top 50 for performance
       }
       
-      console.log(`League stats response prepared for league ${leagueId}, season ${targetSeasonId}:`, {
-        overview: response.overview,
-        player_categories: Object.keys(response.player_stats),
-        team_categories: Object.keys(response.team_stats),
-      })
-      
       return response
     } catch (error) {
       console.error('Error in getStats:', {
@@ -1726,8 +1638,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
   },
 
   getSeasons: async (leagueId: string): Promise<LeagueSeasonsResponse> => {
-    console.log(`Fetching seasons for league ${leagueId}`)
-    
     try {
       const numericId = parseInt(leagueId, 10)
       if (isNaN(numericId) || numericId <= 0) {
@@ -1805,8 +1715,6 @@ export const leagueListDataFetcher: LeagueListDataFetcher = {
     season?: string
   }): Promise<LeaguesListResponse> => {
     const { page, limit, countryId, search, season } = options
-    console.log('Fetching leagues with options:', { page, limit, countryId, search, season })
-
     try {
       const payload = await getPayload({ config })
 
