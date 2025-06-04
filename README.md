@@ -8,12 +8,15 @@ This repository contains the backend and content management system (CMS) for Fut
 
 ### Key Features
 
-- Real-time match data and live scores
-- Comprehensive league and tournament information
-- Team and player statistics
-- League standings and team rankings
-- Automated data synchronization with Sportmonks API
-- RESTful API endpoints for frontend consumption
+- **Real-time match data and live scores** with comprehensive lineup information
+- **Sidelined players tracking** including injury details and expected return dates
+- **Comprehensive player profiles** with career history, transfer details, and achievements
+- **League and tournament information** with detailed statistics and standings
+- **Team statistics and squad management** with formation and tactical data
+- **League standings and rankings** with qualification status indicators
+- **Automated data synchronization** with Sportmonks API
+- **RESTful API endpoints** optimized for multiple frontend clients
+- **Robust job queue system** for reliable data processing
 
 ## Technical Stack
 
@@ -108,6 +111,20 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 - **Development mode**: API key authentication is bypassed by default (when `NODE_ENV=development`)
 - **Test authentication locally**: Set `FORCE_AUTH=true` in your `.env` file to test API key authentication in development
 - **Production**: API key authentication is always enforced
+
+## Recent Updates
+
+### January 2025
+- ✅ **Sidelined Players**: Added comprehensive injury tracking to match lineups
+- ✅ **Enhanced Player API**: Career history, transfer details, and achievements
+- ✅ **Match API Improvements**: Fixed stability issues and enhanced data structure
+- ✅ **Comprehensive Testing**: Added full test coverage for player endpoints
+- ✅ **Database Optimization**: Improved performance for player-related queries
+
+### API Documentation
+For complete API documentation including request/response examples, see:
+- [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint documentation
+- [Sportmonks Sync Map](src/app/api/v1/documentation/sportmonks-sync-map.md) - Data synchronization details
 
 ## Development
 

@@ -27,11 +27,22 @@ The following entities are synced from the Sportmonks API:
 
 1. **Leagues**: Competition structures (Premier League, La Liga, etc.)
 2. **Teams**: Clubs participating in leagues
-3. **Matches**: Fixtures/games between teams
+3. **Matches**: Fixtures/games between teams (including lineups, events, and sidelined players)
 4. **Players**: Athletes registered with teams
 5. **Metadata Types**: Reference data for various entity attributes
 6. **Countries**: Country information used for relationships
 7. **Coaches**: Team coaches and managers
+
+### Match Data Enhancement (January 2025)
+
+Matches now include comprehensive data beyond basic fixtures:
+- **Lineups**: Starting XI and substitutes with formation data
+- **Events**: Goals, cards, substitutions linked to players
+- **Sidelined Players**: Injury and unavailability information including:
+  - Injury type and category
+  - Start and end dates
+  - Games missed during the period
+  - Completion status
 
 ## Sync Schedule
 

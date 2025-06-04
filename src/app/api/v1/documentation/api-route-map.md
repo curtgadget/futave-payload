@@ -1084,33 +1084,173 @@ List all players with pagination.
 
 #### GET /api/v1/player/:id
 
-Get details for a specific player.
+Get comprehensive details for a specific player including career history, statistics, and achievements.
 
 **Query Parameters:**
 - `tab`: View type (options: "overview", "stats", "career")
-- `season_id`: Season ID for stats view
+- `season_id`: Season ID for stats view (optional)
 
-**Response:**
+**Response (Overview):**
 ```json
 {
   "data": {
     "id": 321,
     "name": "Player Name",
-    "position": "Forward",
-    "nationality": "Country Name",
+    "display_name": "Display Name",
+    "common_name": "Common Name",
+    "position": {
+      "id": 27,
+      "name": "Forward",
+      "short_name": "FW"
+    },
+    "nationality": {
+      "id": 456,
+      "name": "Country Name",
+      "flag": "https://..."
+    },
     "dateOfBirth": "1995-05-15",
-    "height": "185 cm",
-    "weight": "75 kg",
-    "team": {
+    "age": 28,
+    "height": 185,
+    "weight": 75,
+    "current_team": {
       "id": 123,
-      "name": "Team Name"
+      "name": "Team Name",
+      "logo": "https://...",
+      "country": {
+        "id": 456,
+        "name": "Country Name"
+      }
     },
     "photo": "https://...",
-    "stats": {...},      // Only included in stats view
-    "career": [...]      // Only included in career view
+    "market_value": 25000000,
+    "contract_until": "2026-06-30",
+    "preferred_foot": "Right",
+    "jersey_number": 10
   }
 }
 ```
+
+**Response (Career):**
+```json
+{
+  "data": {
+    "id": 321,
+    "name": "Player Name",
+    "career_summary": {
+      "total_clubs": 4,
+      "total_appearances": 287,
+      "total_goals": 89,
+      "total_assists": 34,
+      "career_span": "2018-2024",
+      "countries_played": ["England", "Spain", "Germany"]
+    },
+    "career_history": [
+      {
+        "season": "2023/24",
+        "team": {
+          "id": 123,
+          "name": "Current Team",
+          "logo": "https://...",
+          "country": "England"
+        },
+        "league": {
+          "id": 789,
+          "name": "Premier League",
+          "level": 1
+        },
+        "position": "Forward",
+        "appearances": 34,
+        "goals": 18,
+        "assists": 12,
+        "minutes": 2856,
+        "yellow_cards": 3,
+        "red_cards": 0,
+        "rating": 7.8,
+        "start_date": "2023-07-01",
+        "end_date": null,
+        "loan": false,
+        "transfer_fee": 15000000
+      }
+      // More seasons...
+    ],
+    "achievements": [
+      {
+        "type": "trophy",
+        "name": "Premier League",
+        "season": "2023/24",
+        "team": "Current Team"
+      },
+      {
+        "type": "individual",
+        "name": "Top Scorer",
+        "season": "2022/23",
+        "value": 25
+      }
+    ],
+    "international_career": {
+      "caps": 45,
+      "goals": 12,
+      "debut": "2020-09-05",
+      "competitions": ["World Cup 2022", "Euro 2024"]
+    }
+  }
+}
+```
+
+**Response (Stats):**
+```json
+{
+  "data": {
+    "id": 321,
+    "name": "Player Name",
+    "season_stats": {
+      "season_id": 23614,
+      "season_name": "2024/25",
+      "team": {
+        "id": 123,
+        "name": "Team Name"
+      },
+      "league": {
+        "id": 789,
+        "name": "League Name"
+      },
+      "appearances": 28,
+      "starts": 25,
+      "minutes": 2340,
+      "goals": 15,
+      "assists": 8,
+      "yellow_cards": 4,
+      "red_cards": 0,
+      "rating": 7.6,
+      "shots": 89,
+      "shots_on_target": 34,
+      "pass_accuracy": 87.5,
+      "dribbles_completed": 45,
+      "tackles_won": 23,
+      "aerial_duels_won": 67
+    },
+    "comparison": {
+      "league_rank": {
+        "goals": 3,
+        "assists": 8,
+        "rating": 5
+      },
+      "previous_season": {
+        "goals_change": +3,
+        "assists_change": -2,
+        "rating_change": +0.2
+      }
+    }
+  }
+}
+```
+
+**Key Features:**
+- **Comprehensive Career Data**: Complete transfer history with fees and loan details
+- **International Career**: National team statistics and tournament participation
+- **Achievements**: Trophies and individual awards throughout career
+- **Statistical Analysis**: Season comparisons and league rankings
+- **Multi-format Support**: Overview for basic info, career for history, stats for performance
 
 ### Matches
 
@@ -1169,54 +1309,165 @@ List matches with pagination.
 }
 ```
 
-#### GET /api/v1/match/:id
+#### GET /api/v1/match/:id/:tab?
 
-Get details for a specific match.
+Get details for a specific match with optional tab-based views.
 
-**Query Parameters:**
-- `tab`: View type (options: "overview", "lineup", "stats", "events", "avenue")
+**Path Parameters:**
+- `id`: Match ID (required)
+- `tab`: View type (optional, defaults to "overview")
+  - `overview`: Complete match details with lineups
+  - `lineups`: Detailed lineup information with events and sidelined players
 
-**Response:**
+**Response (Overview):**
 ```json
 {
   "data": {
     "id": 555,
     "league": {
       "id": 789,
-      "name": "League Name"
+      "name": "League Name",
+      "logo_path": "https://...",
+      "country_id": 123
     },
     "homeTeam": {
       "id": 123,
       "name": "Home Team",
-      "logo": "https://..."
+      "logo_path": "https://...",
+      "country_id": 456
     },
     "awayTeam": {
       "id": 124,
       "name": "Away Team",
-      "logo": "https://..."
+      "logo_path": "https://...",
+      "country_id": 456
     },
     "score": {
       "home": 2,
-      "away": 1,
-      "halfTime": {
-        "home": 1,
-        "away": 0
-      }
+      "away": 1
     },
-    "status": "FULL_TIME",
+    "status": "FT",
     "startingAt": "2023-05-20T15:00:00Z",
     "venue": {
       "name": "Stadium Name",
       "city": "City"
     },
     "waveScore": 85,
-    "events": [...],    // Match events (goals, cards, etc.)
-    "lineups": {...},   // Only included in lineup view
-    "stats": {...},     // Only included in stats view
-    "avenue": {...}     // Only included in avenue view
+    "events": [...],
+    "lineups": {
+      "home": {
+        "formation": "4-3-3",
+        "startingXI": [
+          {
+            "player_id": 123,
+            "player_name": "Player Name",
+            "jersey_number": 10,
+            "position_id": 27,
+            "formation_field": 1,
+            "formation_position": 1,
+            "events": [...]
+          }
+        ],
+        "bench": [...],
+        "sidelined": [
+          {
+            "player_id": 31626482,
+            "type_id": 540,
+            "category": "injury",
+            "start_date": "2024-07-01",
+            "end_date": "2025-03-31",
+            "games_missed": 11,
+            "completed": true
+          }
+        ]
+      },
+      "away": {
+        "formation": "4-4-2",
+        "startingXI": [...],
+        "bench": [...],
+        "sidelined": [...]
+      }
+    },
+    "teamForm": {
+      "home": [],
+      "away": []
+    },
+    "historicMatchups": [],
+    "metadata": {...}
   }
 }
 ```
+
+**Response (Lineups):**
+```json
+{
+  "lineups": {
+    "home": {
+      "formation": "4-3-3",
+      "startingXI": [
+        {
+          "player_id": 123,
+          "player_name": "Player Name",
+          "jersey_number": 10,
+          "position_id": 27,
+          "formation_field": 1,
+          "formation_position": 1,
+          "events": [
+            {
+              "id": 456,
+              "type_id": 14,
+              "minute": 25,
+              "description": "Goal"
+            }
+          ]
+        }
+      ],
+      "bench": [
+        {
+          "player_id": 124,
+          "player_name": "Substitute Player",
+          "jersey_number": 22,
+          "position_id": 25,
+          "events": []
+        }
+      ],
+      "sidelined": [
+        {
+          "player_id": 31626482,
+          "type_id": 540,
+          "category": "injury",
+          "start_date": "2024-07-01",
+          "end_date": "2025-03-31",
+          "games_missed": 11,
+          "completed": true
+        }
+      ]
+    },
+    "away": {
+      "formation": "4-4-2",
+      "startingXI": [...],
+      "bench": [...],
+      "sidelined": [...]
+    }
+  }
+}
+```
+
+**Key Features:**
+- **Sidelined Players**: Comprehensive injury and unavailability information
+- **Formation Data**: Team formations extracted from match metadata
+- **Player Events**: Goals, cards, and substitutions linked to lineup players
+- **Flexible Views**: Overview for complete match data, lineups for detailed team sheets
+
+**Sidelined Players Data Structure:**
+Each sidelined player entry includes:
+- `player_id`: Unique player identifier
+- `type_id`: Type of sideline/injury classification
+- `category`: Category of unavailability (e.g., "injury", "suspension")
+- `start_date`: When the sideline period began (YYYY-MM-DD)
+- `end_date`: Expected return date (null if indefinite)
+- `games_missed`: Number of games missed during this period
+- `completed`: Whether the sideline period has ended
 
 ## Feature Endpoints
 
@@ -1468,6 +1719,21 @@ List all countries.
   }
 }
 ```
+
+## Recent Updates & Changelog
+
+### January 2025
+- **✅ Sidelined Players**: Added comprehensive injury and unavailability data to match lineup endpoints
+- **✅ Match API Improvements**: Fixed Mongoose model overwrite errors and enhanced lineup data structure
+- **✅ Player Career Data**: Added comprehensive career history, transfer details, and achievements to player API
+- **✅ Player Statistics**: Enhanced player stats with position data, team/league context, and trophies
+- **✅ API Test Coverage**: Added comprehensive test suite for player API endpoints
+- **✅ Database Optimization**: Improved query performance and data structure for player-related endpoints
+
+### December 2024
+- **✅ Match Data Sync**: Enhanced Sportmonks integration for better match data synchronization
+- **✅ Player Trophies**: Added trophy and achievement data to player responses
+- **✅ Team Context**: Improved team and league name resolution across all endpoints
 
 ## Implementation Guide
 
