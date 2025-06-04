@@ -63,6 +63,7 @@ jest.mock('payload', () => ({
 }))
 
 jest.mock('@/payload.config', () => ({}))
+jest.mock('@payload-config', () => ({}))
 
 jest.mock('../services/teamDataFetcher', () => ({
   teamDataFetcher: mockTeamDataFetcher,
@@ -270,6 +271,33 @@ export function createPlayersListRequest(options: {
   const { queryParams = {}, method = 'GET', headers = {} } = options
   
   const url = new URL(`http://localhost:3000/api/v1/players`)
+  Object.entries(queryParams).forEach(([key, value]) => {
+    url.searchParams.set(key, value)
+  })
+
+  return createMockRequest({
+    url: url.toString(),
+    method,
+    headers,
+  })
+}
+
+/**
+ * Create test request for match endpoints
+ */
+export function createMatchRequest(matchId: string, tab?: string, options: {
+  queryParams?: Record<string, string>
+  method?: string
+  headers?: Record<string, string>
+} = {}): PayloadRequest {
+  const { queryParams = {}, method = 'GET', headers = {} } = options
+  
+  let basePath = `match/${matchId}`
+  if (tab) {
+    basePath += `/${tab}`
+  }
+  
+  const url = new URL(`http://localhost:3000/api/v1/${basePath}`)
   Object.entries(queryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
   })
@@ -788,6 +816,118 @@ export const playerEndpointAssertions = {
     expect(response.data.meta.pagination).toHaveProperty('limit')
     expect(response.data.meta.pagination).toHaveProperty('totalItems')
     expect(response.data.meta.pagination).toHaveProperty('totalPages')
+
+    return response
+  },
+}
+
+/**
+ * Match endpoint assertions
+ */
+export const matchEndpointAssertions = {
+  /**
+   * Assert match overview response structure
+   */
+  assertOverviewResponse: (response: APIResponse) => {
+    response.expectToHaveProperty('data')
+    
+    const requiredProperties = [
+      'id', 'league', 'homeTeam', 'awayTeam', 'score', 'status', 
+      'startingAt', 'lineups'
+    ]
+    
+    requiredProperties.forEach(prop => {
+      expect(response.data.data).toHaveProperty(prop)
+    })
+
+    // Assert team structures
+    expect(response.data.data.homeTeam).toHaveProperty('id')
+    expect(response.data.data.homeTeam).toHaveProperty('name')
+    expect(response.data.data.awayTeam).toHaveProperty('id')
+    expect(response.data.data.awayTeam).toHaveProperty('name')
+
+    // Assert lineup structures
+    expect(response.data.data.lineups).toHaveProperty('home')
+    expect(response.data.data.lineups).toHaveProperty('away')
+    
+    // Check lineup components
+    const homeLineup = response.data.data.lineups.home
+    const awayLineup = response.data.data.lineups.away
+    
+    const lineupsProps = ['formation', 'startingXI', 'bench', 'sidelined', 'coach']
+    lineupsProps.forEach((prop: string) => {
+      expect(homeLineup).toHaveProperty(prop)
+      expect(awayLineup).toHaveProperty(prop)
+    })
+
+    // Assert arrays
+    expect(Array.isArray(homeLineup.startingXI)).toBe(true)
+    expect(Array.isArray(homeLineup.bench)).toBe(true)
+    expect(Array.isArray(homeLineup.sidelined)).toBe(true)
+    expect(Array.isArray(awayLineup.startingXI)).toBe(true)
+    expect(Array.isArray(awayLineup.bench)).toBe(true)
+    expect(Array.isArray(awayLineup.sidelined)).toBe(true)
+
+    return response
+  },
+
+  /**
+   * Assert match lineups response structure
+   */
+  assertLineupsResponse: (response: APIResponse) => {
+    response.expectToHaveProperty('lineups')
+    
+    expect(response.data.lineups).toHaveProperty('home')
+    expect(response.data.lineups).toHaveProperty('away')
+    
+    const homeLineup = response.data.lineups.home
+    const awayLineup = response.data.lineups.away
+    
+    const lineupsProps = ['formation', 'startingXI', 'bench', 'sidelined', 'coach']
+    lineupsProps.forEach((prop: string) => {
+      expect(homeLineup).toHaveProperty(prop)
+      expect(awayLineup).toHaveProperty(prop)
+    })
+
+    // Assert arrays
+    expect(Array.isArray(homeLineup.startingXI)).toBe(true)
+    expect(Array.isArray(homeLineup.bench)).toBe(true)
+    expect(Array.isArray(homeLineup.sidelined)).toBe(true)
+    expect(Array.isArray(awayLineup.startingXI)).toBe(true)
+    expect(Array.isArray(awayLineup.bench)).toBe(true)
+    expect(Array.isArray(awayLineup.sidelined)).toBe(true)
+
+    return response
+  },
+
+  /**
+   * Assert coach information structure in lineups
+   */
+  assertCoachInformation: (response: APIResponse, tabName: string = 'overview') => {
+    let lineups
+    
+    if (tabName === 'lineups') {
+      lineups = response.data.lineups
+    } else {
+      lineups = response.data.data.lineups
+    }
+    
+    const homeCoach = lineups.home.coach
+    const awayCoach = lineups.away.coach
+    
+    if (homeCoach) {
+      expect(homeCoach).toHaveProperty('coach_id')
+      expect(homeCoach).toHaveProperty('coach_name')
+      expect(typeof homeCoach.coach_id).toBe('number')
+      expect(typeof homeCoach.coach_name).toBe('string')
+    }
+    
+    if (awayCoach) {
+      expect(awayCoach).toHaveProperty('coach_id')
+      expect(awayCoach).toHaveProperty('coach_name')
+      expect(typeof awayCoach.coach_id).toBe('number')
+      expect(typeof awayCoach.coach_name).toBe('string')
+    }
 
     return response
   },
