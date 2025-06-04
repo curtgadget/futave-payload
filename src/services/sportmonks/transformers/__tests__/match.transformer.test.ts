@@ -34,6 +34,7 @@ describe('Match Transformer', () => {
     events: null,
     periods: null,
     lineups: null,
+    sidelined: null,
     metadata: null,
     weatherreport: null,
   }
@@ -73,6 +74,7 @@ describe('Match Transformer', () => {
         events: null,
         periods: null,
         lineups: null,
+        sidelined: null,
         metadata: null,
         weatherreport: null,
       })

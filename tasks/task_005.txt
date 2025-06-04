@@ -191,7 +191,7 @@ Implementation completed for all core entity controllers following a consistent 
 All controllers now provide appropriate CRUD operations and specialized views as specified in the API route documentation. The implementation uses placeholder functions for data fetching that would need to be connected to the actual database or external API in production.
 </info added on 2025-05-04T03:32:38.672Z>
 
-## 3. Complete Data Implementations for League and Player Endpoints [pending]
+## 3. Complete Data Implementations for League and Player Endpoints [done]
 ### Dependencies: 5.2
 ### Description: Replace placeholder data fetchers with real database integrations for league and player endpoints to make them production-ready.
 ### Details:

@@ -31,6 +31,7 @@ export type TransformedMatch = {
   events: unknown | null
   periods: unknown | null
   lineups: unknown | null
+  sidelined: unknown | null
   metadata: unknown | null
   weatherreport: unknown | null
 }
@@ -67,6 +68,7 @@ export function transformMatch(match: SportmonksMatch): TransformedMatch {
     events: match.events || null,
     periods: match.periods || null,
     lineups: match.lineups || null,
+    sidelined: match.sidelined || null,
     metadata: match.metadata || null,
     weatherreport: match.weatherreport || null,
   }

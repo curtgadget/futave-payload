@@ -193,6 +193,11 @@ export const Matches: CollectionConfig = {
       required: false,
     },
     {
+      name: 'sidelined',
+      type: 'json',
+      required: false,
+    },
+    {
       name: 'metadata',
       type: 'json',
       required: false,
