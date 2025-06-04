@@ -32,6 +32,7 @@ export type TransformedMatch = {
   periods: unknown | null
   lineups: unknown | null
   sidelined: unknown | null
+  coaches: unknown | null
   metadata: unknown | null
   weatherreport: unknown | null
 }
@@ -69,6 +70,7 @@ export function transformMatch(match: SportmonksMatch): TransformedMatch {
     periods: match.periods || null,
     lineups: match.lineups || null,
     sidelined: match.sidelined || null,
+    coaches: match.coaches || null,
     metadata: match.metadata || null,
     weatherreport: match.weatherreport || null,
   }

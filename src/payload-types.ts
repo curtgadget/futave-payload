@@ -356,6 +356,15 @@ export interface Match {
     | number
     | boolean
     | null;
+  coaches?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   metadata?:
     | {
         [k: string]: unknown;
@@ -966,6 +975,7 @@ export interface MatchesSelect<T extends boolean = true> {
   periods?: T;
   lineups?: T;
   sidelined?: T;
+  coaches?: T;
   metadata?: T;
   weatherreport?: T;
   updatedAt?: T;

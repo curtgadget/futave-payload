@@ -130,6 +130,7 @@ export type SportmonksMatch = {
   periods?: unknown
   lineups?: unknown
   sidelined?: unknown
+  coaches?: unknown
   metadata?: unknown
   weatherreport?: unknown
 }

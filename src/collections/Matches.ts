@@ -198,6 +198,11 @@ export const Matches: CollectionConfig = {
       required: false,
     },
     {
+      name: 'coaches',
+      type: 'json',
+      required: false,
+    },
+    {
       name: 'metadata',
       type: 'json',
       required: false,
