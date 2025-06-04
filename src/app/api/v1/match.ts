@@ -1,57 +1,8 @@
 import type { APIRouteV1 } from './index'
 import type { PayloadRequest } from 'payload'
-import payload from 'payload'
+import { getPayload } from 'payload'
 import config from '@payload-config'
 import { MetadataTypeIds } from '@/constants/metadataType'
-
-// Global initialization tracking to prevent multiple payload.init() calls
-let globalPayloadInitialized = false
-let globalInitPromise: Promise<void> | null = null
-
-async function ensurePayloadInitialized() {
-  // Check if already initialized globally
-  if (globalPayloadInitialized) return
-  
-  // If there's an ongoing initialization, wait for it
-  if (globalInitPromise) {
-    await globalInitPromise
-    return
-  }
-  
-  // Check if payload is already initialized by checking for models
-  try {
-    if (payload.db && payload.db.connection && payload.db.connection.models && Object.keys(payload.db.connection.models).length > 0) {
-      globalPayloadInitialized = true
-      return
-    }
-  } catch (error) {
-    // Ignore errors when checking db state
-  }
-  
-  // Check collections as fallback
-  if (payload.collections && Object.keys(payload.collections).length > 0) {
-    globalPayloadInitialized = true
-    return
-  }
-  
-  // Initialize payload if not already done
-  globalInitPromise = payload.init({ config })
-    .then(() => {
-      globalPayloadInitialized = true
-      globalInitPromise = null
-    })
-    .catch((error) => {
-      globalInitPromise = null
-      // If the error is about model overwrite, treat as already initialized
-      if (error.message && error.message.includes('Cannot overwrite')) {
-        globalPayloadInitialized = true
-        return
-      }
-      throw error
-    })
-  
-  await globalInitPromise
-}
 
 // Draft MatchDetailResponse type (should be moved to a types file)
 export interface MatchDetailResponse {
@@ -135,6 +86,26 @@ function getFinalScore(scoresArr: any[], participantId: number) {
   return null
 }
 
+// Helper to extract coach for a specific team from coaches array
+function extractCoachForTeam(teamId: number, coachesArr: any[]): any {
+  if (!Array.isArray(coachesArr)) return null
+  
+  // Find coach whose meta.participant_id matches the team ID
+  const coach = coachesArr.find((c: any) => c.meta?.participant_id === teamId)
+  
+  if (coach) {
+    return {
+      coach_id: coach.id,
+      coach_name: coach.display_name || coach.name || coach.common_name,
+      image_path: coach.image_path,
+      nationality_id: coach.nationality_id,
+      date_of_birth: coach.date_of_birth,
+    }
+  }
+  
+  return null
+}
+
 // Helper to group lineup and attach events to each player
 function groupLineupWithEvents(
   teamId: number,
@@ -142,6 +113,7 @@ function groupLineupWithEvents(
   eventsArr: any[],
   lineupsArr: any[],
   sidelinedArr: any[] = [],
+  coachesArr: any[] = [],
 ): any {
   const teamLineup = lineupsArr.filter((p: any) => p.team_id === teamId)
   const attachEvents = (player: any) => ({
@@ -183,11 +155,16 @@ function groupLineupWithEvents(
       games_missed: p.sideline?.games_missed,
       completed: p.sideline?.completed,
     }))
+  
+  // Extract coach for this team
+  const coach = extractCoachForTeam(teamId, coachesArr)
+  
   return {
     formation,
     startingXI,
     bench,
     sidelined,
+    coach,
   }
 }
 
@@ -195,7 +172,7 @@ const getMatchHandler: APIRouteV1 = {
   path: '/v1/match/:id/:tab?',
   method: 'get',
   handler: async (req: PayloadRequest) => {
-    await ensurePayloadInitialized()
+    const payload = await getPayload({ config })
     const { id, tab } = getParams(req)
     const tabName = tab || 'overview'
 
@@ -276,12 +253,13 @@ const getMatchHandler: APIRouteV1 = {
         const lineupsArr = Array.isArray(match.lineups) ? match.lineups : []
         const eventsArr = Array.isArray(match.events) ? match.events : []
         const sidelinedArr = Array.isArray(match.sidelined) ? match.sidelined : []
+        const coachesArr = Array.isArray(match.coaches) ? match.coaches : []
         const homeLineup = homeTeamData
-          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr, sidelinedArr)
-          : { formation: null, startingXI: [], bench: [], sidelined: [] }
+          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr, sidelinedArr, coachesArr)
+          : { formation: null, startingXI: [], bench: [], sidelined: [], coach: null }
         const awayLineup = awayTeamData
-          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr, sidelinedArr)
-          : { formation: null, startingXI: [], bench: [], sidelined: [] }
+          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr, sidelinedArr, coachesArr)
+          : { formation: null, startingXI: [], bench: [], sidelined: [], coach: null }
         const response: MatchDetailResponse = {
           id: match.id,
           league: league
@@ -336,6 +314,7 @@ const getMatchHandler: APIRouteV1 = {
         const lineupsArr = Array.isArray(match.lineups) ? match.lineups : []
         const eventsArr = Array.isArray(match.events) ? match.events : []
         const sidelinedArr = Array.isArray(match.sidelined) ? match.sidelined : []
+        const coachesArr = Array.isArray(match.coaches) ? match.coaches : []
         // Extract formation from metadata (type_id 159 or type.code === 'formation')
         let homeFormation: string | null = null
         let awayFormation: string | null = null
@@ -353,11 +332,11 @@ const getMatchHandler: APIRouteV1 = {
           }
         }
         const home = homeTeamData
-          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr, sidelinedArr)
-          : { formation: null, startingXI: [], bench: [], sidelined: [] }
+          ? groupLineupWithEvents(homeTeamData.id, homeFormation, eventsArr, lineupsArr, sidelinedArr, coachesArr)
+          : { formation: null, startingXI: [], bench: [], sidelined: [], coach: null }
         const away = awayTeamData
-          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr, sidelinedArr)
-          : { formation: null, startingXI: [], bench: [], sidelined: [] }
+          ? groupLineupWithEvents(awayTeamData.id, awayFormation, eventsArr, lineupsArr, sidelinedArr, coachesArr)
+          : { formation: null, startingXI: [], bench: [], sidelined: [], coach: null }
         return Response.json({ lineups: { home, away } })
       }
 
