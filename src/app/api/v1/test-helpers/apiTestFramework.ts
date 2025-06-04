@@ -42,6 +42,18 @@ export const mockLeagueListDataFetcher = {
   getLeagues: createMockFn(),
 }
 
+// Mock player data fetcher
+export const mockPlayerDataFetcher = {
+  getOverview: createMockFn(),
+  getStats: createMockFn(),
+  getCareer: createMockFn(),
+}
+
+// Mock player list data fetcher
+export const mockPlayerListDataFetcher = {
+  getPlayers: createMockFn(),
+}
+
 // Mock auth middleware
 export const mockAuthMiddleware = createMockFn()
 
@@ -59,6 +71,11 @@ jest.mock('../services/teamDataFetcher', () => ({
 jest.mock('../services/leagueDataFetcher', () => ({
   leagueDataFetcher: mockLeagueDataFetcher,
   leagueListDataFetcher: mockLeagueListDataFetcher,
+}))
+
+jest.mock('../services/playerDataFetcher', () => ({
+  playerDataFetcher: mockPlayerDataFetcher,
+  playerListDataFetcher: mockPlayerListDataFetcher,
 }))
 
 jest.mock('@/utilities/auth', () => ({
@@ -221,6 +238,50 @@ export function createLeagueRequest(leagueId: string, resource?: string, options
 }
 
 /**
+ * Create test request for player endpoints
+ */
+export function createPlayerRequest(playerId: string, options: {
+  queryParams?: Record<string, string>
+  method?: string
+  headers?: Record<string, string>
+} = {}): PayloadRequest {
+  const { queryParams = {}, method = 'GET', headers = {} } = options
+  
+  const url = new URL(`http://localhost:3000/api/v1/player/${playerId}`)
+  Object.entries(queryParams).forEach(([key, value]) => {
+    url.searchParams.set(key, value)
+  })
+
+  return createMockRequest({
+    url: url.toString(),
+    method,
+    headers,
+  })
+}
+
+/**
+ * Create test request for players list endpoint
+ */
+export function createPlayersListRequest(options: {
+  queryParams?: Record<string, string>
+  method?: string
+  headers?: Record<string, string>
+} = {}): PayloadRequest {
+  const { queryParams = {}, method = 'GET', headers = {} } = options
+  
+  const url = new URL(`http://localhost:3000/api/v1/players`)
+  Object.entries(queryParams).forEach(([key, value]) => {
+    url.searchParams.set(key, value)
+  })
+
+  return createMockRequest({
+    url: url.toString(),
+    method,
+    headers,
+  })
+}
+
+/**
  * Setup and teardown helpers
  */
 export const apiTestSetup = {
@@ -259,6 +320,36 @@ export const apiTestSetup = {
     mockLeagueDataFetcher.getSeasons.mockResolvedValue({ id: '1', name: 'Test League', seasons: [] })
     
     mockLeagueListDataFetcher.getLeagues.mockResolvedValue({ data: [], meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } } })
+    
+    // Reset player data fetcher mocks
+    mockPlayerDataFetcher.getOverview.mockResolvedValue({
+      id: '1',
+      name: 'Test Player',
+      position: 'Forward',
+      nationality: 'Test Country',
+      current_team_stats: undefined,
+      career: []
+    })
+    mockPlayerDataFetcher.getStats.mockResolvedValue({
+      id: '1',
+      name: 'Test Player',
+      position: 'Forward',
+      nationality: 'Test Country',
+      stats: [],
+      seasons: []
+    })
+    mockPlayerDataFetcher.getCareer.mockResolvedValue({
+      id: '1',
+      name: 'Test Player',
+      position: 'Forward',
+      nationality: 'Test Country',
+      career: []
+    })
+    
+    mockPlayerListDataFetcher.getPlayers.mockResolvedValue({
+      data: [],
+      meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } }
+    })
     
     mockAuthMiddleware.mockResolvedValue(null) // No auth error by default
   },
@@ -625,6 +716,83 @@ export const mockLeagueData = {
   }
 }
 
+/**
+ * Assertion helpers for player endpoint responses
+ */
+export const playerEndpointAssertions = {
+  /**
+   * Assert player overview response structure
+   */
+  assertOverviewResponse: (response: APIResponse) => {
+    // Only check for required properties that should always be present
+    const requiredProperties = ['id', 'name', 'trophies', 'career']
+    
+    requiredProperties.forEach(prop => {
+      response.expectToHaveProperty(prop)
+    })
+
+    // Assert arrays
+    expect(Array.isArray(response.data.trophies)).toBe(true)
+    expect(Array.isArray(response.data.career)).toBe(true)
+
+    return response
+  },
+
+  /**
+   * Assert player stats response structure
+   */
+  assertStatsResponse: (response: APIResponse) => {
+    const requiredProperties = [
+      'id', 'name', 'stats', 'seasons'
+    ]
+    
+    requiredProperties.forEach(prop => {
+      response.expectToHaveProperty(prop)
+    })
+
+    // Assert arrays
+    expect(Array.isArray(response.data.stats)).toBe(true)
+    expect(Array.isArray(response.data.seasons)).toBe(true)
+
+    return response
+  },
+
+  /**
+   * Assert player career response structure
+   */
+  assertCareerResponse: (response: APIResponse) => {
+    const requiredProperties = [
+      'id', 'name', 'career'
+    ]
+    
+    requiredProperties.forEach(prop => {
+      response.expectToHaveProperty(prop)
+    })
+
+    // Assert career is an array
+    expect(Array.isArray(response.data.career)).toBe(true)
+
+    return response
+  },
+
+  /**
+   * Assert players list response structure
+   */
+  assertPlayersListResponse: (response: APIResponse) => {
+    response.expectToHaveProperty('data')
+    response.expectToHaveProperty('meta')
+    
+    expect(Array.isArray(response.data.data)).toBe(true)
+    expect(response.data.meta).toHaveProperty('pagination')
+    expect(response.data.meta.pagination).toHaveProperty('page')
+    expect(response.data.meta.pagination).toHaveProperty('limit')
+    expect(response.data.meta.pagination).toHaveProperty('totalItems')
+    expect(response.data.meta.pagination).toHaveProperty('totalPages')
+
+    return response
+  },
+}
+
 // Export commonly used team test data
 export const mockTeamData = {
   overview: {
@@ -702,5 +870,173 @@ export const mockTeamData = {
     season_id: 20,
     seasons: [],
     top_stats: []
+  }
+}
+
+// Export commonly used player test data
+export const mockPlayerData = {
+  overview: {
+    id: '999',
+    name: 'Cristiano Ronaldo',
+    position: 'Forward',
+    nationality: 'Portugal',
+    team: {
+      id: '50',
+      name: 'Al Nassr'
+    },
+    photo: 'https://example.com/ronaldo.jpg',
+    jersey_number: 7,
+    date_of_birth: '1985-02-05',
+    age: 39,
+    height: {
+      metric: '187 cm',
+      imperial: '6\'2"'
+    },
+    weight: {
+      metric: '83 kg',
+      imperial: '183 lbs'
+    },
+    foot: 'right' as const,
+    trophies: [
+      {
+        team: { id: '1', name: 'Real Madrid', logo: 'https://example.com/rm.png', country: 'Spain' },
+        league: { id: '564', name: 'Champions League', logo: 'https://example.com/ucl.png' },
+        season: { id: '12', name: '2017-18' },
+        trophy: { id: '1', position: 1, name: 'Winner' }
+      }
+    ],
+    current_team_stats: {
+      season: { id: '20', name: '2023-24' },
+      team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
+      league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png' },
+      appearances: 30,
+      starts: 29,
+      minutes_played: 2610,
+      goals: 35,
+      assists: 11,
+      yellow_cards: 2,
+      red_cards: 0,
+      rating: 8.2
+    },
+    career: [
+      {
+        team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
+        league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png', country: 'Saudi Arabia' },
+        season: { id: '20', name: '2023-24' },
+        start_date: '2023-01-01',
+        end_date: null,
+        appearances: 30,
+        starts: 29,
+        goals: 35,
+        assists: 11,
+        minutes_played: 2610,
+        rating: 8.2
+      }
+    ]
+  },
+
+  stats: {
+    id: '999',
+    name: 'Cristiano Ronaldo',
+    position: 'Forward',
+    nationality: 'Portugal',
+    stats: [
+      {
+        season: { id: '20', name: '2023-24' },
+        team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
+        league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png' },
+        appearances: 30,
+        starts: 29,
+        minutes_played: 2610,
+        goals: 35,
+        assists: 11,
+        yellow_cards: 2,
+        red_cards: 0,
+        rating: 8.2,
+        shots: { total: 150, on_target: 75, accuracy: 50 },
+        passes: { total: 800, key: 45, accuracy: 85 },
+        dribbles: { attempts: 80, success: 48, success_rate: 60 }
+      }
+    ],
+    seasons: [
+      { id: '20', name: '2023-24' },
+      { id: '19', name: '2022-23' }
+    ]
+  },
+
+  career: {
+    id: '999',
+    name: 'Cristiano Ronaldo',
+    position: 'Forward',
+    nationality: 'Portugal',
+    career: [
+      {
+        team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
+        league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png', country: 'Saudi Arabia' },
+        season: { id: '20', name: '2023-24' },
+        start_date: '2023-01-01',
+        end_date: null,
+        appearances: 30,
+        starts: 29,
+        goals: 35,
+        assists: 11,
+        minutes_played: 2610,
+        rating: 8.2
+      },
+      {
+        team: { id: '12', name: 'Manchester United', logo: 'https://example.com/mufc.png' },
+        league: { id: '8', name: 'Premier League', logo: 'https://example.com/pl.png', country: 'England' },
+        season: { id: '19', name: '2022-23' },
+        start_date: '2022-07-01',
+        end_date: '2022-12-31',
+        appearances: 16,
+        starts: 12,
+        goals: 3,
+        assists: 2,
+        minutes_played: 1200,
+        rating: 6.8
+      }
+    ]
+  },
+
+  playersList: {
+    data: [
+      {
+        id: '999',
+        name: 'Cristiano Ronaldo',
+        position: 'Forward',
+        nationality: 'Portugal',
+        team: {
+          id: '50',
+          name: 'Al Nassr'
+        },
+        photo: 'https://example.com/ronaldo.jpg',
+        jersey_number: 7,
+        date_of_birth: '1985-02-05',
+        age: 39
+      },
+      {
+        id: '1000',
+        name: 'Lionel Messi',
+        position: 'Forward',
+        nationality: 'Argentina',
+        team: {
+          id: '60',
+          name: 'Inter Miami'
+        },
+        photo: 'https://example.com/messi.jpg',
+        jersey_number: 10,
+        date_of_birth: '1987-06-24',
+        age: 37
+      }
+    ],
+    meta: {
+      pagination: {
+        page: 1,
+        limit: 50,
+        totalItems: 2,
+        totalPages: 1
+      }
+    }
   }
 }
