@@ -57,6 +57,7 @@ export type PlayerCareerItem = {
   league: {
     id: string
     name: string
+    logo?: string
     country?: string
   }
   season: {
@@ -84,6 +85,7 @@ export type PlayerSeasonStats = {
   league: {
     id: string
     name: string
+    logo?: string
   }
   appearances: number
   minutes_played: number

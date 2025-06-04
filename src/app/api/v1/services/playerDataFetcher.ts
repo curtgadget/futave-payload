@@ -63,70 +63,90 @@ function calculateAge(dateOfBirth: string): number {
   return age
 }
 
-// Helper function to format trophies with team info
-async function formatTrophies(trophies: any[], payload: any): Promise<PlayerTrophy[]> {
-  if (!trophies || trophies.length === 0) return []
-
-  // Get unique team IDs from trophies
-  const teamIds = [...new Set(trophies.map(t => t.team_id).filter(Boolean))]
+// Helper function to batch fetch all related data for a player
+async function fetchPlayerRelatedData(player: any, payload: any, includeStatistics = true) {
+  const teamIds = new Set<number>()
+  const leagueIds = new Set<number>()
   
-  // Fetch teams data
-  let teamsMap = new Map()
-  let countryIds: number[] = []
-  if (teamIds.length > 0) {
+  // From trophies
+  if (player.trophies && player.trophies.length > 0) {
+    player.trophies.forEach((trophy: any) => {
+      if (trophy.team_id) teamIds.add(trophy.team_id)
+      if (trophy.league_id) leagueIds.add(trophy.league_id)
+    })
+  }
+  
+  // From statistics
+  if (includeStatistics && player.statistics && player.statistics.length > 0) {
+    player.statistics.forEach((stat: any) => {
+      if (stat.team_id) teamIds.add(stat.team_id)
+    })
+  }
+  
+  // Batch fetch all teams
+  const teamsMap = new Map()
+  if (teamIds.size > 0) {
     const teams = await payload.find({
       collection: 'teams',
       where: {
-        id: { in: teamIds }
+        id: { in: Array.from(teamIds) }
       },
-      limit: teamIds.length
+      limit: teamIds.size
     })
     
     teams.docs.forEach((team: any) => {
       teamsMap.set(team.id || team._id, team)
-      if (team.country_id) {
-        countryIds.push(team.country_id)
+      // Collect league IDs from activeseasons
+      if (team.activeseasons && Array.isArray(team.activeseasons)) {
+        team.activeseasons.forEach((season: any) => {
+          if (season.league_id) leagueIds.add(season.league_id)
+        })
       }
     })
   }
-
-  // Get unique country IDs
-  const uniqueCountryIds = [...new Set(countryIds)]
-  let countriesMap = new Map()
-  if (uniqueCountryIds.length > 0) {
+  
+  // Batch fetch all leagues
+  const leaguesMap = new Map()
+  const countryIds = new Set<number>()
+  if (leagueIds.size > 0) {
+    const leagues = await payload.find({
+      collection: 'leagues',
+      where: {
+        id: { in: Array.from(leagueIds) }
+      },
+      limit: leagueIds.size
+    })
+    
+    leagues.docs.forEach((league: any) => {
+      leaguesMap.set(league.id || league._id, league)
+      if (league.country_id) countryIds.add(league.country_id)
+    })
+  }
+  
+  // Batch fetch all countries
+  const countriesMap = new Map()
+  if (countryIds.size > 0) {
     const countries = await payload.find({
       collection: 'countries',
       where: {
-        id: { in: uniqueCountryIds }
+        id: { in: Array.from(countryIds) }
       },
-      limit: uniqueCountryIds.length
+      limit: countryIds.size
     })
     
     countries.docs.forEach((country: any) => {
       countriesMap.set(country.id || country._id, country)
     })
   }
-
-  // Get unique league IDs
-  const leagueIds = [...new Set(trophies.map(t => t.league_id).filter(Boolean))]
   
-  // Fetch leagues data
-  let leaguesMap = new Map()
-  if (leagueIds.length > 0) {
-    const leagues = await payload.find({
-      collection: 'leagues',
-      where: {
-        id: { in: leagueIds }
-      },
-      limit: leagueIds.length
-    })
-    
-    leagues.docs.forEach((league: any) => {
-      leaguesMap.set(league.id || league._id, league)
-    })
-  }
+  return { teamsMap, leaguesMap, countriesMap }
+}
 
-  return trophies.map(trophy => {
+// Helper function to format trophies using cached data
+function formatTrophiesFromCache(trophies: any[], teamsMap: Map<any, any>, leaguesMap: Map<any, any>, countriesMap: Map<any, any>): PlayerTrophy[] {
+  if (!trophies || trophies.length === 0) return []
+  
+  return trophies.map((trophy: any) => {
     const team = teamsMap.get(trophy.team_id)
     const league = leaguesMap.get(trophy.league_id)
     const country = team?.country_id ? countriesMap.get(team.country_id) : null
@@ -155,6 +175,7 @@ async function formatTrophies(trophies: any[], payload: any): Promise<PlayerTrop
     }
   })
 }
+
 
 // Helper function to convert player data to API format
 function formatPlayerData(player: any, trophies?: PlayerTrophy[]): {
@@ -212,13 +233,27 @@ function formatSeasonStats(
   leagues: any[] = [],
 ): PlayerSeasonStats[] {
   return stats.map((stat) => {
-    const team = teams.find((t) => t._id === stat.team_id)
+    const team = teams.find((t) => (t._id || t.id) === stat.team_id || t.id === stat.team_id.toString())
     const goals = getStatValue(stat.details, 52) // Goals
     const appearances = getStatValue(stat.details, 322) // Appearances
     const minutes = getStatValue(stat.details, 119) // Minutes played
     const assists = getStatValue(stat.details, 79) // Assists (if available)
     const yellowCards = getStatValue(stat.details, 84) // Yellow cards
     const redCards = getStatValue(stat.details, 83) // Red cards
+
+    // Find league for this stat
+    let league = leagues.length > 0 ? leagues[0] : null // For now, use the first league if available
+    
+    // If we have team data with activeseasons, try to find the specific league for this season
+    if (team && team.activeseasons && Array.isArray(team.activeseasons)) {
+      const activeSeason = team.activeseasons.find((s: any) => s.id === stat.season_id)
+      if (activeSeason && activeSeason.league_id) {
+        const specificLeague = leagues.find((l: any) => (l._id || l.id) === activeSeason.league_id)
+        if (specificLeague) {
+          league = specificLeague
+        }
+      }
+    }
 
     return {
       season: {
@@ -231,8 +266,9 @@ function formatSeasonStats(
         logo: team?.logo_path,
       },
       league: {
-        id: '1', // TODO: Get actual league from team/season data
-        name: 'League', // TODO: Get actual league name
+        id: league?.id?.toString() || league?._id?.toString() || '1',
+        name: league?.name || 'League',
+        logo: league?.logo_path,
       },
       appearances: appearances?.total || 0,
       minutes_played: minutes?.total || 0,
@@ -264,17 +300,33 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
-      // Format trophies with team info
-      const formattedTrophies = await formatTrophies(player.trophies || [], payload)
+      // Get the most recent stat for current team stats
+      const recentStat = player.statistics && player.statistics.length > 0
+        ? player.statistics.sort((a: any, b: any) => b.season_id - a.season_id)[0]
+        : null
+
+      // Batch fetch all related data
+      const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload, !!recentStat)
       
+      // Format trophies with cached data
+      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
 
-      // Get the most recent season stats for current team stats
+      // Format current team stats with cached data
       let currentTeamStats: PlayerSeasonStats | undefined
-      if (player.statistics && player.statistics.length > 0) {
-        // Sort by season_id to get most recent
-        const recentStat = player.statistics.sort((a: any, b: any) => b.season_id - a.season_id)[0]
-        const formattedStats = formatSeasonStats([recentStat])
+      if (recentStat) {
+        const team = teamsMap.get(recentStat.team_id)
+        let leagues: any[] = []
+        
+        if (team && team.activeseasons) {
+          const activeSeason = team.activeseasons.find((s: any) => s.id === recentStat.season_id)
+          if (activeSeason && activeSeason.league_id) {
+            const league = leaguesMap.get(activeSeason.league_id)
+            if (league) leagues.push(league)
+          }
+        }
+        
+        const formattedStats = formatSeasonStats([recentStat], team ? [team] : [], leagues)
         currentTeamStats = formattedStats[0]
       }
 
@@ -305,19 +357,25 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
-      // Format trophies with team info
-      const formattedTrophies = await formatTrophies(player.trophies || [], payload)
-      
-      const baseData = formatPlayerData(player, formattedTrophies)
-
       // Filter statistics by season if provided
       let statistics = player.statistics || []
       if (seasonId) {
         statistics = statistics.filter((stat: any) => stat.season_id.toString() === seasonId)
       }
 
+      // Batch fetch all related data
+      const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload)
+      
+      // Format trophies with cached data
+      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
+      const baseData = formatPlayerData(player, formattedTrophies)
+      
+      // Convert maps to arrays for formatSeasonStats
+      const teams = Array.from(teamsMap.values())
+      const leagues = Array.from(leaguesMap.values())
+      
       // Format all season statistics
-      const formattedStats = formatSeasonStats(statistics)
+      const formattedStats = formatSeasonStats(statistics, teams, leagues)
 
       // Get unique seasons
       const seasons = Array.from(new Set(statistics.map((stat: any) => stat.season_id))).map(
@@ -354,9 +412,11 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
-      // Format trophies with team info
-      const formattedTrophies = await formatTrophies(player.trophies || [], payload)
+      // Batch fetch all related data
+      const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload)
       
+      // Format trophies with cached data
+      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
 
       // Convert statistics to career format
@@ -365,17 +425,32 @@ export const playerDataFetcher: PlayerDataFetcher = {
         const appearances = getStatValue(stat.details, 322) // Appearances
         const assists = getStatValue(stat.details, 79) // Assists
         const minutes = getStatValue(stat.details, 119) // Minutes played
+        const team = teamsMap.get(stat.team_id)
+        
+        // Find league for this season
+        let league = null
+        let country = null
+        if (team && team.activeseasons && Array.isArray(team.activeseasons)) {
+          const activeSeason = team.activeseasons.find((s: any) => s.id === stat.season_id)
+          if (activeSeason && activeSeason.league_id) {
+            league = leaguesMap.get(activeSeason.league_id)
+            if (league && league.country_id) {
+              country = countriesMap.get(league.country_id)
+            }
+          }
+        }
 
         return {
           team: {
             id: stat.team_id.toString(),
-            name: `Team ${stat.team_id}`, // TODO: Get actual team name
-            logo: undefined, // TODO: Get team logo
+            name: team?.name || `Team ${stat.team_id}`,
+            logo: team?.logo_path,
           },
           league: {
-            id: '1', // TODO: Get actual league from team/season data
-            name: 'League', // TODO: Get actual league name
-            country: 'Country', // TODO: Get country from league data
+            id: league?.id?.toString() || league?._id?.toString() || '1',
+            name: league?.name || 'League',
+            logo: league?.logo_path,
+            country: country?.name || 'Country',
           },
           season: {
             id: stat.season_id.toString(),
