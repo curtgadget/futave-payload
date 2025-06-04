@@ -64,6 +64,37 @@ function calculateAge(dateOfBirth: string): number {
   return age
 }
 
+// Helper function to build season name lookup from team data
+function buildSeasonNameLookup(teams: any[]): Map<number, string> {
+  const seasonMap = new Map<number, string>()
+  
+  teams.forEach((team: any) => {
+    // Check both seasons and activeseasons arrays
+    if (team.seasons && Array.isArray(team.seasons)) {
+      team.seasons.forEach((season: any) => {
+        if (season.id && season.name) {
+          seasonMap.set(season.id, season.name)
+        }
+      })
+    }
+    
+    if (team.activeseasons && Array.isArray(team.activeseasons)) {
+      team.activeseasons.forEach((season: any) => {
+        if (season.id && season.name) {
+          seasonMap.set(season.id, season.name)
+        }
+      })
+    }
+  })
+  
+  return seasonMap
+}
+
+// Helper function to get season name from lookup map
+function getSeasonName(seasonId: number, seasonLookup: Map<number, string>): string {
+  return seasonLookup.get(seasonId) || `Season ${seasonId}`
+}
+
 // Helper function to batch fetch all related data for a player
 async function fetchPlayerRelatedData(player: any, payload: any, includeStatistics = true) {
   const teamIds = new Set<number>()
@@ -81,6 +112,9 @@ async function fetchPlayerRelatedData(player: any, payload: any, includeStatisti
   if (includeStatistics && player.statistics && player.statistics.length > 0) {
     player.statistics.forEach((stat: any) => {
       if (stat.team_id) teamIds.add(stat.team_id)
+      // Collect league IDs directly from statistics if available
+      if (stat.league_id) leagueIds.add(stat.league_id)
+      if (stat.league && stat.league.id) leagueIds.add(stat.league.id)
     })
   }
   
@@ -232,6 +266,7 @@ function formatSeasonStats(
   stats: PlayerStatistic[],
   teams: any[] = [],
   leagues: any[] = [],
+  seasonLookup: Map<number, string> = new Map(),
 ): PlayerSeasonStats[] {
   return stats.map((stat) => {
     const team = teams.find((t) => (t._id || t.id) === stat.team_id || t.id === stat.team_id.toString())
@@ -242,6 +277,7 @@ function formatSeasonStats(
     const assists = getStatValue(stat.details, PlayerStatTypeIds.ASSISTS)
     const yellowCards = getStatValue(stat.details, PlayerStatTypeIds.YELLOW_CARDS)
     const redCards = getStatValue(stat.details, PlayerStatTypeIds.RED_CARDS)
+    const rating = getStatValue(stat.details, PlayerStatTypeIds.RATING)
 
     // Find league for this stat
     let league = leagues.length > 0 ? leagues[0] : null // For now, use the first league if available
@@ -260,7 +296,7 @@ function formatSeasonStats(
     return {
       season: {
         id: stat.season_id.toString(),
-        name: `Season ${stat.season_id}`, // TODO: Get actual season name
+        name: getSeasonName(stat.season_id, seasonLookup),
       },
       team: {
         id: stat.team_id.toString(),
@@ -280,7 +316,7 @@ function formatSeasonStats(
       yellow_cards: yellowCards?.total || 0,
       red_cards: redCards?.total || 0,
       jersey_number: stat.jersey_number,
-      rating: undefined, // Not available in current format
+      rating: rating ? parseFloat(rating.toFixed(1)) : undefined,
     }
   })
 }
@@ -329,14 +365,84 @@ export const playerDataFetcher: PlayerDataFetcher = {
           }
         }
         
-        const formattedStats = formatSeasonStats([recentStat], team ? [team] : [], leagues)
+        // Build season lookup from team data
+        const seasonLookup = buildSeasonNameLookup(Array.from(teamsMap.values()))
+        const formattedStats = formatSeasonStats([recentStat], team ? [team] : [], leagues, seasonLookup)
         currentTeamStats = formattedStats[0]
       }
+
+      // Build career data (same logic as getCareer method)
+      const seasonLookup = buildSeasonNameLookup(Array.from(teamsMap.values()))
+      const career = (player.statistics || []).map((stat: PlayerStatistic) => {
+        const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
+        const appearances = getStatValue(stat.details, PlayerStatTypeIds.APPEARANCES)
+        const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
+        const assists = getStatValue(stat.details, PlayerStatTypeIds.ASSISTS)
+        const minutes = getStatValue(stat.details, PlayerStatTypeIds.MINUTES_PLAYED)
+        const rating = getStatValue(stat.details, PlayerStatTypeIds.RATING)
+        const team = teamsMap.get(stat.team_id)
+        
+        // Find league for this season
+        let league = null
+        let country = null
+        
+        // First priority: Use direct league information from the statistic if available
+        let leagueId = null
+        if ((stat as any).league_id) {
+          leagueId = (stat as any).league_id
+        } else if ((stat as any).league && (stat as any).league.id) {
+          leagueId = (stat as any).league.id
+        }
+        
+        if (leagueId) {
+          league = leaguesMap.get(leagueId)
+        } else if (team && team.activeseasons && Array.isArray(team.activeseasons)) {
+          // Fallback: Use team's activeseasons mapping if no direct league info
+          const activeSeason = team.activeseasons.find((s: any) => s.id === stat.season_id)
+          if (activeSeason && activeSeason.league_id) {
+            league = leaguesMap.get(activeSeason.league_id)
+          }
+        }
+        
+        if (league && league.country_id) {
+          country = countriesMap.get(league.country_id)
+        }
+
+        return {
+          team: {
+            id: stat.team_id.toString(),
+            name: team?.name || `Team ${stat.team_id}`,
+            logo: team?.logo_path,
+          },
+          league: {
+            id: league?.id?.toString() || league?._id?.toString() || '1',
+            name: league?.name || 'League',
+            logo: league?.logo_path,
+            country: country?.name || 'Country',
+          },
+          season: {
+            id: stat.season_id.toString(),
+            name: getSeasonName(stat.season_id, seasonLookup),
+          },
+          start_date: undefined, // Not available in current data
+          end_date: undefined, // Not available in current data
+          appearances: appearances?.total || 0,
+          starts: starts?.total || 0,
+          goals: goals?.goals || 0,
+          assists: assists || 0,
+          minutes_played: minutes?.total || 0,
+          rating: rating ? parseFloat(rating.toFixed(1)) : undefined,
+        }
+      })
+
+      // Sort career by season_id descending (most recent first)
+      career.sort((a, b) => parseInt(b.season.id) - parseInt(a.season.id))
 
       return {
         ...baseData,
         description: undefined, // Not available in current data
         current_team_stats: currentTeamStats,
+        career: career,
       }
     } catch (error) {
       console.error('Error fetching player overview:', error)
@@ -377,14 +483,17 @@ export const playerDataFetcher: PlayerDataFetcher = {
       const teams = Array.from(teamsMap.values())
       const leagues = Array.from(leaguesMap.values())
       
+      // Build season lookup from team data
+      const seasonLookup = buildSeasonNameLookup(teams)
+      
       // Format all season statistics
-      const formattedStats = formatSeasonStats(statistics, teams, leagues)
+      const formattedStats = formatSeasonStats(statistics, teams, leagues, seasonLookup)
 
       // Get unique seasons
       const seasons = Array.from(new Set(statistics.map((stat: any) => stat.season_id))).map(
         (id) => ({
           id: id.toString(),
-          name: `Season ${id}`, // TODO: Get actual season names
+          name: getSeasonName(id, seasonLookup),
         }),
       )
 
@@ -422,6 +531,9 @@ export const playerDataFetcher: PlayerDataFetcher = {
       const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
 
+      // Build season lookup from team data
+      const seasonLookup = buildSeasonNameLookup(Array.from(teamsMap.values()))
+
       // Convert statistics to career format
       const career = (player.statistics || []).map((stat: PlayerStatistic) => {
         const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
@@ -429,19 +541,33 @@ export const playerDataFetcher: PlayerDataFetcher = {
         const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
         const assists = getStatValue(stat.details, PlayerStatTypeIds.ASSISTS)
         const minutes = getStatValue(stat.details, PlayerStatTypeIds.MINUTES_PLAYED)
+        const rating = getStatValue(stat.details, PlayerStatTypeIds.RATING)
         const team = teamsMap.get(stat.team_id)
         
         // Find league for this season
         let league = null
         let country = null
-        if (team && team.activeseasons && Array.isArray(team.activeseasons)) {
+        
+        // First priority: Use direct league information from the statistic if available
+        let leagueId = null
+        if ((stat as any).league_id) {
+          leagueId = (stat as any).league_id
+        } else if ((stat as any).league && (stat as any).league.id) {
+          leagueId = (stat as any).league.id
+        }
+        
+        if (leagueId) {
+          league = leaguesMap.get(leagueId)
+        } else if (team && team.activeseasons && Array.isArray(team.activeseasons)) {
+          // Fallback: Use team's activeseasons mapping if no direct league info
           const activeSeason = team.activeseasons.find((s: any) => s.id === stat.season_id)
           if (activeSeason && activeSeason.league_id) {
             league = leaguesMap.get(activeSeason.league_id)
-            if (league && league.country_id) {
-              country = countriesMap.get(league.country_id)
-            }
           }
+        }
+        
+        if (league && league.country_id) {
+          country = countriesMap.get(league.country_id)
         }
 
         return {
@@ -458,7 +584,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
           },
           season: {
             id: stat.season_id.toString(),
-            name: `Season ${stat.season_id}`, // TODO: Get actual season name
+            name: getSeasonName(stat.season_id, seasonLookup),
           },
           start_date: undefined, // Not available in current data
           end_date: undefined, // Not available in current data
@@ -467,6 +593,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
           goals: goals?.goals || 0,
           assists: assists || 0,
           minutes_played: minutes?.total || 0,
+          rating: rating ? parseFloat(rating.toFixed(1)) : undefined,
         }
       })
 

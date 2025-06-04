@@ -71,6 +71,7 @@ export type PlayerCareerItem = {
   goals?: number
   assists?: number
   minutes_played?: number
+  rating?: number
 }
 
 export type PlayerSeasonStats = {
@@ -95,6 +96,7 @@ export type PlayerSeasonStats = {
   assists?: number
   yellow_cards?: number
   red_cards?: number
+  rating?: number
   shots?: {
     total: number
     on_target: number
@@ -110,13 +112,13 @@ export type PlayerSeasonStats = {
     success: number
     success_rate: number
   }
-  rating?: number
 }
 
 // Response types for each player endpoint
 export type PlayerOverviewResponse = PlayerBase & {
   description?: string
   current_team_stats?: PlayerSeasonStats
+  career?: PlayerCareerItem[]
 }
 
 export type PlayerStatsResponse = PlayerBase & {

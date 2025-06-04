@@ -11,6 +11,7 @@ export const PlayerStatTypeIds = {
   ASSISTS: 79,
   RED_CARDS: 83,
   YELLOW_CARDS: 84,
+  RATING: 118,           // Player rating/performance
   MINUTES_PLAYED: 119,
   APPEARANCES: 321,      // Total appearances (starts + substitutions)
   LINEUPS: 322,          // Games started in starting lineup
