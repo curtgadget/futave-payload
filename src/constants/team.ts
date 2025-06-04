@@ -15,6 +15,56 @@ export function getPositionGroup(positionId: number | undefined): PositionGroup 
   return POSITION_GROUP_MAP[positionId] || 'midfielders'
 }
 
+// Detailed position mappings based on actual Sportmonks metadata-types
+export const DETAILED_POSITION_MAP: Record<number, string> = {
+  // Basic positions (position_id)
+  24: 'Goalkeeper',
+  25: 'Defender', 
+  26: 'Midfielder',
+  27: 'Attacker',
+  
+  // Detailed positions (detailed_position_id) - verified from metadata-types collection
+  148: 'Centre Back',
+  149: 'Defensive Midfield',
+  150: 'Attacking Midfield',
+  151: 'Centre Forward',
+  152: 'Left Wing',
+  153: 'Central Midfield',
+  154: 'Right Back',
+  155: 'Left Back',
+  156: 'Right Wing',
+  157: 'Left Midfield',
+  158: 'Right Midfield',
+  163: 'Secondary Striker',
+  
+  // Add more as we discover them in the metadata-types collection
+} as const
+
+// Function to get detailed position name
+export function getDetailedPositionName(
+  positionId: number | undefined | null,
+  detailedPositionId: number | undefined | null
+): string | undefined {
+  // Try detailed position first
+  if (detailedPositionId && DETAILED_POSITION_MAP[detailedPositionId]) {
+    return DETAILED_POSITION_MAP[detailedPositionId]
+  }
+  
+  // Fall back to basic position group name
+  if (positionId && POSITION_GROUP_MAP[positionId]) {
+    const group = POSITION_GROUP_MAP[positionId]
+    switch (group) {
+      case 'goalkeepers': return 'Goalkeeper'
+      case 'defenders': return 'Defender'
+      case 'midfielders': return 'Midfielder'
+      case 'forwards': return 'Forward'
+      default: return undefined
+    }
+  }
+  
+  return undefined
+}
+
 /**
  * Team Statistics Constants
  */

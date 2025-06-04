@@ -10,7 +10,8 @@ import type {
 } from '../types/player'
 import { getPayload } from 'payload'
 import config from '@/payload.config'
-import { MetadataTypeIds } from '@/constants/metadataType'
+import { MetadataTypeIds, PlayerStatTypeIds } from '@/constants/metadataType'
+import { getDetailedPositionName } from '@/constants/team'
 import { convertCmToFeetInches, convertKgToPounds } from '../utils'
 
 // Types for statistics data from Sportmonks
@@ -201,7 +202,7 @@ function formatPlayerData(player: any, trophies?: PlayerTrophy[]): {
   return {
     id: player._id?.toString() || player.id?.toString() || 'unknown',
     name: player.display_name || player.name,
-    position: player.position_name || undefined,
+    position: getDetailedPositionName(player.position_id, player.detailed_position_id),
     nationality: player.nationality?.name || undefined,
     photo: player.image_path || undefined,
     jersey_number: undefined, // This comes from team statistics
@@ -234,12 +235,13 @@ function formatSeasonStats(
 ): PlayerSeasonStats[] {
   return stats.map((stat) => {
     const team = teams.find((t) => (t._id || t.id) === stat.team_id || t.id === stat.team_id.toString())
-    const goals = getStatValue(stat.details, 52) // Goals
-    const appearances = getStatValue(stat.details, 322) // Appearances
-    const minutes = getStatValue(stat.details, 119) // Minutes played
-    const assists = getStatValue(stat.details, 79) // Assists (if available)
-    const yellowCards = getStatValue(stat.details, 84) // Yellow cards
-    const redCards = getStatValue(stat.details, 83) // Red cards
+    const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
+    const appearances = getStatValue(stat.details, PlayerStatTypeIds.APPEARANCES)
+    const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
+    const minutes = getStatValue(stat.details, PlayerStatTypeIds.MINUTES_PLAYED)
+    const assists = getStatValue(stat.details, PlayerStatTypeIds.ASSISTS)
+    const yellowCards = getStatValue(stat.details, PlayerStatTypeIds.YELLOW_CARDS)
+    const redCards = getStatValue(stat.details, PlayerStatTypeIds.RED_CARDS)
 
     // Find league for this stat
     let league = leagues.length > 0 ? leagues[0] : null // For now, use the first league if available
@@ -271,6 +273,7 @@ function formatSeasonStats(
         logo: league?.logo_path,
       },
       appearances: appearances?.total || 0,
+      starts: starts?.total || 0,
       minutes_played: minutes?.total || 0,
       goals: goals?.goals || 0,
       assists: assists || 0,
@@ -421,10 +424,11 @@ export const playerDataFetcher: PlayerDataFetcher = {
 
       // Convert statistics to career format
       const career = (player.statistics || []).map((stat: PlayerStatistic) => {
-        const goals = getStatValue(stat.details, 52) // Goals
-        const appearances = getStatValue(stat.details, 322) // Appearances
-        const assists = getStatValue(stat.details, 79) // Assists
-        const minutes = getStatValue(stat.details, 119) // Minutes played
+        const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
+        const appearances = getStatValue(stat.details, PlayerStatTypeIds.APPEARANCES)
+        const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
+        const assists = getStatValue(stat.details, PlayerStatTypeIds.ASSISTS)
+        const minutes = getStatValue(stat.details, PlayerStatTypeIds.MINUTES_PLAYED)
         const team = teamsMap.get(stat.team_id)
         
         // Find league for this season
@@ -459,6 +463,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
           start_date: undefined, // Not available in current data
           end_date: undefined, // Not available in current data
           appearances: appearances?.total || 0,
+          starts: starts?.total || 0,
           goals: goals?.goals || 0,
           assists: assists || 0,
           minutes_played: minutes?.total || 0,

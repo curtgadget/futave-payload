@@ -67,6 +67,7 @@ export type PlayerCareerItem = {
   start_date?: string
   end_date?: string
   appearances?: number
+  starts?: number
   goals?: number
   assists?: number
   minutes_played?: number
@@ -88,6 +89,7 @@ export type PlayerSeasonStats = {
     logo?: string
   }
   appearances: number
+  starts: number
   minutes_played: number
   goals?: number
   assists?: number
