@@ -206,6 +206,18 @@ export interface League {
     | number
     | boolean
     | null;
+  /**
+   * Display priority in match listings (higher numbers appear first, 0 = default order)
+   */
+  priority?: number | null;
+  /**
+   * League tier for automatic prioritization
+   */
+  tier?: ('tier1' | 'tier2' | 'tier3' | 'tier4') | null;
+  /**
+   * Feature this league prominently in match listings
+   */
+  featured?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -945,6 +957,9 @@ export interface LeaguesSelect<T extends boolean = true> {
   currentseason?: T;
   seasons?: T;
   standings?: T;
+  priority?: T;
+  tier?: T;
+  featured?: T;
   updatedAt?: T;
   createdAt?: T;
 }
