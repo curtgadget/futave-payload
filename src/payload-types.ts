@@ -655,9 +655,12 @@ export interface Country {
   geonameid?: number | null;
   borders?:
     | {
-        value?: string | null;
-        id?: string | null;
-      }[]
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
     | null;
   image_path?: string | null;
   updatedAt: string;
@@ -1083,12 +1086,7 @@ export interface CountriesSelect<T extends boolean = true> {
   latitude?: T;
   longitude?: T;
   geonameid?: T;
-  borders?:
-    | T
-    | {
-        value?: T;
-        id?: T;
-      };
+  borders?: T;
   image_path?: T;
   updatedAt?: T;
   createdAt?: T;
