@@ -368,7 +368,7 @@
             1
           ],
           "details": "Create middleware functions for verifying JWT tokens, checking user permissions based on roles, and validating request parameters. Implement token refresh logic and secure token storage. Add middleware for handling CORS and other security headers.",
-          "status": "pending",
+          "status": "done",
           "testStrategy": "Test middleware with valid and invalid tokens. Verify correct behavior for different user roles and permission levels."
         },
         {
