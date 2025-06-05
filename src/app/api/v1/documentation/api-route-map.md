@@ -1256,58 +1256,126 @@ Get comprehensive details for a specific player including career history, statis
 
 #### GET /api/v1/matches
 
-List matches with pagination.
+**📚 [Complete Matches Listing API Documentation](./matches-listing-api.md)**
 
-**Query Parameters:**
-- `league_id`: Filter by league ID
-- `team_id`: Filter by team ID
-- `date_from`: Filter matches from this date (YYYY-MM-DD)
-- `date_to`: Filter matches to this date (YYYY-MM-DD)
-- `status`: Filter by match status (e.g., "upcoming", "live", "finished")
+Advanced matches listing endpoint with sophisticated league prioritization, filtering, and sorting capabilities inspired by FotMob. This endpoint is designed to power homepage views, league pages, and comprehensive match browsing experiences.
 
-**Response:**
+**Key Features:**
+- **🏆 League Prioritization**: Automatic ordering based on league importance (Featured → Tier 1 → Tier 2 → etc.)
+- **🔍 Advanced Filtering**: Date ranges, leagues, teams, match status, and search
+- **⚡ Special Views**: `today`, `live`, `upcoming`, `recent`
+- **📊 Smart Sorting**: Priority-based, time-based, and relevance-based
+- **⭐ Featured Leagues**: Prominent display of important competitions
+- **📱 Mobile-Optimized**: Efficient pagination and response structure
+
+**Quick Examples:**
+
+```bash
+# Today's matches with league prioritization
+GET /api/v1/matches?view=today&sort=priority
+
+# Live matches with featured leagues summary
+GET /api/v1/matches?view=live&include_featured=true
+
+# Filter by specific leagues (Premier League, Champions League)
+GET /api/v1/matches?leagues=8,16&sort=priority
+
+# Search for matches involving specific teams
+GET /api/v1/matches?search=manchester&view=upcoming
+```
+
+**Basic Response Structure:**
 ```json
 {
-  "data": [
+  "docs": [
     {
-      "id": 555,
+      "id": 19419265,
+      "starting_at": "2025-05-27T02:00:00Z",
+      "state": { "short_name": "FT", "state": "finished" },
+      "home_team": {
+        "id": 246,
+        "name": "Ross County",
+        "short_code": "RSC",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/teams/22/246.png"
+      },
+      "away_team": {
+        "id": 258,
+        "name": "Livingston", 
+        "short_code": "LIV",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/teams/2/258.png"
+      },
+      "score": { "home": 2, "away": 4 },
       "league": {
-        "id": 789,
-        "name": "League Name"
+        "id": 513,
+        "name": "Premiership Play-Offs",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/leagues/1/513.png",
+        "priority": 60,
+        "tier": "tier3",
+        "featured": false
       },
-      "homeTeam": {
-        "id": 123,
-        "name": "Home Team",
-        "logo": "https://..."
-      },
-      "awayTeam": {
-        "id": 124,
-        "name": "Away Team",
-        "logo": "https://..."
-      },
-      "score": {
-        "home": 2,
-        "away": 1
-      },
-      "status": "FULL_TIME",
-      "startingAt": "2023-05-20T15:00:00Z",
-      "venue": {
-        "name": "Stadium Name",
-        "city": "City"
-      },
-      "waveScore": 85  // Match significance score (0-100)
+      "venue": { "name": "Global Energy Stadium", "city": "Dingwall" },
+      "has_lineups": true,
+      "has_events": true
     }
   ],
   "meta": {
     "pagination": {
       "page": 1,
-      "limit": 50,
-      "totalItems": 150,
-      "totalPages": 3
+      "limit": 20,
+      "total": 150,
+      "totalPages": 8,
+      "hasMorePages": true,
+      "hasPreviousPages": false,
+      "nextPage": 2,
+      "previousPage": null
     }
+  },
+  "featured_leagues": [
+    {
+      "id": 8,
+      "name": "Premier League",
+      "image_path": "https://cdn.sportmonks.com/images/soccer/leagues/8.png",
+      "match_count": 5,
+      "priority": 120
+    }
+  ],
+  "filters_applied": {
+    "view": "today",
+    "leagues": [8, 16],
+    "status": ["LIVE", "NS"]
   }
 }
 ```
+
+**League Prioritization System:**
+
+The matches are automatically ordered using a sophisticated 3-tier priority system:
+
+| Priority Level | Score Calculation | Example Leagues |
+|----------------|-------------------|-----------------|
+| **Featured** | Base + 200 | Champions League, Premier League |
+| **Tier 1** | Base + 100 | La Liga, Bundesliga, Serie A |
+| **Tier 2** | Base + 80 | Eredivisie, Scottish Premiership |
+| **Tier 3** | Base + 60 | Championship, Play-offs |
+| **Tier 4** | Base + 40 | Lower leagues |
+
+This ensures that important matches (Champions League, Premier League) always appear first, while maintaining chronological order within each priority level.
+
+**Setup & Configuration:**
+
+Before using the matches listing API, initialize league priorities:
+
+```bash
+# Set up default league priorities
+GET /api/init-league-priorities
+```
+
+Then configure individual leagues via Payload CMS admin:
+- **Priority**: Manual override (0-150)
+- **Tier**: League classification (tier1-tier4) 
+- **Featured**: Prominent display toggle
+
+**For complete parameter reference, response schemas, filtering examples, and integration guides, see the [full documentation](./matches-listing-api.md).**
 
 #### GET /api/v1/match/:id/:tab?
 
