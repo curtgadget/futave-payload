@@ -204,7 +204,7 @@ All controllers now provide appropriate CRUD operations and specialized views as
 7. Update type definitions if needed to match actual database schema
 8. Ensure consistent data transformation between database and API response formats
 
-## 4. Implement Matches Listing Endpoint [pending]
+## 4. Implement Matches Listing Endpoint [in-progress]
 ### Dependencies: 5.2
 ### Description: Develop a comprehensive matches listing endpoint with filtering, sorting, and pagination capabilities to complement the existing match detail endpoint.
 ### Details:
@@ -228,6 +228,9 @@ All controllers now provide appropriate CRUD operations and specialized views as
 <info added on 2025-06-05T00:07:11.213Z>
 The match detail endpoint (`/api/v1/match/:id/:tab?`) is now production-ready, featuring comprehensive match and coach data integration, robust error handling, and full test coverage. All requirements for the match detail implementation have been met and verified. The next phase will focus on developing the matches listing endpoint for advanced browsing and filtering capabilities.
 </info added on 2025-06-05T00:07:11.213Z>
+<info added on 2025-06-05T00:26:58.049Z>
+League prioritization system implemented with priority, tier, and featured fields in the Leagues collection, featuring a 3-tier priority logic (featured > manual priority > tier-based > default) and FotMob-inspired ordering. The matches listing endpoint (/api/v1/matches) now supports comprehensive filtering (date range, league, team, status, search), specialized views (today, live, upcoming, recent), advanced sorting (priority-based, time-based, relevance-based), and pagination with full metadata. MongoDB aggregation pipeline enables efficient, prioritized queries with a smart scoring system (featured_weight, manual_priority, tier_weight) and optimized indexing. Configuration and testing tools include league prioritization utilities, default and trial API configurations, and an initialization endpoint (/api/init-league-priorities). Response format provides rich match summaries, league metadata, applied filters summary, and featured leagues breakdown. Implementation is production-ready, supports real-time priority management, flexible configuration, and efficient, scalable queries. Ready for test coverage and validation with existing match data.
+</info added on 2025-06-05T00:26:58.049Z>
 
 ## 5. Implement Countries Reference Endpoint [pending]
 ### Dependencies: 5.2

@@ -87,7 +87,22 @@ export interface FeaturedLeague {
 
 // Helper to parse query parameters
 function parseMatchListQuery(req: PayloadRequest) {
-  if (!req.url) return {}
+  const defaults = {
+    page: 1,
+    limit: 20,
+    date_from: null,
+    date_to: null,
+    leagues: [] as number[],
+    teams: [] as number[],
+    status: [] as string[],
+    view: null,
+    sort: 'priority',
+    search: null,
+    include_featured: true,
+    only_featured: false
+  }
+  
+  if (!req.url) return defaults
   
   const url = new URL(req.url, 'http://localhost')
   const searchParams = url.searchParams
@@ -294,14 +309,14 @@ function buildPriorityAggregation(filters: any, sort: string, skip: number, limi
     const priorityConditions: any[] = []
     
     // Build conditions for each league we have priority data for
-    for (const [leagueId, priorityScore] of leaguePriorityMap.entries()) {
-      if (leagueId === -1) continue // Skip timestamp entry
+    leaguePriorityMap.forEach((priorityScore, leagueId) => {
+      if (leagueId === -1) return // Skip timestamp entry
       
       priorityConditions.push({
         case: { $eq: ['$league_id', leagueId] },
         then: priorityScore
       })
-    }
+    })
     
     pipeline.push({
       $addFields: {
@@ -350,7 +365,7 @@ function buildPriorityAggregation(filters: any, sort: string, skip: number, limi
   return pipeline
 }
 
-const matchesListProperHandler: APIRouteV1 = {
+const matchesListHandler: APIRouteV1 = {
   path: '/v1/matches',
   method: 'get',
   handler: async (req: PayloadRequest) => {
@@ -369,7 +384,11 @@ const matchesListProperHandler: APIRouteV1 = {
       const query: any = {}
       
       // Date range filtering
-      const dateFilters = buildDateFilters(queryParams.view, queryParams.date_from, queryParams.date_to)
+      const dateFilters = buildDateFilters(
+        queryParams.view || undefined, 
+        queryParams.date_from || undefined, 
+        queryParams.date_to || undefined
+      )
       Object.assign(query, dateFilters)
       
       // League filtering
@@ -503,7 +522,7 @@ const matchesListProperHandler: APIRouteV1 = {
             has_events: (match.events || 0) > 0
           }
         })
-        .filter(Boolean)
+        .filter((match): match is NonNullable<typeof match> => match !== null)
       
       console.log('Transform in:', Date.now() - transformStart, 'ms')
       
@@ -559,7 +578,7 @@ const matchesListProperHandler: APIRouteV1 = {
           leagues: queryParams.leagues.length > 0 ? queryParams.leagues : undefined,
           teams: queryParams.teams.length > 0 ? queryParams.teams : undefined,
           status: queryParams.status.length > 0 ? queryParams.status : undefined,
-          view: queryParams.view
+          view: queryParams.view || undefined
         }
       }
       
@@ -573,4 +592,4 @@ const matchesListProperHandler: APIRouteV1 = {
   }
 }
 
-export default matchesListProperHandler
+export default matchesListHandler
