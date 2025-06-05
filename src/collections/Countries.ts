@@ -55,14 +55,8 @@ export const Countries: CollectionConfig = {
     },
     {
       name: 'borders',
-      type: 'array',
+      type: 'json',
       required: false,
-      fields: [
-        {
-          name: 'value',
-          type: 'text',
-        },
-      ],
     },
     {
       name: 'image_path',

@@ -10,6 +10,7 @@ export type SportmonksCountry = {
   longitude?: string
   geonameid?: number
   border?: string[]
+  borders?: string[]
   image_path?: string
 }
 

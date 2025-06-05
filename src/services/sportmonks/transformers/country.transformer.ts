@@ -16,6 +16,14 @@ export type TransformedCountry = {
 }
 
 export function transformCountry(country: SportmonksCountry): TransformedCountry {
+  // Handle borders field - check for both 'borders' and 'border' API fields
+  let borders: string[] | undefined
+  if ((country as any).borders) {
+    borders = (country as any).borders
+  } else if (country.border) {
+    borders = country.border
+  }
+
   return {
     id: country.id,
     continent_id: country.continent_id,
@@ -27,7 +35,7 @@ export function transformCountry(country: SportmonksCountry): TransformedCountry
     latitude: country.latitude,
     longitude: country.longitude,
     geonameid: country.geonameid,
-    borders: country.border,
+    borders,
     image_path: country.image_path,
   }
 }
