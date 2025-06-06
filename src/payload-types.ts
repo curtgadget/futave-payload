@@ -735,6 +735,28 @@ export interface Rival {
     | number
     | boolean
     | null;
+  h2h_summary?: {
+    total_matches?: number | null;
+    last_5?: {
+      team_wins?: number | null;
+      rival_wins?: number | null;
+      draws?: number | null;
+    };
+    overall?: {
+      team_wins?: number | null;
+      rival_wins?: number | null;
+      draws?: number | null;
+    };
+    last_meeting?: {
+      date?: string | null;
+      result?: string | null;
+      score?: string | null;
+      venue_id?: number | null;
+    };
+    drama_score?: number | null;
+    avg_goals_per_match?: number | null;
+  };
+  h2h_updated_at?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1167,6 +1189,36 @@ export interface RivalsSelect<T extends boolean = true> {
   rival_team_id?: T;
   team?: T;
   rival?: T;
+  h2h_summary?:
+    | T
+    | {
+        total_matches?: T;
+        last_5?:
+          | T
+          | {
+              team_wins?: T;
+              rival_wins?: T;
+              draws?: T;
+            };
+        overall?:
+          | T
+          | {
+              team_wins?: T;
+              rival_wins?: T;
+              draws?: T;
+            };
+        last_meeting?:
+          | T
+          | {
+              date?: T;
+              result?: T;
+              score?: T;
+              venue_id?: T;
+            };
+        drama_score?: T;
+        avg_goals_per_match?: T;
+      };
+  h2h_updated_at?: T;
   updatedAt?: T;
   createdAt?: T;
 }

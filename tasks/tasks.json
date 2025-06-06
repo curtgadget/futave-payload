@@ -439,7 +439,90 @@
         4
       ],
       "status": "pending",
-      "subtasks": []
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Define and Document Wave Scoring Factors",
+          "description": "Identify, specify, and document all factors that contribute to match significance, including their data sources and expected value ranges.",
+          "dependencies": [],
+          "details": "List all relevant factors (e.g., rivalry, position proximity, zone importance, form differential, H2H drama, timing, recent goals, red cards, league importance, user preferences). For each, define how it is measured, its data type, and its expected impact on the final score.",
+          "status": "pending",
+          "testStrategy": "Review documentation with stakeholders and verify completeness against requirements."
+        },
+        {
+          "id": 2,
+          "title": "Implement Factor Extraction Helpers",
+          "description": "Develop helper functions to extract and calculate each scoring factor from match data.",
+          "dependencies": [
+            1
+          ],
+          "details": "For each factor defined, implement a TypeScript function that takes match data and returns the normalized value for that factor. Ensure functions are unit-testable and handle edge cases (e.g., missing data).",
+          "status": "pending",
+          "testStrategy": "Write unit tests for each helper function using sample match data."
+        },
+        {
+          "id": 3,
+          "title": "Develop Individual Factor Scoring Algorithms",
+          "description": "Implement the scoring logic for each factor, mapping raw values to their respective score contributions (e.g., rivalry 0-30, position proximity 0-20, etc.).",
+          "dependencies": [
+            2
+          ],
+          "details": "For each factor, create a scoring function that converts the normalized value into a score within its designated range. Document the mapping logic and ensure consistency with the overall scoring model.",
+          "status": "pending",
+          "testStrategy": "Test each scoring function with a range of input values to confirm correct score outputs."
+        },
+        {
+          "id": 4,
+          "title": "Create Weighted Scoring and Aggregation System",
+          "description": "Combine individual factor scores into a single weighted wave score, ensuring the total is normalized to a 1-100 scale.",
+          "dependencies": [
+            3
+          ],
+          "details": "Implement a function that aggregates all factor scores using their respective weights. Normalize the final score to fit within the 1-100 range. Document the weighting rationale and allow for easy adjustment.",
+          "status": "pending",
+          "testStrategy": "Test aggregation with various factor combinations to ensure correct normalization and weighting."
+        },
+        {
+          "id": 5,
+          "title": "Integrate Personalization Adjustments",
+          "description": "Incorporate user preferences (e.g., favorite teams/leagues) into the wave score calculation, allowing for personalized significance ratings.",
+          "dependencies": [
+            4
+          ],
+          "details": "Modify the aggregation logic to apply user-specific boosts or adjustments based on their preferences. Ensure adjustments are configurable and do not break the 1-100 normalization.",
+          "status": "pending",
+          "testStrategy": "Test with different user preference profiles to verify correct personalized score adjustments."
+        },
+        {
+          "id": 6,
+          "title": "Implement Real-Time Wave Score Updates",
+          "description": "Enable real-time recalculation and updating of wave scores as match data changes (e.g., goals, red cards, time remaining).",
+          "dependencies": [
+            5
+          ],
+          "details": "Set up listeners or polling mechanisms to detect match data changes and trigger recalculation of wave scores. Ensure efficient updates and minimal performance impact.",
+          "status": "pending",
+          "testStrategy": "Simulate live match events and verify that wave scores update promptly and accurately."
+        },
+        {
+          "id": 7,
+          "title": "Develop Rising Tides Detection for Emerging Matches",
+          "description": "Implement logic to detect and flag matches whose wave scores are rapidly increasing, indicating emerging significance.",
+          "dependencies": [],
+          "details": "Track historical wave scores for each match and identify significant upward trends over short periods. Flag such matches for special attention in the UI or API.",
+          "status": "pending",
+          "testStrategy": "Test with synthetic data showing rapid score increases and verify correct detection and flagging."
+        },
+        {
+          "id": 8,
+          "title": "Generate Visualization Data for Wave Representation",
+          "description": "Produce structured data suitable for visualizing wave scores and trends (e.g., for graphs or heatmaps in the UI).",
+          "dependencies": [],
+          "details": "Design and implement data structures and endpoints that provide time-series wave score data and rising tide indicators for each match. Ensure compatibility with frontend visualization requirements.",
+          "status": "pending",
+          "testStrategy": "Validate output data with frontend developers and test integration with visualization components."
+        }
+      ]
     },
     {
       "id": 7,

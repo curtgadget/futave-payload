@@ -1,0 +1,73 @@
+PRD: Wave Detector Feature for FutAve Live Scores Platform
+
+## Overview
+The Wave Detector is an algorithmic system that identifies high-significance soccer matches by analyzing multiple data points including rivalries, league standings, team form, and historical matchups. It assigns a "wave score" (0-100) to each match, helping users discover the most exciting games to watch.
+
+## Core Requirements
+
+### 1. Wave Score Calculation Engine
+- Calculate pre-match significance scores for all matches
+- Score range: 0-100 with tier classifications (S/A/B/C)
+- Factor in: rivalry status, league position proximity, relegation/promotion battles, recent form, head-to-head history, and timing
+- Store scores with matches for fast retrieval
+
+### 2. Data Integration
+- Leverage existing rivals collection with H2H data
+- Use team standings data from team.standings
+- Utilize team form calculations from team overview API
+- No additional external API syncs required
+
+### 3. API Endpoints
+- GET /api/v1/matches/waves - List matches sorted by wave score
+- Support filtering by date, league, minimum score
+- Include wave score in match detail responses
+- Provide score breakdown for transparency
+
+### 4. Performance Requirements
+- Wave score calculation < 100ms per match
+- Batch calculate during match sync (not on-demand)
+- Cache scores for 6 hours
+- Recalculate when standings change significantly
+
+### 5. Score Factors
+- Rivalry: 0-30 points (from rivals collection)
+- Position Proximity: 0-20 points (standings gap)
+- Zone Importance: 0-20 points (title/relegation)
+- Form Differential: 0-15 points (recent results)
+- H2H Drama: 0-10 points (historical competitiveness)
+- Timing: 0-5 points (late season bonus)
+
+## Technical Implementation
+
+### Database Changes
+- Add wave_score field group to Matches collection
+- Include: total score, tier, factor breakdown, timestamps
+- No new collections needed
+
+### Sync Integration
+- Calculate scores during match sync
+- Only for matches in next 14 days
+- Skip calculation for past matches
+
+### Caching Strategy
+- Store calculated scores in match documents
+- Expire after match start time
+- Recalculate every 6 hours for future matches
+
+## Success Criteria
+- 95% of upcoming matches have wave scores
+- Users can easily find high-significance matches
+- Scores accurately reflect match importance
+- System performs within latency requirements
+
+## Future Enhancements
+- Live match wave adjustments based on in-game events
+- Machine learning to improve scoring accuracy
+- Historical analysis of score vs actual match excitement
+- Push notifications for high-wave matches
+
+## Dependencies
+- Rivals sync with H2H data (completed)
+- Team standings in database (exists)
+- Team form calculations (exists)
+- Match sync process (exists)
