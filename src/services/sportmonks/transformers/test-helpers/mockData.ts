@@ -4,7 +4,8 @@ import type {
   SportmonksPlayer,
   SportmonksCountry,
   SportmonksLeague,
-  SportmonksCoach
+  SportmonksCoach,
+  SportmonksRival
 } from '../../client/types/football'
 import type { SportmonksMetadataType } from '../../client/types/core'
 
@@ -145,6 +146,15 @@ export const createMockMetadataType = (overrides?: Partial<SportmonksMetadataTyp
   ...overrides,
 })
 
+export const createMockRival = (overrides?: Partial<SportmonksRival>): SportmonksRival => ({
+  id: 1,
+  team_id: 1,
+  rival_id: 2,
+  team: undefined,
+  rival: undefined,
+  ...overrides,
+})
+
 // Helper functions for creating data with relationships
 export const createMockPlayerWithNationality = (
   playerOverrides?: Partial<SportmonksPlayer>,
@@ -172,6 +182,23 @@ export const createMockTeamWithSeasons = (
   return createMockTeam({
     seasons,
     ...teamOverrides,
+  })
+}
+
+export const createMockRivalWithTeams = (
+  rivalOverrides?: Partial<SportmonksRival>,
+  team1Overrides?: Partial<SportmonksTeam>,
+  team2Overrides?: Partial<SportmonksTeam>
+): SportmonksRival => {
+  const team1 = createMockTeam({ id: 1, name: 'Team A', ...team1Overrides })
+  const team2 = createMockTeam({ id: 2, name: 'Team B', ...team2Overrides })
+  
+  return createMockRival({
+    team_id: team1.id,
+    rival_id: team2.id,
+    team: team1,
+    rival: team2,
+    ...rivalOverrides,
   })
 }
 

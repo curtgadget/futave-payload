@@ -177,3 +177,12 @@ export type SportmonksStandings = {
     data: SportmonksStandingTable[]
   }
 }
+
+export type SportmonksRival = {
+  id: number
+  team_id: number
+  rival_id: number // API actually returns rival_id, not rival_team_id
+  rival_team_id?: number // Keep for backwards compatibility
+  team?: SportmonksTeam
+  rival?: SportmonksTeam
+}

@@ -12,6 +12,7 @@ type PayloadTaskSlug =
   | 'syncMetadataTypes'
   | 'syncCountries'
   | 'syncCoaches'
+  | 'syncRivals'
 
 type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill' | 'dev'
 
@@ -36,6 +37,7 @@ const syncJobs: SyncJob[] = [
   { task: 'syncMetadataTypes' },
   { task: 'syncCountries' },
   { task: 'syncCoaches', queue: 'nightly' },
+  { task: 'syncRivals', queue: 'nightly' },
 ]
 
 export async function syncAllHandler(req: NextRequest | PayloadRequest) {

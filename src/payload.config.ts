@@ -18,6 +18,7 @@ import { Teams } from './collections/Teams'
 import { Users } from './collections/Users'
 import { Countries } from './collections/Countries'
 import { Coaches } from './collections/Coaches'
+import { Rivals } from './collections/Rivals'
 
 import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
 import { syncTeamsHandler } from './tasks/handlers/syncTeams'
@@ -26,6 +27,7 @@ import { syncPlayersHandler } from './tasks/handlers/syncPlayers'
 import { syncMetadataTypesHandler } from './tasks/handlers/syncMetadataTypes'
 import { syncCountriesHandler } from './tasks/handlers/syncCountries'
 import { syncCoachesHandler } from './tasks/handlers/syncCoaches'
+import { syncRivalsHandler } from './tasks/handlers/syncRivals'
 
 import apiV1 from '@/app/api/v1'
 
@@ -39,7 +41,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries, Coaches],
+  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries, Coaches, Rivals],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -169,6 +171,20 @@ export default buildConfig({
       {
         slug: 'syncCoaches',
         handler: syncCoachesHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
+      },
+      {
+        slug: 'syncRivals',
+        handler: syncRivalsHandler,
         outputSchema: [
           {
             name: 'message',

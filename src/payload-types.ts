@@ -20,6 +20,7 @@ export interface Config {
     'metadata-types': MetadataType;
     countries: Country;
     coaches: Coach;
+    rivals: Rival;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -36,6 +37,7 @@ export interface Config {
     'metadata-types': MetadataTypesSelect<false> | MetadataTypesSelect<true>;
     countries: CountriesSelect<false> | CountriesSelect<true>;
     coaches: CoachesSelect<false> | CoachesSelect<true>;
+    rivals: RivalsSelect<false> | RivalsSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -59,6 +61,7 @@ export interface Config {
       syncMetadataTypes: TaskSyncMetadataTypes;
       syncCountries: TaskSyncCountries;
       syncCoaches: TaskSyncCoaches;
+      syncRivals: TaskSyncRivals;
       inline: {
         input: unknown;
         output: unknown;
@@ -708,6 +711,35 @@ export interface Coach {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rivals".
+ */
+export interface Rival {
+  id: number;
+  team_id: number;
+  rival_team_id: number;
+  team?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  rival?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -766,7 +798,8 @@ export interface PayloadJob {
           | 'syncPlayers'
           | 'syncMetadataTypes'
           | 'syncCountries'
-          | 'syncCoaches';
+          | 'syncCoaches'
+          | 'syncRivals';
         taskID: string;
         input?:
           | {
@@ -809,6 +842,7 @@ export interface PayloadJob {
         | 'syncMetadataTypes'
         | 'syncCountries'
         | 'syncCoaches'
+        | 'syncRivals'
       )
     | null;
   queue?: string | null;
@@ -859,6 +893,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'coaches';
         value: number | Coach;
+      } | null)
+    | ({
+        relationTo: 'rivals';
+        value: number | Rival;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -1121,6 +1159,19 @@ export interface CoachesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rivals_select".
+ */
+export interface RivalsSelect<T extends boolean = true> {
+  id?: T;
+  team_id?: T;
+  rival_team_id?: T;
+  team?: T;
+  rival?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs_select".
  */
 export interface PayloadJobsSelect<T extends boolean = true> {
@@ -1305,6 +1356,25 @@ export interface TaskSyncCountries {
  * via the `definition` "TaskSyncCoaches".
  */
 export interface TaskSyncCoaches {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncRivals".
+ */
+export interface TaskSyncRivals {
   input?: unknown;
   output: {
     message?: string | null;
