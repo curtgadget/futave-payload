@@ -99,6 +99,48 @@ export const Leagues: CollectionConfig = {
         description: 'Feature this league prominently in match listings',
         position: 'sidebar'
       }
-    }
+    },
+    // Current standings cache
+    {
+      name: 'current_standings',
+      type: 'group',
+      fields: [
+        {
+          name: 'table',
+          type: 'json',
+          admin: {
+            description: 'Cached league table calculated from match results',
+          },
+        },
+        {
+          name: 'season_id',
+          type: 'number',
+          admin: {
+            description: 'Season ID this table is for',
+          },
+        },
+        {
+          name: 'last_calculated',
+          type: 'date',
+          admin: {
+            description: 'When this table was last calculated',
+          },
+        },
+        {
+          name: 'expires_at',
+          type: 'date',
+          admin: {
+            description: 'When this cache expires (default: 6 hours)',
+          },
+        },
+        {
+          name: 'total_teams',
+          type: 'number',
+          admin: {
+            description: 'Number of teams in this league table',
+          },
+        },
+      ],
+    },
   ],
 }

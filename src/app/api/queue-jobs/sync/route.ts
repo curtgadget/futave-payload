@@ -30,6 +30,7 @@ const syncJobs: SyncJob[] = [
     input: {
       startDate: new Date(Date.now() - ONE_DAY_MS).toISOString().split('T')[0],
       endDate: new Date(Date.now() + NINETY_DAYS_MS).toISOString().split('T')[0],
+      calculateWaveScores: true, // Wave scores are calculated for matches up to 14 days ahead
     },
     queue: 'hourly',
   },
@@ -63,7 +64,12 @@ export async function syncAllHandler(req: NextRequest | PayloadRequest) {
 
     await payload.jobs.queue({
       task: 'syncMatches',
-      input: { startDate, endDate, backfill: true },
+      input: { 
+        startDate, 
+        endDate, 
+        backfill: true,
+        calculateWaveScores: false // Skip wave scores for historical data
+      },
       queue: 'backfill',
     })
 

@@ -34,6 +34,12 @@ pnpm start
 
 # Create a new sync handler
 pnpm create-sync
+
+# Calculate wave scores for matches
+node scripts/calculate-wave-scores.ts
+
+# Test smart sorting functionality
+node scripts/test-smart-sorting.ts
 ```
 
 ## Docker Development Environment
@@ -45,7 +51,17 @@ docker-compose up
 
 ## Architecture
 
-FutAve is a soccer live scores platform built with Next.js and Payload CMS, using MongoDB for data storage. It integrates with the Sportmonks API to sync and serve real-time soccer data.
+FutAve is a soccer live scores platform built with Next.js and Payload CMS, using MongoDB for data storage. It integrates with the Sportmonks API to sync and serve real-time soccer data with intelligent match discovery through the Wave Detector algorithm.
+
+### Wave Detector System
+
+The Wave Detector is an intelligent match excitement scoring system that helps surface the most compelling matches to users:
+
+- **6 Scoring Factors**: Rivalry (0-30), Position (0-20), Zone (0-20), Form (0-15), H2H Drama (0-10), Timing (0-5)
+- **Tier Classification**: S-Tier (80-100), A-Tier (60-79), B-Tier (40-59), C-Tier (0-39)
+- **Real-time Calculation**: Scores calculated during match sync for upcoming matches
+- **Smart Sorting**: Combines league priority with wave scores for optimal discovery
+- **Performance Optimized**: Cached standings calculations with 6-hour expiry
 
 ### Core Components
 
@@ -54,13 +70,17 @@ FutAve is a soccer live scores platform built with Next.js and Payload CMS, usin
    - Configures MongoDB adapter and other plugins
 
 2. **Collections** (`/src/collections/`)
-   - MongoDB schemas for Leagues, Matches, Teams, Players, Coaches, Countries, MetadataTypes
+   - MongoDB schemas for Leagues, Matches, Teams, Players, Coaches, Countries, MetadataTypes, Rivals
    - Each collection defines its fields, relationships, and admin UI configuration
+   - Matches collection includes Wave Detector scoring system with 6 factors
+   - Leagues collection includes cached standings for performance optimization
 
 3. **Data Synchronization** (`/src/tasks/handlers/`)
    - Job handlers that fetch data from Sportmonks API
    - Transform and store the data in MongoDB collections
    - Examples: syncLeaguesHandler, syncTeamsHandler, syncMatchesHandler
+   - Enhanced match sync with Wave Detector scoring for upcoming matches
+   - Dynamic standings calculation with caching (6-hour expiry)
 
 4. **Sportmonks Integration** (`/src/services/sportmonks/`)
    - Client for Sportmonks API (`/client/index.ts`)
@@ -69,6 +89,9 @@ FutAve is a soccer live scores platform built with Next.js and Payload CMS, usin
 5. **API Layer** (`/src/app/api/`)
    - RESTful endpoints under `/api/v1/`
    - Endpoints for triggering data synchronization jobs under `/api/queue-jobs/`
+   - Smart sorting system combining league priority with Wave Detector scores
+   - Dedicated wave matches endpoint (`/api/v1/matches/waves`)
+   - Enhanced matches list with wave score integration
 
 ### Data Flow
 
@@ -76,7 +99,9 @@ FutAve is a soccer live scores platform built with Next.js and Payload CMS, usin
 2. API client fetches and paginates through Sportmonks API responses
 3. Transformers convert external data format to internal models
 4. Data is stored in MongoDB collections
-5. API endpoints serve the data to frontend clients
+5. Wave Detector calculates excitement scores for upcoming matches
+6. Standings are dynamically calculated from match results and cached
+7. API endpoints serve enhanced data with intelligent sorting to frontend clients
 
 ### Environment Variables
 

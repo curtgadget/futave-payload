@@ -29,6 +29,7 @@
     "next": "15.1.0",
     "p-limit": "^6.2.0",
     "payload": "latest",
+    "payload-openapi": "^1.4.0",
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "sharp": "^0.34.2",

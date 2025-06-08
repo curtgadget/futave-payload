@@ -18,6 +18,7 @@ import getMatchHandler from './match'
 import getMatchesListHandler from './matchesList'
 import getCountriesPage from './countriesList'
 import getCountryPage from './countryDetail'
+import getMatchesWavesHandler from './matchesWaves'
 
 export type APIRouteV1 = Omit<Endpoint, 'path'> & {
   path: `/v1/${string}` // This enforces that path must start with '/v1'
@@ -41,6 +42,7 @@ const apiV1Routes: APIRouteV1[] = [
   getTeamStats,
   getMatchHandler,
   getMatchesListHandler,
+  getMatchesWavesHandler,
   getCountriesPage,
   getCountryPage,
 ]

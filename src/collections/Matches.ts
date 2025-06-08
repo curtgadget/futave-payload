@@ -212,5 +212,108 @@ export const Matches: CollectionConfig = {
       type: 'json',
       required: false,
     },
+    // Wave Detector fields
+    {
+      name: 'wave_score',
+      type: 'group',
+      fields: [
+        {
+          name: 'total',
+          type: 'number',
+          min: 0,
+          max: 100,
+          admin: {
+            description: 'Total wave score (0-100)',
+          },
+        },
+        {
+          name: 'tier',
+          type: 'select',
+          options: [
+            { label: 'S-Tier (80-100)', value: 'S' },
+            { label: 'A-Tier (60-79)', value: 'A' },
+            { label: 'B-Tier (40-59)', value: 'B' },
+            { label: 'C-Tier (0-39)', value: 'C' },
+          ],
+          admin: {
+            description: 'Wave score tier classification',
+          },
+        },
+        {
+          name: 'factors',
+          type: 'group',
+          fields: [
+            {
+              name: 'rivalry',
+              type: 'number',
+              min: 0,
+              max: 30,
+              admin: {
+                description: 'Rivalry factor score (0-30)',
+              },
+            },
+            {
+              name: 'position',
+              type: 'number',
+              min: 0,
+              max: 20,
+              admin: {
+                description: 'Position proximity score (0-20)',
+              },
+            },
+            {
+              name: 'zone',
+              type: 'number',
+              min: 0,
+              max: 20,
+              admin: {
+                description: 'Zone importance score (0-20)',
+              },
+            },
+            {
+              name: 'form',
+              type: 'number',
+              min: 0,
+              max: 15,
+              admin: {
+                description: 'Form differential score (0-15)',
+              },
+            },
+            {
+              name: 'h2h',
+              type: 'number',
+              min: 0,
+              max: 10,
+              admin: {
+                description: 'Head-to-head drama score (0-10)',
+              },
+            },
+            {
+              name: 'timing',
+              type: 'number',
+              min: 0,
+              max: 5,
+              admin: {
+                description: 'Timing bonus score (0-5)',
+              },
+            },
+          ],
+        },
+        {
+          name: 'calculated_at',
+          type: 'date',
+          admin: {
+            description: 'When the wave score was calculated',
+          },
+        },
+        {
+          name: 'expires_at',
+          type: 'date',
+          admin: {
+            description: 'When the wave score expires (typically match start time)',
+          },
+        },
+      ],
+    },
   ],
 }

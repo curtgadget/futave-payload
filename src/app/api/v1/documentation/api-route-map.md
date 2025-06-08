@@ -1258,13 +1258,14 @@ Get comprehensive details for a specific player including career history, statis
 
 **📚 [Complete Matches Listing API Documentation](./matches-listing-api.md)**
 
-Advanced matches listing endpoint with sophisticated league prioritization, filtering, and sorting capabilities inspired by FotMob. This endpoint is designed to power homepage views, league pages, and comprehensive match browsing experiences.
+Advanced matches listing endpoint with sophisticated league prioritization, filtering, and Wave Detector integration. This endpoint powers homepage views, league pages, and intelligent match discovery experiences.
 
 **Key Features:**
 - **🏆 League Prioritization**: Automatic ordering based on league importance (Featured → Tier 1 → Tier 2 → etc.)
 - **🔍 Advanced Filtering**: Date ranges, leagues, teams, match status, and search
 - **⚡ Special Views**: `today`, `live`, `upcoming`, `recent`
-- **📊 Smart Sorting**: Priority-based, time-based, and relevance-based
+- **📊 Smart Sorting**: Priority-based, time-based, and wave score enhanced sorting
+- **🌊 Wave Score Integration**: Include excitement scores and intelligent boosting
 - **⭐ Featured Leagues**: Prominent display of important competitions
 - **📱 Mobile-Optimized**: Efficient pagination and response structure
 
@@ -1282,6 +1283,15 @@ GET /api/v1/matches?leagues=8,16&sort=priority
 
 # Search for matches involving specific teams
 GET /api/v1/matches?search=manchester&view=upcoming
+
+# Include wave scores in response
+GET /api/v1/matches?include_waves=true&limit=10
+
+# Smart sorting with wave score boost (recommended)
+GET /api/v1/matches?include_waves=true&wave_boost=true&view=upcoming
+
+# Discovery mode - exciting matches from any league
+GET /api/v1/matches?include_waves=true&wave_boost=true&only_featured=false
 ```
 
 **Basic Response Structure:**
@@ -1315,7 +1325,19 @@ GET /api/v1/matches?search=manchester&view=upcoming
       },
       "venue": { "name": "Global Energy Stadium", "city": "Dingwall" },
       "has_lineups": true,
-      "has_events": true
+      "has_events": true,
+      "wave_score": {
+        "total": 73,
+        "tier": "A",
+        "factors": {
+          "rivalry": 25,
+          "position": 18,
+          "zone": 15,
+          "form": 10,
+          "h2h": 3,
+          "timing": 2
+        }
+      }
     }
   ],
   "meta": {
@@ -1359,7 +1381,7 @@ The matches are automatically ordered using a sophisticated 3-tier priority syst
 | **Tier 3** | Base + 60 | Championship, Play-offs |
 | **Tier 4** | Base + 40 | Lower leagues |
 
-This ensures that important matches (Champions League, Premier League) always appear first, while maintaining chronological order within each priority level.
+This ensures that important matches (Champions League, Premier League) always appear first, while maintaining chronological order within each priority level. Wave score boost can elevate exciting matches within their priority tier.
 
 **Setup & Configuration:**
 
@@ -1375,7 +1397,11 @@ Then configure individual leagues via Payload CMS admin:
 - **Tier**: League classification (tier1-tier4) 
 - **Featured**: Prominent display toggle
 
-**For complete parameter reference, response schemas, filtering examples, and integration guides, see the [full documentation](./matches-listing-api.md).**
+**Wave Score Parameters:**
+- `include_waves=true`: Include wave score data in response
+- `wave_boost=true`: Apply +100 priority boost to matches with wave_score >= 60
+
+**For complete parameter reference, response schemas, filtering examples, and integration guides, see the [full documentation](./matches-listing-api.md) and [Smart Sorting API docs](../../../docs/smart-sorting-api.md).**
 
 #### GET /api/v1/match/:id/:tab?
 
@@ -1541,92 +1567,126 @@ Each sidelined player entry includes:
 
 ### Wave Detector
 
-#### GET /api/v1/wave/active
+The Wave Detector system intelligently identifies the most exciting matches using a 6-factor algorithm that considers rivalry, league position, zone importance, team form, head-to-head drama, and timing.
 
-Get currently active matches with high wave scores.
+#### GET /api/v1/matches/waves
+
+Get matches sorted by wave scores with excitement-based filtering.
 
 **Query Parameters:**
-- `threshold`: Minimum wave score (default: 60)
+- `page`: Page number (default: 1)
+- `limit`: Results per page (default: 20, max: 100)
+- `date`: Specific date filter (YYYY-MM-DD)
 - `league_id`: Filter by league ID
+- `min_score`: Minimum wave score threshold (default: 0)
 
 **Response:**
 ```json
 {
-  "data": [
+  "matches": [
     {
-      "id": 555,
-      "league": {
-        "id": 789,
-        "name": "League Name"
+      "id": 12345,
+      "starting_at": "2025-05-27T15:00:00Z",
+      "state": {
+        "short_name": "NS",
+        "state": "NOT_STARTED"
       },
-      "homeTeam": {
-        "id": 123,
-        "name": "Home Team",
-        "logo": "https://..."
+      "home_team": {
+        "id": 62,
+        "name": "Rangers",
+        "short_code": "RAN",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/teams/30/62.png"
       },
-      "awayTeam": {
-        "id": 124,
-        "name": "Away Team",
-        "logo": "https://..."
+      "away_team": {
+        "id": 53,
+        "name": "Celtic",
+        "short_code": "CEL",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/teams/21/53.png"
       },
       "score": {
-        "home": 2,
-        "away": 1
+        "home": null,
+        "away": null
       },
-      "status": "IN_PLAY",
-      "startingAt": "2023-05-20T15:00:00Z",
-      "waveScore": 85,
-      "waveTrend": "rising",  // rising, falling, stable
-      "waveFactors": {
-        "goalsRecent": 25,
-        "comeback": 30,
-        "importance": 15,
-        "rivalry": 15
+      "league": {
+        "id": 501,
+        "name": "Premiership",
+        "image_path": "https://cdn.sportmonks.com/images/soccer/leagues/1/501.png",
+        "country_id": 237
+      },
+      "wave_score": {
+        "total": 87,
+        "tier": "S",
+        "factors": {
+          "rivalry": 30,
+          "position": 18,
+          "zone": 20,
+          "form": 12,
+          "h2h": 5,
+          "timing": 2
+        }
       }
     }
-  ]
+  ],
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "limit": 20,
+    "filters": {
+      "date": "2025-05-27",
+      "min_score": 60
+    }
+  }
 }
 ```
 
-#### GET /api/v1/wave/weekend
+**Wave Score Factors:**
+- **Rivalry** (0-30): Derby matches, historic rivalries, fan animosity
+- **Position** (0-20): League table proximity, title/relegation implications
+- **Zone** (0-20): Championship zone, relegation battle, European qualification
+- **Form** (0-15): Recent team performance and momentum
+- **H2H Drama** (0-10): Head-to-head history and recent dramatic encounters
+- **Timing** (0-5): Match importance timing (end of season, crucial moments)
 
-Get upcoming weekend matches with predicted wave scores.
+**Wave Score Tiers:**
+- **S-Tier (80-100)**: Unmissable matches with maximum excitement
+- **A-Tier (60-79)**: Highly exciting matches worth prioritizing
+- **B-Tier (40-59)**: Above average interest and entertainment value
+- **C-Tier (0-39)**: Standard matches with typical excitement levels
 
-**Query Parameters:**
-- `from_date`: Start date (default: upcoming Friday)
-- `to_date`: End date (default: upcoming Sunday)
+#### Integration with Main Matches Endpoint
 
-**Response:**
-```json
-{
-  "data": [
-    {
-      "id": 556,
-      "league": {
-        "id": 789,
-        "name": "League Name"
-      },
-      "homeTeam": {
-        "id": 123,
-        "name": "Home Team",
-        "logo": "https://..."
-      },
-      "awayTeam": {
-        "id": 124,
-        "name": "Away Team",
-        "logo": "https://..."
-      },
-      "startingAt": "2023-05-20T15:00:00Z",
-      "predictedWaveScore": 75,
-      "importance": "high",
-      "reasonsToWatch": [
-        "Title race implications",
-        "Historical rivalry",
-        "Star player return from injury"
-      ]
-    }
-  ]
-}
+Wave scores are integrated into the main `/api/v1/matches` endpoint through smart sorting:
+
+```bash
+# Get exciting matches with wave boost
+GET /api/v1/matches?include_waves=true&wave_boost=true
+
+# Discovery mode - exciting matches from any league
+GET /api/v1/matches?include_waves=true&wave_boost=true&view=upcoming
+
+# Pure wave score sorting
+GET /api/v1/matches/waves?min_score=60&limit=10
+```
+
+**Smart Sorting Logic:**
+
+1. **Default Priority**: Pure league priority (current behavior)
+2. **Wave Enhanced**: `wave_boost=true` adds +100 points to matches with wave_score >= 60
+3. **Discovery Mode**: High wave scores (60+) override league priority completely
+4. **Hybrid Approach**: Balances league preferences with excitement discovery
+
+**Example Use Cases:**
+
+```bash
+# Homepage: Balance user preferences with exciting discoveries
+GET /api/v1/matches?include_waves=true&wave_boost=true&limit=20
+
+# Discovery section: Surface hidden gems
+GET /api/v1/matches/waves?min_score=70&limit=10
+
+# Featured matches: Curated leagues with wave intelligence
+GET /api/v1/matches?include_waves=true&wave_boost=true&only_featured=true
+```
 ```
 
 ### Memory Avenues
@@ -1791,6 +1851,14 @@ List all countries.
 ## Recent Updates & Changelog
 
 ### January 2025
+- **✅ Wave Detector System**: Complete implementation of 6-factor excitement scoring algorithm
+- **✅ Smart Sorting**: Intelligent match ordering combining league priority with wave scores
+- **✅ Standings Calculator**: Dynamic league table calculation with caching (6-hour expiry)
+- **✅ Enhanced Match Sync**: Wave scores calculated automatically during match synchronization
+- **✅ Wave API Endpoints**: Dedicated endpoints for wave score access and filtering
+- **✅ Rivals Collection**: Team rivalry data integration for enhanced wave calculations
+- **✅ Smart Discovery**: UX-optimized match discovery balancing preferences with excitement
+- **✅ Production Scripts**: Batch wave score calculation and testing utilities
 - **✅ Sidelined Players**: Added comprehensive injury and unavailability data to match lineup endpoints
 - **✅ Match API Improvements**: Fixed Mongoose model overwrite errors and enhanced lineup data structure
 - **✅ Player Career Data**: Added comprehensive career history, transfer details, and achievements to player API

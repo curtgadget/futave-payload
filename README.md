@@ -1,6 +1,6 @@
 # FutAve - Soccer Live Scores CMS
 
-FutAve is a soccer live scores platform powered by Payload CMS that provides real-time match data, league information, team statistics, and standings.
+FutAve is a soccer live scores platform powered by Payload CMS that provides real-time match data, league information, team statistics, and intelligent match discovery through the Wave Detector algorithm.
 
 ## Overview
 
@@ -8,13 +8,15 @@ This repository contains the backend and content management system (CMS) for Fut
 
 ### Key Features
 
+- **Wave Detector Algorithm** - 6-factor excitement scoring for intelligent match discovery
+- **Smart Match Sorting** - Combines league priority with wave scores for optimal UX
 - **Real-time match data and live scores** with comprehensive lineup information
+- **Dynamic league standings** calculated from match results with performance caching
 - **Sidelined players tracking** including injury details and expected return dates
 - **Comprehensive player profiles** with career history, transfer details, and achievements
 - **League and tournament information** with detailed statistics and standings
 - **Team statistics and squad management** with formation and tactical data
-- **League standings and rankings** with qualification status indicators
-- **Automated data synchronization** with Sportmonks API
+- **Automated data synchronization** with Sportmonks API and wave score calculation
 - **RESTful API endpoints** optimized for multiple frontend clients
 - **Robust job queue system** for reliable data processing
 
@@ -30,12 +32,13 @@ This repository contains the backend and content management system (CMS) for Fut
 
 The CMS is structured around the following main collections:
 
-- **Leagues** - Soccer leagues and competitions
-- **Matches** - Live and historical match data
+- **Leagues** - Soccer leagues and competitions with cached standings
+- **Matches** - Live and historical match data with Wave Detector scoring
 - **Teams** - Team information, statistics, and standings
 - **Players** - Player information and statistics
 - **Coaches** - Coach information
 - **Countries** - Country information for teams and leagues
+- **Rivals** - Team rivalry data for enhanced wave calculations
 - **MetadataTypes** - Supporting metadata for other collections
 - **Media** - Images and media assets
 - **Users** - CMS user management
@@ -43,19 +46,22 @@ The CMS is structured around the following main collections:
 ## Data Synchronization
 
 The system includes automated jobs for:
-- Syncing league data
-- Updating match information
+- Syncing league data with priority configuration
+- Updating match information with Wave Detector scoring
+- Calculating dynamic league standings with caching
 - Maintaining team statistics and standings
 - Syncing player information
 - Syncing coach information
-- Updating country data
+- Updating country data and rivalry information
 - Managing metadata types
 
 ## API Endpoints
 
 The CMS exposes RESTful endpoints for:
-- Retrieving live match data
-- Accessing league information
+- **Smart match discovery** with Wave Detector integration (`/api/v1/matches`)
+- **Wave-specific endpoints** for excitement-based filtering (`/api/v1/matches/waves`)
+- Retrieving live match data with intelligent sorting
+- Accessing league information with dynamic standings
 - Fetching team statistics and standings
 - Accessing player information
 - Managing media assets
@@ -115,6 +121,13 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 ## Recent Updates
 
 ### January 2025
+- ✅ **Wave Detector System**: Complete 6-factor excitement scoring algorithm implementation
+- ✅ **Smart Sorting**: Intelligent match ordering combining league priority with wave scores
+- ✅ **Dynamic Standings**: Real-time league table calculation with performance caching
+- ✅ **Enhanced Match Sync**: Automatic wave score calculation during data synchronization
+- ✅ **Smart Discovery UX**: Balanced approach between user preferences and exciting match discovery
+- ✅ **Rivals Collection**: Team rivalry data integration for enhanced wave calculations
+- ✅ **Production Scripts**: Batch processing tools for wave score calculation and testing
 - ✅ **Sidelined Players**: Added comprehensive injury tracking to match lineups
 - ✅ **Enhanced Player API**: Career history, transfer details, and achievements
 - ✅ **Match API Improvements**: Fixed stability issues and enhanced data structure
@@ -123,7 +136,8 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 
 ### API Documentation
 For complete API documentation including request/response examples, see:
-- [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint documentation
+- [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint documentation with Wave Detector integration
+- [Smart Sorting API](docs/smart-sorting-api.md) - Wave score integration and intelligent match discovery
 - [Sportmonks Sync Map](src/app/api/v1/documentation/sportmonks-sync-map.md) - Data synchronization details
 
 ## Development

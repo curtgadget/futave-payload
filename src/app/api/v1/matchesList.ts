@@ -75,6 +75,18 @@ export interface MatchSummary {
   }
   has_lineups?: boolean
   has_events?: boolean
+  wave_score?: {
+    total: number
+    tier: string
+    factors: {
+      rivalry: number
+      position: number
+      zone: number
+      form: number
+      h2h: number
+      timing: number
+    }
+  }
 }
 
 export interface FeaturedLeague {
@@ -99,7 +111,9 @@ function parseMatchListQuery(req: PayloadRequest) {
     sort: 'priority',
     search: null,
     include_featured: true,
-    only_featured: false
+    only_featured: false,
+    include_waves: false,
+    wave_boost: false
   }
   
   if (!req.url) return defaults
@@ -117,6 +131,8 @@ function parseMatchListQuery(req: PayloadRequest) {
     status: searchParams.get('status')?.split(',').filter(Boolean) || [],
     view: searchParams.get('view'),
     sort: searchParams.get('sort') || 'priority',
+    include_waves: searchParams.get('include_waves') === 'true',
+    wave_boost: searchParams.get('wave_boost') === 'true',
     search: searchParams.get('search'),
     include_featured: searchParams.get('include_featured') !== 'false',
     only_featured: searchParams.get('only_featured') === 'true'
@@ -161,6 +177,8 @@ function buildPaginationUrls(req: PayloadRequest, queryParams: any, page: number
     if (queryParams.search) params.set('search', queryParams.search)
     if (!queryParams.include_featured) params.set('include_featured', 'false')
     if (queryParams.only_featured) params.set('only_featured', 'true')
+    if (queryParams.include_waves) params.set('include_waves', 'true')
+    if (queryParams.wave_boost) params.set('wave_boost', 'true')
     
     return `${basePath}?${params.toString()}`
   }
@@ -296,7 +314,7 @@ async function loadLeaguePriorities(payload: any): Promise<void> {
 }
 
 // Build aggregation pipeline using cached priority data
-function buildPriorityAggregation(filters: any, sort: string, skip: number, limit: number) {
+function buildPriorityAggregation(filters: any, sort: string, skip: number, limit: number, includeWaves = false, waveBoost = false) {
   const pipeline = []
   
   // Match stage
@@ -318,21 +336,39 @@ function buildPriorityAggregation(filters: any, sort: string, skip: number, limi
       })
     })
     
-    pipeline.push({
-      $addFields: {
-        league_priority_score: {
-          $switch: {
-            branches: priorityConditions,
-            default: 20 // Default priority for unknown leagues
-          }
+    const addFieldsStage: any = {
+      league_priority_score: {
+        $switch: {
+          branches: priorityConditions,
+          default: 20 // Default priority for unknown leagues
         }
       }
-    })
+    }
     
-    // Sort by priority first, then by time
+    // Add wave score boost if enabled
+    if (waveBoost) {
+      addFieldsStage.smart_priority_score = {
+        $add: [
+          '$league_priority_score',
+          {
+            $cond: {
+              if: { $gte: [{ $ifNull: ['$wave_score.total', 0] }, 60] },
+              then: 100, // Boost high wave score matches
+              else: { $multiply: [{ $ifNull: ['$wave_score.total', 0] }, 0.3] } // Small wave bonus
+            }
+          }
+        ]
+      }
+    } else {
+      addFieldsStage.smart_priority_score = '$league_priority_score'
+    }
+    
+    pipeline.push({ $addFields: addFieldsStage })
+    
+    // Sort by smart priority (includes wave boost if enabled), then by time
     pipeline.push({
       $sort: {
-        league_priority_score: -1,
+        smart_priority_score: -1,
         starting_at: 1
       }
     })
@@ -348,19 +384,24 @@ function buildPriorityAggregation(filters: any, sort: string, skip: number, limi
   pipeline.push({ $limit: limit })
   
   // Project only needed fields
-  pipeline.push({
-    $project: {
-      _id: 1,
-      league_id: 1,
-      starting_at: 1,
-      participants: 1,
-      scores: 1,
-      venue: 1,
-      state: 1,
-      lineups: { $size: { $ifNull: ['$lineups', []] } },
-      events: { $size: { $ifNull: ['$events', []] } }
-    }
-  })
+  const projection: any = {
+    _id: 1,
+    league_id: 1,
+    starting_at: 1,
+    participants: 1,
+    scores: 1,
+    venue: 1,
+    state: 1,
+    lineups: { $size: { $ifNull: ['$lineups', []] } },
+    events: { $size: { $ifNull: ['$events', []] } }
+  }
+  
+  // Include wave scores if requested
+  if (includeWaves) {
+    projection.wave_score = 1
+  }
+  
+  pipeline.push({ $project: projection })
   
   return pipeline
 }
@@ -456,7 +497,14 @@ const matchesListHandler: APIRouteV1 = {
       
       // Execute main query
       const queryStart = Date.now()
-      const pipeline = buildPriorityAggregation(query, queryParams.sort, skip, queryParams.limit)
+      const pipeline = buildPriorityAggregation(
+        query, 
+        queryParams.sort, 
+        skip, 
+        queryParams.limit, 
+        queryParams.include_waves, 
+        queryParams.wave_boost
+      )
       const matches = await payload.db.connection.collection('matches').aggregate(pipeline).toArray()
       console.log('Main query in:', Date.now() - queryStart, 'ms')
       
@@ -519,7 +567,21 @@ const matchesListHandler: APIRouteV1 = {
               city: match.venue.city_name
             } : undefined,
             has_lineups: (match.lineups || 0) > 0,
-            has_events: (match.events || 0) > 0
+            has_events: (match.events || 0) > 0,
+            ...(queryParams.include_waves && match.wave_score ? {
+              wave_score: {
+                total: match.wave_score.total || 0,
+                tier: match.wave_score.tier || 'C',
+                factors: match.wave_score.factors || {
+                  rivalry: 0,
+                  position: 0,
+                  zone: 0,
+                  form: 0,
+                  h2h: 0,
+                  timing: 0
+                }
+              }
+            } : {})
           }
         })
         .filter((match): match is NonNullable<typeof match> => match !== null)

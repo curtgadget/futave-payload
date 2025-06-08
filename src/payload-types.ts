@@ -221,6 +221,36 @@ export interface League {
    * Feature this league prominently in match listings
    */
   featured?: boolean | null;
+  current_standings?: {
+    /**
+     * Cached league table calculated from match results
+     */
+    table?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    /**
+     * Season ID this table is for
+     */
+    season_id?: number | null;
+    /**
+     * When this table was last calculated
+     */
+    last_calculated?: string | null;
+    /**
+     * When this cache expires (default: 6 hours)
+     */
+    expires_at?: string | null;
+    /**
+     * Number of teams in this league table
+     */
+    total_teams?: number | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -398,6 +428,50 @@ export interface Match {
     | number
     | boolean
     | null;
+  wave_score?: {
+    /**
+     * Total wave score (0-100)
+     */
+    total?: number | null;
+    /**
+     * Wave score tier classification
+     */
+    tier?: ('S' | 'A' | 'B' | 'C') | null;
+    factors?: {
+      /**
+       * Rivalry factor score (0-30)
+       */
+      rivalry?: number | null;
+      /**
+       * Position proximity score (0-20)
+       */
+      position?: number | null;
+      /**
+       * Zone importance score (0-20)
+       */
+      zone?: number | null;
+      /**
+       * Form differential score (0-15)
+       */
+      form?: number | null;
+      /**
+       * Head-to-head drama score (0-10)
+       */
+      h2h?: number | null;
+      /**
+       * Timing bonus score (0-5)
+       */
+      timing?: number | null;
+    };
+    /**
+     * When the wave score was calculated
+     */
+    calculated_at?: string | null;
+    /**
+     * When the wave score expires (typically match start time)
+     */
+    expires_at?: string | null;
+  };
   updatedAt: string;
   createdAt: string;
 }
@@ -1023,6 +1097,15 @@ export interface LeaguesSelect<T extends boolean = true> {
   priority?: T;
   tier?: T;
   featured?: T;
+  current_standings?:
+    | T
+    | {
+        table?: T;
+        season_id?: T;
+        last_calculated?: T;
+        expires_at?: T;
+        total_teams?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
@@ -1056,6 +1139,24 @@ export interface MatchesSelect<T extends boolean = true> {
   coaches?: T;
   metadata?: T;
   weatherreport?: T;
+  wave_score?:
+    | T
+    | {
+        total?: T;
+        tier?: T;
+        factors?:
+          | T
+          | {
+              rivalry?: T;
+              position?: T;
+              zone?: T;
+              form?: T;
+              h2h?: T;
+              timing?: T;
+            };
+        calculated_at?: T;
+        expires_at?: T;
+      };
   updatedAt?: T;
   createdAt?: T;
 }
