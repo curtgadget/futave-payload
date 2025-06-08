@@ -8,11 +8,13 @@ import { transformRival } from '../../sportmonks/transformers/rival.transformer'
 import { calculateH2HSummary } from '../../sportmonks/utils/h2hCalculator'
 import { createSyncService } from '../base.sync'
 import { SportmonksConfig } from '../../sportmonks/client/types'
+import { syncMetadataService } from '../syncMetadata'
 
-export function createRivalWithH2HSync(config: SportmonksConfig, options?: { h2hMaxAgeDays?: number }) {
+export function createRivalWithH2HSync(config: SportmonksConfig, options?: { h2hTtlDays?: number; rivalDataTtlDays?: number }) {
   const rivalsEndpoint = createRivalsEndpoint(config)
   const h2hEndpoint = createHeadToHeadEndpoint(config)
-  const h2hMaxAgeDays = options?.h2hMaxAgeDays || 7 // Default: skip if updated within 7 days
+  const h2hTtlDays = options?.h2hTtlDays || 7 // Default: 7 days TTL for H2H data
+  const rivalDataTtlDays = options?.rivalDataTtlDays || 90 // Default: 90 days TTL for rival data
   
   // First, use the base sync service for rivals
   const baseSync = createSyncService<SportmonksRival>({
@@ -25,58 +27,68 @@ export function createRivalWithH2HSync(config: SportmonksConfig, options?: { h2h
   async function syncWithH2H() {
     const payload = await getPayload({ config: payloadConfig })
     
-    // Step 1: Run base rivals sync
-    console.log('Starting rivals sync...')
-    const rivalsResult = await baseSync.sync()
+    // Step 1: Check if we need to run base rivals sync using sync-level TTL
+    console.log('Checking if rival data sync is needed...')
+    const shouldSyncRivalData = await syncMetadataService.shouldSync('rivals_data')
+    
+    let rivalsResult
+    
+    if (shouldSyncRivalData) {
+      console.log('Starting rivals sync...')
+      rivalsResult = await baseSync.sync()
+      
+      if (rivalsResult.success) {
+        // Record successful sync with TTL
+        await syncMetadataService.recordSync('rivals_data', rivalDataTtlDays, 'Sportmonks rival relationships sync')
+      }
+    } else {
+      console.log('Skipping rival data sync (within TTL)')
+      // Create a mock success result for consistency
+      rivalsResult = {
+        success: true,
+        stats: { created: 0, updated: 0, failed: 0, errors: [], startTime: Date.now(), endTime: Date.now() },
+        message: 'Rival data sync skipped (within TTL)',
+      }
+    }
     
     if (!rivalsResult.success) {
       return rivalsResult
     }
     
-    // Step 2: Fetch all rivals to build unique pairs
-    console.log('Fetching rivals for H2H sync...')
-    const allRivals = await payload.find({
-      collection: 'rivals',
-      limit: 10000,
-    })
+    // Step 2: Check if we need to run H2H sync using sync-level TTL
+    console.log('Checking if H2H data sync is needed...')
+    const shouldSyncH2HData = await syncMetadataService.shouldSync('h2h_data')
     
-    // Build map of unique team pairs to avoid duplicate H2H calls
-    const h2hPairs = new Map<string, number[]>() // pairKey -> [rivalRecordIds]
-    const h2hDataCache = new Map<string, any>() // pairKey -> h2h data
-    const skippedPairs = new Set<string>() // Track pairs we skip due to recent updates
-    
-    allRivals.docs.forEach((rival) => {
-      const pairKey = [rival.team_id, rival.rival_team_id].sort().join('-')
-      
-      // Check if this rival was recently updated
-      if (rival.h2h_updated_at) {
-        const lastUpdate = new Date(rival.h2h_updated_at)
-        const daysSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24)
-        
-        if (daysSinceUpdate < h2hMaxAgeDays) {
-          skippedPairs.add(pairKey)
-          // Still cache the existing data for other rivals in the pair
-          if (rival.h2h_summary) {
-            const summaryKey = `${rival.team_id}-${rival.rival_team_id}`
-            h2hDataCache.set(summaryKey, rival.h2h_summary)
-          }
-          return // Skip adding to pairs to process
-        }
-      }
-      
-      if (!h2hPairs.has(pairKey)) {
-        h2hPairs.set(pairKey, [])
-      }
-      h2hPairs.get(pairKey)!.push(rival.id)
-    })
-    
-    console.log(`Found ${h2hPairs.size} unique rival pairs for H2H sync (${skippedPairs.size} skipped due to recent updates)`)
-    
-    // Step 3: Process H2H data in parallel with concurrency limit
-    const limit = pLimit(10) // Process 10 H2H requests concurrently
     let h2hSynced = 0
     let h2hFailed = 0
-    let processedCount = 0
+    let h2hPairs = new Map<string, number[]>()
+    
+    if (shouldSyncH2HData) {
+      console.log('Starting H2H sync...')
+      
+      // Fetch all rivals to build unique pairs
+      const allRivals = await payload.find({
+        collection: 'rivals',
+        limit: 10000,
+      })
+      
+      // Build map of unique team pairs to avoid duplicate H2H calls
+      const h2hDataCache = new Map<string, any>() // pairKey -> h2h data
+      
+      allRivals.docs.forEach((rival) => {
+        const pairKey = [rival.team_id, rival.rival_team_id].sort().join('-')
+        
+        if (!h2hPairs.has(pairKey)) {
+          h2hPairs.set(pairKey, [])
+        }
+        h2hPairs.get(pairKey)!.push(rival.id)
+      })
+    
+      console.log(`Found ${h2hPairs.size} unique rival pairs for H2H sync`)
+    
+      // Step 3: Process H2H data in parallel with concurrency limit
+      const limit = pLimit(10) // Process 10 H2H requests concurrently
+      let processedCount = 0
     
     // Convert pairs to array for processing
     const pairsToProcess = Array.from(h2hPairs.entries())
@@ -170,8 +182,16 @@ export function createRivalWithH2HSync(config: SportmonksConfig, options?: { h2h
       }
     }
     
-    // Execute all database updates
-    await Promise.all(updatePromises)
+      // Execute all database updates
+      await Promise.all(updatePromises)
+      
+      // Record successful H2H sync
+      if (h2hSynced > 0 || h2hFailed === 0) {
+        await syncMetadataService.recordSync('h2h_data', h2hTtlDays, 'Sportmonks head-to-head data sync')
+      }
+    } else {
+      console.log('Skipping H2H data sync (within TTL)')
+    }
     
     // Return enhanced result
     return {
@@ -181,6 +201,8 @@ export function createRivalWithH2HSync(config: SportmonksConfig, options?: { h2h
         h2hPairs: h2hPairs.size,
         h2hSynced,
         h2hFailed,
+        rivalDataSkipped: !shouldSyncRivalData,
+        h2hDataSkipped: !shouldSyncH2HData,
       },
       message: `${rivalsResult.message}. H2H data: ${h2hSynced} synced, ${h2hFailed} failed out of ${h2hPairs.size} pairs.`,
     }

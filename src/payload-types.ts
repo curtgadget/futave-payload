@@ -21,6 +21,7 @@ export interface Config {
     countries: Country;
     coaches: Coach;
     rivals: Rival;
+    'sync-metadata': SyncMetadatum;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -38,6 +39,7 @@ export interface Config {
     countries: CountriesSelect<false> | CountriesSelect<true>;
     coaches: CoachesSelect<false> | CoachesSelect<true>;
     rivals: RivalsSelect<false> | RivalsSelect<true>;
+    'sync-metadata': SyncMetadataSelect<false> | SyncMetadataSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -836,6 +838,31 @@ export interface Rival {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sync-metadata".
+ */
+export interface SyncMetadatum {
+  id: string;
+  /**
+   * Unique identifier for the sync operation (e.g., "rivals_data", "h2h_data")
+   */
+  syncType: string;
+  /**
+   * Timestamp of the last successful sync
+   */
+  lastSyncAt: string;
+  /**
+   * Time-to-live in days before next sync is allowed
+   */
+  ttlDays: number;
+  /**
+   * Human-readable description of what this sync does
+   */
+  description?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -993,6 +1020,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'rivals';
         value: number | Rival;
+      } | null)
+    | ({
+        relationTo: 'sync-metadata';
+        value: string | SyncMetadatum;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -1320,6 +1351,18 @@ export interface RivalsSelect<T extends boolean = true> {
         avg_goals_per_match?: T;
       };
   h2h_updated_at?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sync-metadata_select".
+ */
+export interface SyncMetadataSelect<T extends boolean = true> {
+  syncType?: T;
+  lastSyncAt?: T;
+  ttlDays?: T;
+  description?: T;
   updatedAt?: T;
   createdAt?: T;
 }

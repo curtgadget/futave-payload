@@ -19,6 +19,7 @@ import { Users } from './collections/Users'
 import { Countries } from './collections/Countries'
 import { Coaches } from './collections/Coaches'
 import { Rivals } from './collections/Rivals'
+import { SyncMetadata } from './collections/SyncMetadata'
 
 import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
 import { syncTeamsHandler } from './tasks/handlers/syncTeams'
@@ -41,7 +42,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries, Coaches, Rivals],
+  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries, Coaches, Rivals, SyncMetadata],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
