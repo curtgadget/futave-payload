@@ -120,7 +120,7 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 
 ## Recent Updates
 
-### January 2025
+### June 2025
 - ✅ **Wave Detector System**: Complete 6-factor excitement scoring algorithm implementation
 - ✅ **Smart Sorting**: Intelligent match ordering combining league priority with wave scores
 - ✅ **Dynamic Standings**: Real-time league table calculation with performance caching
