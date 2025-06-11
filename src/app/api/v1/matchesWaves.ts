@@ -188,13 +188,13 @@ const matchesWavesHandler: APIRouteV1 = {
           wave_score: {
             total: match.wave_score?.total || 0,
             tier: match.wave_score?.tier || 'C',
-            factors: match.wave_score?.factors || {
-              rivalry: 0,
-              position: 0,
-              zone: 0,
-              form: 0,
-              h2h: 0,
-              timing: 0
+            factors: {
+              rivalry: match.wave_score?.factors?.rivalry || 0,
+              position: match.wave_score?.factors?.position || 0,
+              zone: match.wave_score?.factors?.zone || 0,
+              form: match.wave_score?.factors?.form || 0,
+              h2h: match.wave_score?.factors?.h2h || 0,
+              timing: match.wave_score?.factors?.timing || 0
             }
           }
         }
@@ -204,7 +204,7 @@ const matchesWavesHandler: APIRouteV1 = {
         matches,
         meta: {
           total: result.totalDocs,
-          page: result.page,
+          page: result.page || 1,
           limit: result.limit,
           filters: {
             date: query.date || undefined,
