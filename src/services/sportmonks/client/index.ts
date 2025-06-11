@@ -1,5 +1,6 @@
 import { FetchParams, SportmonksConfig, SportmonksResponse } from './types'
 import { SPORTMONKS_FOOTBALL_BASE_URL } from '@/constants/api'
+import { withRateLimit } from './rateLimit'
 
 export function createSportmonksError(
   message: string,
@@ -38,38 +39,42 @@ export function createSportmonksClient(config: SportmonksConfig) {
     })
 
     const url = `${baseUrl}${endpoint}?${queryParams}`
-    console.log(`API Request: ${url.replace(apiKey, 'API_KEY_HIDDEN')}`)
+    const sanitizedUrl = url.replace(apiKey, 'API_KEY_HIDDEN')
 
-    try {
-      const response = await fetch(url)
+    return withRateLimit(async () => {
+      console.log(`API Request: ${sanitizedUrl}`)
 
-      if (!response.ok) {
-        throw createSportmonksError(
-          `Sportmonks API error: ${response.statusText}`,
-          response.status,
-          response,
-        )
+      try {
+        const response = await fetch(url)
+
+        if (!response.ok) {
+          throw createSportmonksError(
+            `Sportmonks API error: ${response.statusText}`,
+            response.status,
+            response,
+          )
+        }
+
+        const data = await response.json()
+        return data as SportmonksResponse<T>
+      } catch (error) {
+        if (error instanceof Error && 'statusCode' in error) {
+          throw error
+        }
+
+        throw createSportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
       }
-
-      const data = await response.json()
-      return data as SportmonksResponse<T>
-    } catch (error) {
-      if (error instanceof Error && 'statusCode' in error) {
-        throw error
-      }
-
-      throw createSportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
-    }
+    }, `${endpoint} - page ${params.page || 1}`)
   }
 
   async function fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
     const results: T[] = []
     console.log(`Starting fetchAllPages for endpoint: ${endpoint} with params:`, params)
 
-    // Set default per_page to 25 to match the API's actual behavior
+    // Set default per_page to 100 to reduce total API calls
     const fetchParams = {
       ...params,
-      per_page: params.per_page || 25, // API consistently returns 25 items per page
+      per_page: params.per_page || 100, // Maximize items per page to reduce total API calls
     }
 
     let currentPage = 1
