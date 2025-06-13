@@ -160,6 +160,7 @@ Required:
 - Consider document size limits when designing schemas
 - Use MongoDB transactions for operations requiring atomicity
 - Implement pagination for large datasets
+- Always use Payload's find() and other convenience methods instead of direct MongoDB access
 
 ### TypeScript Code Style
 - Use TypeScript for all code; prefer types over interfaces except for public APIs

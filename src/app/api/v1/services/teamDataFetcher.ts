@@ -625,6 +625,33 @@ export const teamDataFetcher: TabDataFetcher = {
                   filteredData = tablesWithTeam
                 }
               }
+            } else if (seasonData && typeof seasonData === 'object') {
+              // Handle object format with nested standings structure
+              if (seasonData.standings && Array.isArray(seasonData.standings)) {
+                // Check if it's a direct standings array
+                const hasDirectStandings = seasonData.standings[0]?.participant_id !== undefined
+                
+                if (hasDirectStandings) {
+                  // Direct standings array
+                  teamFound = seasonData.standings.some((row: any) => 
+                    row.participant_id === numericId
+                  )
+                  if (teamFound) {
+                    filteredData = seasonData
+                  }
+                } else {
+                  // Array of tables with standings
+                  const tablesWithTeam = seasonData.standings.filter((table: any) => 
+                    table.standings?.some((row: any) => 
+                      row.participant_id === numericId
+                    )
+                  )
+                  if (tablesWithTeam.length > 0) {
+                    teamFound = true
+                    filteredData = { ...seasonData, standings: tablesWithTeam }
+                  }
+                }
+              }
             }
 
             if (teamFound && filteredData) {
