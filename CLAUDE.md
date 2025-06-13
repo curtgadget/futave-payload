@@ -219,7 +219,8 @@ Break down work into clear, logical steps. Use Todo format for complex tasks. Bu
 Explain the how/why/what before executing changes. Modify only what was agreed upon. Request permission for beneficial changes beyond original scope.
 
 ### 4. **RESEARCH & VERIFY**
-Use context7, DuckDuckGo, and project files liberally. Reference official documentation. Verify information against multiple sources.
+Use context7, perplexity-ask, DuckDuckGo, and project files liberally. Reference official documentation. Verify information against multiple sources.
+Use MongoDB MCP whenever you need to verify the data model or any data. The database is futave-backend
 
 ### 5. **MEMORY MANAGEMENT**
 Keep memory bank concise and current. Update memories and documentation after completing subtasks. Ensure knowledge graphs reflect current understanding.

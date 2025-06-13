@@ -540,6 +540,8 @@ export const teamDataFetcher: TabDataFetcher = {
       const numericId = validateTeamId(teamId)
 
       const payload = await getPayload({ config })
+      
+      // Get the team document
       const teamResult = await payload.find({
         collection: 'teams',
         where: {
@@ -547,7 +549,7 @@ export const teamDataFetcher: TabDataFetcher = {
             equals: numericId,
           },
         },
-        depth: 1,
+        limit: 1,
       })
 
       if (!teamResult.docs.length) {
@@ -556,12 +558,87 @@ export const teamDataFetcher: TabDataFetcher = {
 
       const team = teamResult.docs[0]
 
-      // Create a properly structured raw team object to avoid type issues
+      // Get league IDs from activeseasons
+      const leagueIds: number[] = []
+      if (team.activeseasons && Array.isArray(team.activeseasons)) {
+        team.activeseasons.forEach((season: any) => {
+          const leagueId = season.league_id || season.league?.id
+          if (leagueId && !leagueIds.includes(leagueId)) {
+            leagueIds.push(leagueId)
+          }
+        })
+      }
+
+      // If no leagues found, return empty standings
+      if (leagueIds.length === 0) {
+        const rawTeam = {
+          id: team.id as number,
+          name: team.name as string,
+          standings: null,
+        }
+        return transformTeamTable(rawTeam)
+      }
+
+      // Fetch standings for all leagues the team participates in
+      const standingsResult = await payload.find({
+        collection: 'leaguesstandings',
+        where: {
+          leagueId: {
+            in: leagueIds,
+          },
+        },
+      })
+
+      // Merge standings and filter to only include seasons where the team appears
+      const teamStandings: Record<string, any> = {}
+      
+      standingsResult.docs.forEach((doc) => {
+        if (doc.standings && typeof doc.standings === 'object') {
+          const standings = doc.standings as Record<string, any>
+          
+          Object.entries(standings).forEach(([seasonId, seasonData]) => {
+            // Check if team appears in this season's standings
+            let teamFound = false
+            let filteredData = null
+
+            if (Array.isArray(seasonData)) {
+              // Handle array format (could be direct standings or tables with standings)
+              const hasDirectStandings = seasonData[0]?.participant_id !== undefined
+              
+              if (hasDirectStandings) {
+                // Direct standings array
+                teamFound = seasonData.some((row: any) => 
+                  row.participant_id === numericId
+                )
+                if (teamFound) {
+                  filteredData = seasonData
+                }
+              } else {
+                // Array of tables with standings
+                const tablesWithTeam = seasonData.filter((table: any) => 
+                  table.standings?.some((row: any) => 
+                    row.participant_id === numericId
+                  )
+                )
+                if (tablesWithTeam.length > 0) {
+                  teamFound = true
+                  filteredData = tablesWithTeam
+                }
+              }
+            }
+
+            if (teamFound && filteredData) {
+              teamStandings[seasonId] = filteredData
+            }
+          })
+        }
+      })
+
+      // Create the raw team object
       const rawTeam = {
         id: team.id as number,
         name: team.name as string,
-        standings:
-          typeof team.standings === 'object' ? (team.standings as Record<string, any>) : null,
+        standings: Object.keys(teamStandings).length > 0 ? teamStandings : null,
       }
 
       const transformedStandings = transformTeamTable(rawTeam)
