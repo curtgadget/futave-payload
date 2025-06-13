@@ -96,6 +96,10 @@ export function createSportmonksClient(config: SportmonksConfig) {
       ...params,
       per_page: params.per_page || 100, // Maximize items per page to reduce total API calls
     }
+    
+    // Get max pages limit (0 = unlimited)
+    const maxPages = params.maxPages || 0
+    console.log(`Pagination config: maxPages=${maxPages === 0 ? 'unlimited' : maxPages}`)
 
     let currentPage = 1
 
@@ -121,9 +125,9 @@ export function createSportmonksClient(config: SportmonksConfig) {
         // Move to the next page
         currentPage++
 
-        // Safety limit - increased to allow more player data
-        if (currentPage > 1000) {
-          console.warn(`Reached maximum page limit (1000)`)
+        // Check configurable page limit (0 = unlimited)
+        if (maxPages > 0 && currentPage > maxPages) {
+          console.warn(`Reached configured page limit (${maxPages})`)
           break
         }
       } catch (error) {

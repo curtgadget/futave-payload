@@ -10,6 +10,7 @@ export type FetchParams = {
   filterString?: string
   page?: number
   per_page?: number
+  maxPages?: number // Optional limit on pages to fetch (0 = unlimited, default: 0)
 }
 
 export type SportmonksResponse<T> = {
