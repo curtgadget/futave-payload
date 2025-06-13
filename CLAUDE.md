@@ -40,6 +40,9 @@ node scripts/calculate-wave-scores.ts
 
 # Test smart sorting functionality
 node scripts/test-smart-sorting.ts
+
+# Monitor API rate limit status
+curl http://localhost:3000/api/v1/rate-limit-status
 ```
 
 ## Docker Development Environment
@@ -96,12 +99,25 @@ The Wave Detector is an intelligent match excitement scoring system that helps s
 ### Data Flow
 
 1. Scheduled jobs or manual triggers initiate data sync from Sportmonks
-2. API client fetches and paginates through Sportmonks API responses
-3. Transformers convert external data format to internal models
-4. Data is stored in MongoDB collections
-5. Wave Detector calculates excitement scores for upcoming matches
-6. Standings are dynamically calculated from match results and cached
-7. API endpoints serve enhanced data with intelligent sorting to frontend clients
+2. Entity-based rate limiter ensures compliance with 3000 calls/hour per entity limit
+3. API client fetches and paginates through Sportmonks API responses with rate limit monitoring
+4. Transformers convert external data format to internal models
+5. Data is stored in MongoDB collections
+6. Wave Detector calculates excitement scores for upcoming matches
+7. Standings are dynamically calculated from match results and cached
+8. API endpoints serve enhanced data with intelligent sorting to frontend clients
+
+### Rate Limiting System
+
+**Entity-Based Rate Limiting**: Tracks API calls separately for each Sportmonks entity (leagues, teams, players, etc.) with a 3000 calls per hour limit per entity.
+
+**Key Features**:
+- Real-time rate limit tracking with hourly windows
+- Parse rate limit headers from API responses to stay in sync
+- Automatic backoff when approaching limits
+- Rate limit status monitoring endpoint
+
+**Monitoring**: Use `/api/v1/rate-limit-status` to monitor current usage and get recommendations
 
 ### Environment Variables
 

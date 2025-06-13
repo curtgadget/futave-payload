@@ -22,6 +22,11 @@ export type SportmonksResponse<T> = {
     has_more: boolean
     total_pages?: number // Total number of pages available
   }
+  rate_limit?: {
+    remaining: number
+    resets_in_seconds: number
+    requested_entity: string
+  }
 }
 
 export type SportmonksMetadataType = {

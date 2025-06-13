@@ -1,6 +1,7 @@
 import { FetchParams, SportmonksConfig, SportmonksResponse } from './types'
 import { SPORTMONKS_FOOTBALL_BASE_URL } from '@/constants/api'
 import { withRateLimit } from './rateLimit'
+import { entityRateLimiter } from './entityRateLimit'
 
 export function createSportmonksError(
   message: string,
@@ -41,30 +42,49 @@ export function createSportmonksClient(config: SportmonksConfig) {
     const url = `${baseUrl}${endpoint}?${queryParams}`
     const sanitizedUrl = url.replace(apiKey, 'API_KEY_HIDDEN')
 
-    return withRateLimit(async () => {
-      console.log(`API Request: ${sanitizedUrl}`)
+    // Use entity-based rate limiting instead of generic rate limiting
+    return entityRateLimiter.executeWithEntityLimit(
+      endpoint,
+      async () => {
+        console.log(`API Request: ${sanitizedUrl}`)
 
-      try {
-        const response = await fetch(url)
+        try {
+          const response = await fetch(url)
 
-        if (!response.ok) {
-          throw createSportmonksError(
-            `Sportmonks API error: ${response.statusText}`,
-            response.status,
-            response,
-          )
+          if (!response.ok) {
+            throw createSportmonksError(
+              `Sportmonks API error: ${response.statusText}`,
+              response.status,
+              response,
+            )
+          }
+
+          const data = await response.json()
+          const sportmonksResponse = data as SportmonksResponse<T>
+          
+          // Update rate limiter with actual API rate limit info if available
+          if (sportmonksResponse.rate_limit) {
+            entityRateLimiter.updateFromApiResponse(endpoint, {
+              remaining: sportmonksResponse.rate_limit.remaining,
+              resetsAt: sportmonksResponse.rate_limit.resets_in_seconds 
+                ? Math.floor(Date.now() / 1000) + sportmonksResponse.rate_limit.resets_in_seconds
+                : 0,
+              total: 3000,
+              entity: sportmonksResponse.rate_limit.requested_entity as any
+            })
+          }
+          
+          return sportmonksResponse
+        } catch (error) {
+          if (error instanceof Error && 'statusCode' in error) {
+            throw error
+          }
+
+          throw createSportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
         }
-
-        const data = await response.json()
-        return data as SportmonksResponse<T>
-      } catch (error) {
-        if (error instanceof Error && 'statusCode' in error) {
-          throw error
-        }
-
-        throw createSportmonksError(error instanceof Error ? error.message : 'Unknown error occurred')
-      }
-    }, `${endpoint} - page ${params.page || 1}`)
+      },
+      `${endpoint} - page ${params.page || 1}`
+    )
   }
 
   async function fetchAllPages<T>(endpoint: string, params: FetchParams = {}): Promise<T[]> {
