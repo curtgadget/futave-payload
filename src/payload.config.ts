@@ -10,6 +10,8 @@ import { fileURLToPath } from 'url'
 import { syncAllHandler } from '@/app/api/queue-jobs/sync/route'
 import { previewHandler } from '@/app/api/queue-jobs/preview/route'
 import { Leagues } from './collections/Leagues'
+import { LeaguesSeason } from './collections/leaguesseason'
+import { LeaguesStandings } from './collections/leaguesstandings'
 import { Matches } from './collections/Matches'
 import { Media } from './collections/Media'
 import { MetadataTypes } from './collections/MetadataTypes'
@@ -42,7 +44,7 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Leagues, Matches, Teams, Players, MetadataTypes, Countries, Coaches, Rivals, SyncMetadata],
+  collections: [Users, Media, Leagues, LeaguesSeason, LeaguesStandings, Matches, Teams, Players, MetadataTypes, Countries, Coaches, Rivals, SyncMetadata],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

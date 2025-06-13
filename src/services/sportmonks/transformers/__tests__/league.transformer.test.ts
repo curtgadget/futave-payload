@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@jest/globals'
-import { transformLeague, validateLeague } from '../league.transformer'
+import { transformLeague, transformLeagueSeason, transformLeagueStandings, validateLeague } from '../league.transformer'
 import { createMockLeague, createMinimalMockData } from '../test-helpers'
 import type { SportmonksLeague } from '../../client/types'
 
@@ -35,8 +35,6 @@ describe('League Transformer', () => {
         inplay: [{ id: 102, name: 'Live Match' }],
         today: [{ id: 103, name: 'Today Match' }],
         currentseason: { id: 20, name: '2023-24' },
-        seasons: [{ id: 19, name: '2022-23' }, { id: 20, name: '2023-24' }],
-        standings: null,
       })
     })
 
@@ -57,8 +55,6 @@ describe('League Transformer', () => {
         inplay: null,
         today: null,
         currentseason: null,
-        seasons: null,
-        standings: null,
       })
     })
 
@@ -102,8 +98,6 @@ describe('League Transformer', () => {
       expect(result.inplay).toBeNull()
       expect(result.today).toBeNull()
       expect(result.currentseason).toBeNull()
-      expect(result.seasons).toBeNull()
-      expect(result.standings).toBeNull()
     })
 
     it('should handle falsy optional fields by converting to null', () => {
@@ -125,8 +119,6 @@ describe('League Transformer', () => {
       expect(result.inplay).toBeNull()
       expect(result.today).toBeNull()
       expect(result.currentseason).toBeNull()
-      expect(result.seasons).toBeNull()
-      expect(result.standings).toBeNull()
     })
 
     it('should preserve truthy optional field values', () => {
@@ -148,20 +140,44 @@ describe('League Transformer', () => {
       expect(result.inplay).toEqual({ live: true })
       expect(result.today).toBe('today data')
       expect(result.currentseason).toEqual({ active: true })
-      expect(result.seasons).toEqual([{ id: 1 }, { id: 2 }])
     })
 
-    it('should handle standings field correctly', () => {
-      // Test with no standings
-      const leagueWithoutStandings = createMockLeague({
+  })
+
+  describe('transformLeagueSeason', () => {
+    it('should transform league seasons correctly', () => {
+      const leagueWithSeasons = createMockLeague({
         id: 1,
-        name: 'League Without Standings',
+        name: 'Test League',
+        seasons: [{ id: 19, name: '2022-23' }, { id: 20, name: '2023-24' }],
       })
 
-      const resultWithoutStandings = transformLeague(leagueWithoutStandings)
-      expect(resultWithoutStandings.standings).toBeNull()
+      const result = transformLeagueSeason(leagueWithSeasons)
 
-      // Test with standings data
+      expect(result).toEqual({
+        leagueId: 1,
+        seasons: [{ id: 19, name: '2022-23' }, { id: 20, name: '2023-24' }],
+      })
+    })
+
+    it('should handle null seasons', () => {
+      const leagueWithoutSeasons = createMockLeague({
+        id: 1,
+        name: 'Test League',
+        seasons: null,
+      })
+
+      const result = transformLeagueSeason(leagueWithoutSeasons)
+
+      expect(result).toEqual({
+        leagueId: 1,
+        seasons: null,
+      })
+    })
+  })
+
+  describe('transformLeagueStandings', () => {
+    it('should transform league standings correctly', () => {
       const standingsData = {
         20: [{ position: 1, team: 'Team A' }],
         21: [{ position: 1, team: 'Team B' }],
@@ -171,8 +187,26 @@ describe('League Transformer', () => {
         standings: standingsData,
       }
 
-      const resultWithStandings = transformLeague(leagueWithStandings as any)
-      expect(resultWithStandings.standings).toEqual(standingsData)
+      const result = transformLeagueStandings(leagueWithStandings as any)
+
+      expect(result).toEqual({
+        leagueId: 2,
+        standings: standingsData,
+      })
+    })
+
+    it('should handle null standings', () => {
+      const leagueWithoutStandings = createMockLeague({
+        id: 1,
+        name: 'League Without Standings',
+      })
+
+      const result = transformLeagueStandings(leagueWithoutStandings)
+
+      expect(result).toEqual({
+        leagueId: 1,
+        standings: null,
+      })
     })
   })
 

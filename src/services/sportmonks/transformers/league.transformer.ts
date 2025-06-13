@@ -12,7 +12,15 @@ export type TransformedLeague = {
   inplay: unknown | null
   today: unknown | null
   currentseason: unknown | null
+}
+
+export type TransformedLeagueSeason = {
+  leagueId: number
   seasons: unknown | null
+}
+
+export type TransformedLeagueStandings = {
+  leagueId: number
   standings: Record<number, unknown> | null
 }
 
@@ -29,7 +37,19 @@ export function transformLeague(league: SportmonksLeague): TransformedLeague {
     inplay: league.inplay || null,
     today: league.today || null,
     currentseason: league.currentseason || null,
+  }
+}
+
+export function transformLeagueSeason(league: SportmonksLeague): TransformedLeagueSeason {
+  return {
+    leagueId: league.id,
     seasons: league.seasons || null,
+  }
+}
+
+export function transformLeagueStandings(league: SportmonksLeague): TransformedLeagueStandings {
+  return {
+    leagueId: league.id,
     standings: (league as any).standings || null,
   }
 }

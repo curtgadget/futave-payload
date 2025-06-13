@@ -14,6 +14,8 @@ export interface Config {
     users: User;
     media: Media;
     leagues: League;
+    leaguesseason: Leaguesseason;
+    leaguesstandings: Leaguesstanding;
     matches: Match;
     teams: Team;
     players: Player;
@@ -32,6 +34,8 @@ export interface Config {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     leagues: LeaguesSelect<false> | LeaguesSelect<true>;
+    leaguesseason: LeaguesseasonSelect<false> | LeaguesseasonSelect<true>;
+    leaguesstandings: LeaguesstandingsSelect<false> | LeaguesstandingsSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
     teams: TeamsSelect<false> | TeamsSelect<true>;
     players: PlayersSelect<false> | PlayersSelect<true>;
@@ -193,24 +197,6 @@ export interface League {
     | number
     | boolean
     | null;
-  seasons?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
-  standings?:
-    | {
-        [k: string]: unknown;
-      }
-    | unknown[]
-    | string
-    | number
-    | boolean
-    | null;
   /**
    * Display priority in match listings (higher numbers appear first, 0 = default order)
    */
@@ -253,6 +239,44 @@ export interface League {
      */
     total_teams?: number | null;
   };
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leaguesseason".
+ */
+export interface Leaguesseason {
+  id: string;
+  leagueId: number;
+  seasons?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leaguesstandings".
+ */
+export interface Leaguesstanding {
+  id: string;
+  leagueId: number;
+  standings?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -994,6 +1018,14 @@ export interface PayloadLockedDocument {
         value: number | League;
       } | null)
     | ({
+        relationTo: 'leaguesseason';
+        value: string | Leaguesseason;
+      } | null)
+    | ({
+        relationTo: 'leaguesstandings';
+        value: string | Leaguesstanding;
+      } | null)
+    | ({
         relationTo: 'matches';
         value: number | Match;
       } | null)
@@ -1123,8 +1155,6 @@ export interface LeaguesSelect<T extends boolean = true> {
   inplay?: T;
   today?: T;
   currentseason?: T;
-  seasons?: T;
-  standings?: T;
   priority?: T;
   tier?: T;
   featured?: T;
@@ -1137,6 +1167,26 @@ export interface LeaguesSelect<T extends boolean = true> {
         expires_at?: T;
         total_teams?: T;
       };
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leaguesseason_select".
+ */
+export interface LeaguesseasonSelect<T extends boolean = true> {
+  leagueId?: T;
+  seasons?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "leaguesstandings_select".
+ */
+export interface LeaguesstandingsSelect<T extends boolean = true> {
+  leagueId?: T;
+  standings?: T;
   updatedAt?: T;
   createdAt?: T;
 }

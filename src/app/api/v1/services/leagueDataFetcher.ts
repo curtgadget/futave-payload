@@ -808,9 +808,20 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         }
         
         // Verify the season exists in standings
-        if (league.standings && typeof league.standings === 'object') {
-          if (!league.standings[String(targetSeasonId)]) {
-            const availableSeasons = Object.keys(league.standings)
+        const standingsCheck = await payload.find({
+          collection: 'leaguesstandings',
+          where: {
+            leagueId: {
+              equals: numericId,
+            },
+          },
+          limit: 1,
+        })
+
+        if (standingsCheck.docs.length > 0 && standingsCheck.docs[0].standings && typeof standingsCheck.docs[0].standings === 'object') {
+          const standings = standingsCheck.docs[0].standings as Record<string, any>
+          if (!standings[String(targetSeasonId)]) {
+            const availableSeasons = Object.keys(standings)
             throw new Error(`Season ${seasonId} not found. Available seasons: ${availableSeasons.join(', ')}`)
           }
         }
@@ -819,10 +830,23 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         targetSeasonId = league.current_season?.id ? parseInt(String(league.current_season.id), 10) : null
         
         // If no current season, try to use the most recent season from standings
-        if (!targetSeasonId && league.standings && typeof league.standings === 'object') {
-          const availableSeasons = Object.keys(league.standings)
-          if (availableSeasons.length > 0) {
-            targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
+        if (!targetSeasonId) {
+          const standingsForSeasonCheck = await payload.find({
+            collection: 'leaguesstandings',
+            where: {
+              leagueId: {
+                equals: numericId,
+              },
+            },
+            limit: 1,
+          })
+
+          if (standingsForSeasonCheck.docs.length > 0 && standingsForSeasonCheck.docs[0].standings && typeof standingsForSeasonCheck.docs[0].standings === 'object') {
+            const standings = standingsForSeasonCheck.docs[0].standings as Record<string, any>
+            const availableSeasons = Object.keys(standings)
+            if (availableSeasons.length > 0) {
+              targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
+            }
           }
         }
 
@@ -831,15 +855,40 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         }
       }
 
-      // Get season name from seasons array or standings
+      // Get season name from seasons array or standings - need to get data from new collections
       let seasonName = `Season ${targetSeasonId}`
-      if (league.seasons && Array.isArray(league.seasons)) {
-        const seasonInfo = league.seasons.find((s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId))
+      
+      // First try to get from seasons collection
+      const seasonsForName = await payload.find({
+        collection: 'leaguesseason',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      if (seasonsForName.docs.length > 0 && seasonsForName.docs[0].seasons && Array.isArray(seasonsForName.docs[0].seasons)) {
+        const seasonInfo = seasonsForName.docs[0].seasons.find((s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId))
         if (seasonInfo && seasonInfo.name) {
           seasonName = seasonInfo.name
         }
-      } else if (league.standings && league.standings[String(targetSeasonId)]?.name) {
-        seasonName = league.standings[String(targetSeasonId)].name
+      } else {
+        // Fallback to standings collection
+        const standingsForName = await payload.find({
+          collection: 'leaguesstandings',
+          where: {
+            leagueId: {
+              equals: numericId,
+            },
+          },
+          limit: 1,
+        })
+
+        if (standingsForName.docs.length > 0 && standingsForName.docs[0].standings && standingsForName.docs[0].standings[String(targetSeasonId)]?.name) {
+          seasonName = standingsForName.docs[0].standings[String(targetSeasonId)].name
+        }
       }
       
       // Fetch data in parallel for performance
@@ -1076,8 +1125,35 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
 
-      // Get all available seasons for the dropdown
-      const seasons = extractLeagueSeasons(league)
+      // Get all available seasons for the dropdown - need to get data from new collections
+      const seasonsResultOverview = await payload.find({
+        collection: 'leaguesseason',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      const standingsResultOverview = await payload.find({
+        collection: 'leaguesstandings',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      // Create a mock league object with seasons and standings data
+      const mockLeagueOverview = {
+        ...league,
+        seasons: seasonsResultOverview.docs.length > 0 ? seasonsResultOverview.docs[0].seasons : null,
+        standings: standingsResultOverview.docs.length > 0 ? standingsResultOverview.docs[0].standings : null,
+      }
+
+      const seasons = extractLeagueSeasons(mockLeagueOverview)
 
       // Build the response
       const response: LeagueOverviewResponse = {
@@ -1118,6 +1194,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const payload = await getPayload({ config })
+      
+      // Get league basic info
       const leagueResult = await payload.find({
         collection: 'leagues',
         where: {
@@ -1134,12 +1212,29 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       const league = leagueResult.docs[0]
 
+      // Get standings data from leaguesstandings collection
+      const standingsResult = await payload.find({
+        collection: 'leaguesstandings',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      let standings: Record<string, any> | null = null
+      if (standingsResult.docs.length > 0) {
+        standings = typeof standingsResult.docs[0].standings === 'object' 
+          ? (standingsResult.docs[0].standings as Record<string, any>) 
+          : null
+      }
+
       // Create a properly structured raw league object
       const rawLeague = {
         id: league.id as number,
         name: league.name as string,
-        standings:
-          typeof league.standings === 'object' ? (league.standings as Record<string, any>) : null,
+        standings,
         current_season: league.current_season || null,
       }
 
@@ -1471,12 +1566,25 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         targetSeasonId = parseInt(String(league.current_season.id), 10)
       }
 
-      // If no current season, try to use the most recent season from standings (same logic as league table)
-      if (!targetSeasonId && league.standings && typeof league.standings === 'object') {
-        const availableSeasons = Object.keys(league.standings)
-        if (availableSeasons.length > 0) {
-          // Sort seasons descending and take the most recent
-          targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
+      // If no current season, try to use the most recent season from standings
+      if (!targetSeasonId) {
+        // Get standings data from leaguesstandings collection
+        const standingsResult = await payload.find({
+          collection: 'leaguesstandings',
+          where: {
+            leagueId: {
+              equals: numericId,
+            },
+          },
+          limit: 1,
+        })
+
+        if (standingsResult.docs.length > 0 && standingsResult.docs[0].standings && typeof standingsResult.docs[0].standings === 'object') {
+          const availableSeasons = Object.keys(standingsResult.docs[0].standings as Record<string, any>)
+          if (availableSeasons.length > 0) {
+            // Sort seasons descending and take the most recent
+            targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
+          }
         }
       }
 
@@ -1597,8 +1705,35 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Determine season name
       const seasonName = league.current_season?.name || `Season ${targetSeasonId}`
 
-      // Get all available seasons for the dropdown
-      const seasons = extractLeagueSeasons(league)
+      // Get all available seasons for the dropdown - need to get data from new collections
+      const seasonsResult = await payload.find({
+        collection: 'leaguesseason',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      const standingsResultForSeasons = await payload.find({
+        collection: 'leaguesstandings',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      // Create a mock league object with seasons and standings data
+      const mockLeagueForSeasons = {
+        ...league,
+        seasons: seasonsResult.docs.length > 0 ? seasonsResult.docs[0].seasons : null,
+        standings: standingsResultForSeasons.docs.length > 0 ? standingsResultForSeasons.docs[0].standings : null,
+      }
+
+      const seasons = extractLeagueSeasons(mockLeagueForSeasons)
 
       const response = {
         id: leagueId,
@@ -1646,6 +1781,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       const payload = await getPayload({ config })
       
+      // Get league basic info
       const leagueResult = await payload.find({
         collection: 'leagues',
         where: {
@@ -1661,14 +1797,43 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const league = leagueResult.docs[0]
+
+      // Get seasons data from leaguesseason collection
+      const seasonsResult = await payload.find({
+        collection: 'leaguesseason',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      // Get standings data to extract seasons (for fallback)
+      const standingsResult = await payload.find({
+        collection: 'leaguesstandings',
+        where: {
+          leagueId: {
+            equals: numericId,
+          },
+        },
+        limit: 1,
+      })
+
+      // Create a mock league object with seasons and standings data
+      const mockLeague = {
+        ...league,
+        seasons: seasonsResult.docs.length > 0 ? seasonsResult.docs[0].seasons : null,
+        standings: standingsResult.docs.length > 0 ? standingsResult.docs[0].standings : null,
+      }
       
       // Get simplified seasons for the dropdown
-      const simplifiedSeasons = extractLeagueSeasons(league)
+      const simplifiedSeasons = extractLeagueSeasons(mockLeague)
       
       // Convert to full LeagueSeason format with additional details
       const seasons: LeagueSeason[] = simplifiedSeasons.map(simpleSeason => {
         // Find full season data if available
-        const fullSeasonData = league.seasons?.find((s: any) => String(s.id) === simpleSeason.id)
+        const fullSeasonData = mockLeague.seasons?.find?.((s: any) => String(s.id) === simpleSeason.id)
         
         return {
           id: simpleSeason.id,

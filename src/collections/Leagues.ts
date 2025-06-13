@@ -58,16 +58,6 @@ export const Leagues: CollectionConfig = {
       required: false,
     },
     {
-      name: 'seasons',
-      type: 'json',
-      required: false,
-    },
-    {
-      name: 'standings',
-      type: 'json',
-      required: false,
-    },
-    {
       name: 'priority',
       type: 'number',
       defaultValue: 0,
