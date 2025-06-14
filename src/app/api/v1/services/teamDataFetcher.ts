@@ -807,6 +807,7 @@ export const teamDataFetcher: TabDataFetcher = {
         name: team.name as string,
         statistics: team.statistics || null,
         season_map: Array.isArray(team.season_map) ? team.season_map : null,
+        activeseasons: Array.isArray(team.activeseasons) ? team.activeseasons : null,
       }
 
       // Transform team stats
@@ -1502,21 +1503,44 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         where,
         page,
         limit,
+        depth: 1, // Include related data like activeseasons
       })
 
 
       // Transform the results to match the expected response format
-      const teams = result.docs.map((team) => ({
-        id: String(team.id),
-        name: team.name as string,
-        country_id: team.country_id as number,
-        season_map: Array.isArray(team.season_map)
-          ? team.season_map.map((s: any) => ({
-              id: String(s.id),
-              name: s.name,
-            }))
-          : [],
-      }))
+      const teams = result.docs.map((team) => {
+        // Create a map of season IDs to league names from activeseasons
+        const seasonLeagueMap = new Map<string, string>()
+        if (Array.isArray(team.activeseasons)) {
+          team.activeseasons.forEach((activeSeason: any) => {
+            if (activeSeason.id && activeSeason.league?.name) {
+              seasonLeagueMap.set(String(activeSeason.id), activeSeason.league.name)
+            }
+          })
+        }
+        
+        return {
+          id: String(team.id),
+          name: team.name as string,
+          country_id: team.country_id as number,
+          season_map: Array.isArray(team.season_map)
+            ? team.season_map.map((s: any) => {
+                const seasonData: TeamSeason = {
+                  id: String(s.id),
+                  name: s.name,
+                }
+                
+                // Add league name if available
+                const leagueName = seasonLeagueMap.get(seasonData.id)
+                if (leagueName) {
+                  seasonData.league_name = leagueName
+                }
+                
+                return seasonData
+              })
+            : [],
+        }
+      })
 
       return {
         data: teams,

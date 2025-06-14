@@ -88,10 +88,68 @@ function extractTopStats(statsData: any): TeamOverviewStats {
     }))
   }
   
+  // Try to get the specific categories we need
+  let topRated = getTopPlayers('rating')
+  let topScorers = getTopPlayers('goals')
+  let topAssists = getTopPlayers('assists')
+  
+  // If we have player_stats, we can calculate these ourselves
+  if (statsData.player_stats && Array.isArray(statsData.player_stats)) {
+    const playerStats = statsData.player_stats
+    
+    // Calculate top scorers if not already present
+    if (topScorers.length === 0) {
+      const playersWithGoals = playerStats
+        .filter((p: any) => typeof p.goals === 'number' && p.goals > 0)
+        .sort((a: any, b: any) => (b.goals || 0) - (a.goals || 0))
+        .slice(0, 3)
+      
+      topScorers = playersWithGoals.map((p: any) => ({
+        player_id: p.player_id,
+        name: p.name,
+        image_path: p.image_path || undefined,
+        value: p.goals || 0,
+        position: p.position || undefined
+      }))
+    }
+    
+    // Calculate top assists if not already present
+    if (topAssists.length === 0) {
+      const playersWithAssists = playerStats
+        .filter((p: any) => typeof p.assists === 'number' && p.assists > 0)
+        .sort((a: any, b: any) => (b.assists || 0) - (a.assists || 0))
+        .slice(0, 3)
+      
+      topAssists = playersWithAssists.map((p: any) => ({
+        player_id: p.player_id,
+        name: p.name,
+        image_path: p.image_path || undefined,
+        value: p.assists || 0,
+        position: p.position || undefined
+      }))
+    }
+    
+    // Calculate top rated if not already present
+    if (topRated.length === 0) {
+      const playersWithRating = playerStats
+        .filter((p: any) => typeof p.rating === 'number' && p.rating > 0)
+        .sort((a: any, b: any) => (b.rating || 0) - (a.rating || 0))
+        .slice(0, 3)
+      
+      topRated = playersWithRating.map((p: any) => ({
+        player_id: p.player_id,
+        name: p.name,
+        image_path: p.image_path || undefined,
+        value: p.rating || 0,
+        position: p.position || undefined
+      }))
+    }
+  }
+  
   return {
-    top_rated: getTopPlayers('rating'),
-    top_scorers: getTopPlayers('goals'),
-    top_assists: getTopPlayers('assists')
+    top_rated: topRated,
+    top_scorers: topScorers,
+    top_assists: topAssists
   }
 }
 
@@ -109,6 +167,28 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
   }
 
   try {
+    // Import getPayload
+    const { getPayload } = await import('payload')
+    const payload = await getPayload({ config: await import('@/payload.config').then(m => m.default) })
+    
+    // Fetch team data to get the team name
+    const team = await payload.findByID({
+      collection: 'teams',
+      id: parseInt(id, 10),
+    })
+    
+    if (!team) {
+      return Response.json({ error: 'Team not found' }, { status: 404 })
+    }
+    
+    // Determine the current season ID from activeseasons
+    let currentSeasonId: string | undefined
+    if (team.activeseasons && Array.isArray(team.activeseasons) && team.activeseasons.length > 0) {
+      // Prefer Premier League season if available
+      const plSeason = team.activeseasons.find((s: any) => s.league_id === 8)
+      currentSeasonId = plSeason ? String(plSeason.id) : String(team.activeseasons[0].id)
+    }
+    
     // Fetch data from existing services
     const [fixturesData, tableData, statsData] = await Promise.all([
       teamDataFetcher.getFixtures(id, { 
@@ -118,7 +198,7 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
         includeNextMatch: true 
       }),
       teamDataFetcher.getTable(id),
-      teamDataFetcher.getStats(id)
+      teamDataFetcher.getStats(id, currentSeasonId, true) // Pass current season and includeAllPlayers
     ])
 
     // Calculate team form from recent matches
@@ -133,15 +213,29 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
     // Get recent fixtures (last 3 completed matches)
     const recentFixtures = fixturesData.docs.slice(0, 3)
     
-    // Determine current season
-    const currentSeasonId = statsData.season_id || parseInt(Object.keys(tableData)[0]) || 0
-    const currentSeasonName = statsData.seasons?.find(s => s.id.toString() === currentSeasonId.toString())?.name || 'Current Season'
+    // Update season info based on what was actually returned from stats
+    const actualSeasonId = statsData.season_id || currentSeasonId || parseInt(Object.keys(tableData)[0]) || 0
+    let seasonName = 'Current Season'
+    
+    // Try to get season name from team's activeseasons or season_map
+    if (team.activeseasons && Array.isArray(team.activeseasons)) {
+      const activeSeason = team.activeseasons.find((s: any) => s.id === actualSeasonId)
+      if (activeSeason) {
+        seasonName = activeSeason.name
+      }
+    }
+    if (seasonName === 'Current Season' && team.season_map && Array.isArray(team.season_map)) {
+      const season = team.season_map.find((s: any) => s.id === actualSeasonId)
+      if (season) {
+        seasonName = season.name
+      }
+    }
     
     const overview: TeamOverviewCompact = {
       id: id,
-      name: 'Team Name', // TODO: Get from team base data
-      season_id: currentSeasonId,
-      season_name: currentSeasonName,
+      name: team.name || 'Unknown Team',
+      season_id: actualSeasonId,
+      season_name: seasonName,
       form,
       next_match: fixturesData.nextMatch,
       current_position: currentPosition,

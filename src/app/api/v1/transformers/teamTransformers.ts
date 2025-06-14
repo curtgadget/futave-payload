@@ -370,14 +370,34 @@ function determineQualificationStatus(
  * Transform basic team information from the raw API response
  */
 export function transformTeamBase(rawTeam: RawTeam) {
+  // Create a map of season IDs to league names from activeseasons if available
+  const seasonLeagueMap = new Map<string, string>()
+  if (Array.isArray(rawTeam.activeseasons)) {
+    rawTeam.activeseasons.forEach((activeSeason: any) => {
+      if (activeSeason.id && activeSeason.league?.name) {
+        seasonLeagueMap.set(String(activeSeason.id), activeSeason.league.name)
+      }
+    })
+  }
+  
   return {
     id: String(rawTeam.id),
     name: rawTeam.name,
     season_map:
-      rawTeam.season_map?.map((season) => ({
-        id: String(season.id || 0),
-        name: season.name || 'Unknown Season',
-      })) || [],
+      rawTeam.season_map?.map((season) => {
+        const seasonData: TeamSeason = {
+          id: String(season.id || 0),
+          name: season.name || 'Unknown Season',
+        }
+        
+        // Add league name if available
+        const leagueName = seasonLeagueMap.get(seasonData.id)
+        if (leagueName) {
+          seasonData.league_name = leagueName
+        }
+        
+        return seasonData
+      }) || [],
   }
 }
 
@@ -1238,7 +1258,11 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
       goals_against: 0,
       goal_difference: 0,
     },
-    season_id: seasonId ? parseInt(seasonId) : 0,
+    current_season: {
+      season_id: seasonId ? parseInt(seasonId) : 0,
+      season_name: 'Unknown Season',
+      league_name: undefined,
+    },
     seasons: [],
     top_stats: [], // Initialize this as an empty array
   }
@@ -1259,8 +1283,18 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   }
 
   // Extract available seasons from statistics data
-  const availableSeasons: { id: string; name: string }[] = []
+  const availableSeasons: { id: string; name: string; league_name?: string }[] = []
   const statisticsData = rawTeam.statistics as Record<string, any>
+
+  // Create a map of season IDs to league names from activeseasons
+  const seasonLeagueMap = new Map<string, string>()
+  if (Array.isArray(rawTeam.activeseasons)) {
+    rawTeam.activeseasons.forEach((activeSeason: any) => {
+      if (activeSeason.id && activeSeason.league?.name) {
+        seasonLeagueMap.set(String(activeSeason.id), activeSeason.league.name)
+      }
+    })
+  }
 
   // First pass: collect all available seasons
   for (const [key, value] of Object.entries(statisticsData)) {
@@ -1269,10 +1303,25 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
 
     // Add to available seasons for the dropdown
     if (value.season?.id && value.season?.name) {
-      availableSeasons.push({
-        id: String(value.season.id),
+      const seasonId = String(value.season.id)
+      const seasonData: { id: string; name: string; league_name?: string } = {
+        id: seasonId,
         name: value.season.name,
-      })
+      }
+      
+      // Try to get league name from multiple sources
+      if (value.league?.name) {
+        // Direct league info in statistics
+        seasonData.league_name = value.league.name
+      } else if (seasonLeagueMap.has(seasonId)) {
+        // From activeseasons map
+        seasonData.league_name = seasonLeagueMap.get(seasonId)
+      } else if (value.competition?.name) {
+        // Alternative field name
+        seasonData.league_name = value.competition.name
+      }
+      
+      availableSeasons.push(seasonData)
     }
   }
 
@@ -1314,8 +1363,22 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
 
     // Process the statistics for the target season
     if (targetSeasonId && String(value.season?.id) === targetSeasonId) {
-      // Set the season_id in the result
-      result.season_id = value.season?.id || 0
+      // Set the current season info
+      result.current_season.season_id = value.season?.id || 0
+      
+      // Set season name if available
+      if (value.season?.name) {
+        result.current_season.season_name = value.season.name
+      }
+      
+      // Try to get league name from various sources
+      if (value.league?.name) {
+        result.current_season.league_name = value.league.name
+      } else if (value.competition?.name) {
+        result.current_season.league_name = value.competition.name
+      } else if (seasonLeagueMap.has(String(result.current_season.season_id))) {
+        result.current_season.league_name = seasonLeagueMap.get(String(result.current_season.season_id))
+      }
 
       // Process team statistics
       if (value.details && Array.isArray(value.details)) {
@@ -1639,15 +1702,73 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
     }
   }
 
+  // If we didn't get league names from statistics, try to enrich from activeseasons
+  if (Array.isArray(rawTeam.activeseasons)) {
+    // Create a map for quick lookup
+    const activeSeasonsMap = new Map<string, any>()
+    rawTeam.activeseasons.forEach((as: any) => {
+      if (as.id) {
+        activeSeasonsMap.set(String(as.id), as)
+      }
+    })
+    
+    // Enrich available seasons with league data
+    availableSeasons.forEach((season) => {
+      if (!season.league_name && activeSeasonsMap.has(season.id)) {
+        const activeSeason = activeSeasonsMap.get(season.id)
+        if (activeSeason.league?.name) {
+          season.league_name = activeSeason.league.name
+        }
+      }
+    })
+  }
+  
+  // Also check season_map as another source
+  if (!availableSeasons.length && Array.isArray(rawTeam.season_map)) {
+    // If no seasons from statistics, use season_map
+    rawTeam.season_map.forEach((season: any) => {
+      if (season.id && season.name) {
+        const seasonData: { id: string; name: string; league_name?: string } = {
+          id: String(season.id),
+          name: season.name,
+        }
+        
+        // Try to find league info from activeseasons
+        if (Array.isArray(rawTeam.activeseasons)) {
+          const activeSeason = rawTeam.activeseasons.find((as: any) => String(as.id) === String(season.id))
+          if (activeSeason?.league?.name) {
+            seasonData.league_name = activeSeason.league.name
+          }
+        }
+        
+        availableSeasons.push(seasonData)
+      }
+    })
+  }
+  
   // Set available seasons for dropdown selection
   result.seasons = availableSeasons
 
   // If no statistics were processed but we have available seasons, 
   // this means the target season wasn't found, so fallback to the best default
-  if (result.season_id === 0 && availableSeasons.length > 0) {
+  if (result.current_season.season_id === 0 && availableSeasons.length > 0) {
     const fallbackSeasonId = getBestDefaultSeason()
     if (fallbackSeasonId) {
       return transformTeamStats(rawTeam, fallbackSeasonId)
+    }
+  }
+  
+  // If we have a season_id but no season_name or league_name, try to populate from availableSeasons
+  if (result.current_season.season_id && 
+      (result.current_season.season_name === 'Unknown Season' || !result.current_season.league_name)) {
+    const matchingSeason = availableSeasons.find(s => s.id === String(result.current_season.season_id))
+    if (matchingSeason) {
+      if (result.current_season.season_name === 'Unknown Season' && matchingSeason.name) {
+        result.current_season.season_name = matchingSeason.name
+      }
+      if (!result.current_season.league_name && matchingSeason.league_name) {
+        result.current_season.league_name = matchingSeason.league_name
+      }
     }
   }
 

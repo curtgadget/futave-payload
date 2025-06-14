@@ -3,13 +3,14 @@ export type TeamTab = 'overview' | 'table' | 'fixtures' | 'results' | 'squad' | 
 export type TeamBase = {
   id: string
   name: string
-  season_map?: { id: string; name: string }[]
+  season_map?: TeamSeason[]
   // Add other base team fields here
 }
 
 export type TeamSeason = {
   id: string
   name: string
+  league_name?: string
 }
 
 // New standings types
@@ -199,10 +200,16 @@ export type TopPlayersStat = {
   players: TopPlayerStatItem[]
 }
 
+export type CurrentSeasonInfo = {
+  season_id: number
+  season_name: string
+  league_name?: string
+}
+
 export type TeamStatistics = {
   player_stats: PlayerSeasonStats[]
   team_stats: TeamSeasonStats
-  season_id: number
+  current_season: CurrentSeasonInfo
   seasons: TeamSeason[] // Available seasons for dropdown selection
   top_stats: TopPlayersStat[] // Top performing players in different categories
 }
