@@ -78,8 +78,18 @@ async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
     return []
   }
 
-  // Get all coach IDs from the team
-  const coachIds = team.coaches.map((coach: any) => coach.coach_id)
+  // Filter for current coaches only
+  const currentDate = new Date().toISOString().split('T')[0] // Format: YYYY-MM-DD
+  const currentCoaches = team.coaches.filter((coach: any) => {
+    // Include if no end date (still active)
+    if (!coach.end) return true
+    
+    // Include if end date is in the future
+    return coach.end >= currentDate
+  })
+
+  // Get all coach IDs from current coaches
+  const coachIds = currentCoaches.map((coach: any) => coach.coach_id)
 
   // Fetch coaches from the coaches collection
   const coachesResult = await payload.find({
@@ -92,8 +102,8 @@ async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
   // Transform and merge coach data
   const transformedCoaches = coachesResult.docs.map((coach: any) => transformCoach(coach))
   return transformedCoaches.map((coach: any) => {
-    // Find matching coach data from team.coaches
-    const teamCoachData = team.coaches.find((tc: any) => tc.coach_id === coach.id)
+    // Find matching coach data from currentCoaches
+    const teamCoachData = currentCoaches.find((tc: any) => tc.coach_id === coach.id)
 
     if (teamCoachData) {
       // Merge the data, preserving the transformed coach data but adding team-specific fields
@@ -139,8 +149,18 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
     }
   }
 
-  // Get all player IDs from the team
-  const playerIds = team.players.map((player: any) => player.player_id)
+  // Filter for current players only
+  const currentDate = new Date().toISOString().split('T')[0] // Format: YYYY-MM-DD
+  const currentPlayers = team.players.filter((player: any) => {
+    // Include if no end date (still active)
+    if (!player.end) return true
+    
+    // Include if end date is in the future
+    return player.end >= currentDate
+  })
+
+  // Get all player IDs from current players
+  const playerIds = currentPlayers.map((player: any) => player.player_id)
 
   // Fetch detailed player information
   const playersResult = await payload.find({
@@ -158,7 +178,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
 
   // Collect all unique position IDs for metadata lookup
   const positionIds = new Set<number>()
-  team.players.forEach((player: any) => {
+  currentPlayers.forEach((player: any) => {
     if (player.position_id) positionIds.add(player.position_id)
     if (player.detailed_position_id) positionIds.add(player.detailed_position_id)
   })
@@ -175,7 +195,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   }
 
   // Transform and organize players by position
-  organizePlayersByPosition(team.players, playerDetailsMap, squadByPosition, positionMetadata)
+  organizePlayersByPosition(currentPlayers, playerDetailsMap, squadByPosition, positionMetadata)
   
   // Sort each position group
   sortPlayerGroups(squadByPosition)
@@ -195,15 +215,9 @@ function organizePlayersByPosition(
     let transformedPlayer: TeamPlayer
 
     if (!playerDetails) {
-      // Handle missing player details
-      transformedPlayer = {
-        id: String(squadMember.player_id),
-        name: '',
-        captain: squadMember.captain,
-        jersey_number: squadMember.jersey_number,
-        position_id: squadMember.position_id,
-        detailed_position_id: squadMember.detailed_position_id,
-      }
+      // Skip players without details in the database
+      console.warn(`Player ${squadMember.player_id} not found in players collection, skipping...`)
+      return
     } else {
       // Transform player details and override with squad-specific data
       const basePlayer = transformPlayer(playerDetails)
