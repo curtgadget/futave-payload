@@ -55,6 +55,8 @@ export type StandingTable = {
 export type StandingsData = {
   id: number
   name: string
+  league_name?: string
+  league_year?: string
   type: string
   league_id: number
   season_id: number

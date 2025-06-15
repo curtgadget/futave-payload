@@ -558,10 +558,16 @@ export const teamDataFetcher: TabDataFetcher = {
 
       const team = teamResult.docs[0]
 
-      // Get league IDs from activeseasons
+      // Get league IDs and season IDs from activeseasons
       const leagueIds: number[] = []
+      const activeSeasonIds: number[] = []
       if (team.activeseasons && Array.isArray(team.activeseasons)) {
         team.activeseasons.forEach((season: any) => {
+          // Collect season IDs
+          if (season.id) {
+            activeSeasonIds.push(season.id)
+          }
+          // Collect league IDs
           const leagueId = season.league_id || season.league?.id
           if (leagueId && !leagueIds.includes(leagueId)) {
             leagueIds.push(leagueId)
@@ -589,7 +595,7 @@ export const teamDataFetcher: TabDataFetcher = {
         },
       })
 
-      // Merge standings and filter to only include seasons where the team appears
+      // Merge standings and filter to only include active seasons where the team appears
       const teamStandings: Record<string, any> = {}
       
       standingsResult.docs.forEach((doc) => {
@@ -597,6 +603,12 @@ export const teamDataFetcher: TabDataFetcher = {
           const standings = doc.standings as Record<string, any>
           
           Object.entries(standings).forEach(([seasonId, seasonData]) => {
+            // First check if this season is in the active seasons list
+            const seasonIdNum = parseInt(seasonId, 10)
+            if (!activeSeasonIds.includes(seasonIdNum)) {
+              return // Skip this season if it's not in activeseasons
+            }
+
             // Check if team appears in this season's standings
             let teamFound = false
             let filteredData = null
@@ -666,6 +678,7 @@ export const teamDataFetcher: TabDataFetcher = {
         id: team.id as number,
         name: team.name as string,
         standings: Object.keys(teamStandings).length > 0 ? teamStandings : null,
+        activeseasons: team.activeseasons,
       }
 
       const transformedStandings = transformTeamTable(rawTeam)

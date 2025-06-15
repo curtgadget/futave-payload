@@ -413,6 +413,21 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
     return transformedStandings
   }
 
+  // Create maps for season IDs to league names and years from activeseasons
+  const seasonLeagueMap = new Map<string, string>()
+  const seasonYearMap = new Map<string, string>()
+  if (Array.isArray(rawTeam.activeseasons)) {
+    rawTeam.activeseasons.forEach((season: any) => {
+      const seasonIdStr = String(season.id)
+      if (season.id && season.league?.name) {
+        seasonLeagueMap.set(seasonIdStr, season.league.name)
+      }
+      if (season.id && season.name) {
+        seasonYearMap.set(seasonIdStr, season.name)
+      }
+    })
+  }
+
   /**
    * Helper function to create a standard standing row from any standing object format
    */
@@ -599,6 +614,8 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
             transformedStandings[seasonId] = {
               id: parseInt(seasonId),
               name: `Season ${seasonId}`,
+              league_name: seasonLeagueMap.get(seasonId) || undefined,
+              league_year: seasonYearMap.get(seasonId) || undefined,
               type: 'league',
               league_id: representativeItem.league_id || 0,
               season_id: representativeItem.season_id || parseInt(seasonId),
@@ -640,6 +657,8 @@ export function transformTeamTable(rawTeam: RawTeam): TeamTableResponse {
             transformedStandings[seasonId] = {
               id: data.id,
               name: data.name || '',
+              league_name: seasonLeagueMap.get(seasonId) || undefined,
+              league_year: seasonYearMap.get(seasonId) || undefined,
               type: data.type || '',
               league_id: typeof data.league_id === 'number' ? data.league_id : 0,
               season_id: typeof data.season_id === 'number' ? data.season_id : 0,
