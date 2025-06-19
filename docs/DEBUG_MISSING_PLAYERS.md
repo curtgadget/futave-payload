@@ -30,17 +30,22 @@ pnpm debug-players export
 ### 3. Use the Debug API Endpoint
 
 ```bash
+# Set your API URL (adjust for your environment)
+export API_URL="http://localhost:3000"  # Development
+# export API_URL="https://staging.futave.com"  # Staging  
+# export API_URL="https://api.futave.com"  # Production
+
 # Get current debug summary
-curl http://localhost:3000/api/v1/debug/missing-players
+curl $API_URL/api/v1/debug/missing-players
 
 # Analyze a specific team
-curl "http://localhost:3000/api/v1/debug/missing-players?action=analyze&teamId=9"
+curl "$API_URL/api/v1/debug/missing-players?action=analyze&teamId=9"
 
 # Sync missing players for a team
-curl "http://localhost:3000/api/v1/debug/missing-players?action=sync&teamId=9"
+curl "$API_URL/api/v1/debug/missing-players?action=sync&teamId=9"
 
 # Export all collected data
-curl "http://localhost:3000/api/v1/debug/missing-players?action=export" > missing-players.json
+curl "$API_URL/api/v1/debug/missing-players?action=export" > missing-players.json
 ```
 
 ## Advanced Logging Configuration

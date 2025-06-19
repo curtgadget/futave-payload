@@ -32,14 +32,20 @@ pnpm build
 # Start production server
 pnpm start
 
-# Create a new sync handler
-pnpm create-sync
+# Sync matches with flexible options
+node scripts/sync-matches.ts
 
 # Calculate wave scores for matches
 node scripts/calculate-wave-scores.ts
 
-# Test smart sorting functionality
+# Test smart sorting functionality  
 node scripts/test-smart-sorting.ts
+
+# Test Sportmonks API integration
+node scripts/test-sportmonks.ts
+
+# Debug and sync missing players
+pnpm debug-players
 
 # Monitor API rate limit status
 curl http://localhost:3000/api/v1/rate-limit-status
