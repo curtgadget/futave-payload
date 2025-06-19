@@ -15,7 +15,8 @@
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
     "create-sync": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/create-sync-handler.ts",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "debug-players": "cross-env NODE_OPTIONS=--no-deprecation tsx scripts/debug-missing-players.ts"
   },
   "dependencies": {
     "@payloadcms/db-mongodb": "latest",

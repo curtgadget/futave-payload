@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 
 import { getPositionGroup, PlayerStatisticTypeIds } from '@/constants/team'
 import { calculateTopPlayerStats } from '../utils/statsUtils'
+import { logMissingPlayer } from '@/utilities/debugMissingPlayers'
 import {
   transformPlayer,
   transformTeamStats,
@@ -195,7 +196,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   }
 
   // Transform and organize players by position
-  organizePlayersByPosition(currentPlayers, playerDetailsMap, squadByPosition, positionMetadata)
+  organizePlayersByPosition(currentPlayers, playerDetailsMap, squadByPosition, positionMetadata, team)
   
   // Sort each position group
   sortPlayerGroups(squadByPosition)
@@ -209,15 +210,38 @@ function organizePlayersByPosition(
   playerDetailsMap: Map<number, any>,
   squadByPosition: TeamSquadByPosition,
   positionMetadata: Map<number, any>,
+  team: any,
 ): void {
   squadMembers.forEach((squadMember) => {
     const playerDetails = playerDetailsMap.get(squadMember.player_id)
     let transformedPlayer: TeamPlayer
 
     if (!playerDetails) {
-      // Skip players without details in the database
-      console.warn(`Player ${squadMember.player_id} not found in players collection, skipping...`)
-      return
+      // Create a minimal player object for players not yet in the database
+      logMissingPlayer(squadMember.player_id, team.id, 'squad', {
+        jerseyNumber: squadMember.jersey_number,
+        positionId: squadMember.position_id,
+        teamName: team.name,
+      })
+      transformedPlayer = {
+        id: String(squadMember.player_id),
+        name: `Player ${squadMember.player_id}`, // Placeholder name
+        display_name: `Player ${squadMember.player_id}`,
+        common_name: null,
+        first_name: null,
+        last_name: null,
+        gender: null,
+        date_of_birth: null,
+        height: null,
+        weight: null,
+        image_path: null,
+        captain: squadMember.captain || false,
+        jersey_number: squadMember.jersey_number || undefined,
+        position_id: squadMember.position_id || undefined,
+        detailed_position_id: squadMember.detailed_position_id || undefined,
+        country_id: null,
+        nationality: null,
+      }
     } else {
       // Transform player details and override with squad-specific data
       const basePlayer = transformPlayer(playerDetails)

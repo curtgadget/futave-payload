@@ -27,7 +27,29 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
     })
-    return response.data[0]
+    
+    // Debug: Log response structure
+    console.log(`Debug: API response for player ${id}:`, {
+      hasData: !!response.data,
+      dataLength: Array.isArray(response.data) ? response.data.length : 'not array',
+      dataType: typeof response.data,
+      playerIdInData: response.data && typeof response.data === 'object' ? (response.data as any).id : 'no id'
+    })
+    
+    if (!response.data) {
+      throw new Error(`No player data found for player ${id}`)
+    }
+    
+    // Handle both array and object responses
+    if (Array.isArray(response.data)) {
+      if (response.data.length === 0) {
+        throw new Error(`No player data found for player ${id}`)
+      }
+      return response.data[0]
+    } else {
+      // For individual player requests, data is returned as an object directly
+      return response.data as SportmonksPlayer
+    }
   }
 
   async function getByCountry(
