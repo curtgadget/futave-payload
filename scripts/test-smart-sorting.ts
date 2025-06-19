@@ -7,7 +7,7 @@ import 'dotenv/config'
  * Tests the enhanced matches endpoint with wave score integration
  */
 
-const BASE_URL = 'http://localhost:3001'
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'
 
 interface TestCase {
   name: string
@@ -106,6 +106,8 @@ async function runTest(testCase: TestCase): Promise<void> {
 async function main() {
   console.log('🚀 Testing Smart Sorting Implementation')
   console.log('=====================================')
+  console.log(`🌐 API Base URL: ${BASE_URL}`)
+  console.log()
   
   for (const testCase of testCases) {
     await runTest(testCase)

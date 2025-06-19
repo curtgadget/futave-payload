@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-
+import 'dotenv/config'
 import { spawn } from 'child_process'
 import chalk from 'chalk'
 
@@ -20,13 +20,14 @@ function printUsage() {
 }
 
 async function runAnalysis(teamId?: string) {
-  const baseUrl = 'http://localhost:3000/api/v1/debug/missing-players'
-  let url = baseUrl
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'
+  const apiUrl = `${baseUrl}/api/v1/debug/missing-players`
+  let url = apiUrl
 
   if (teamId) {
-    url = `${baseUrl}?action=analyze&teamId=${teamId}`
+    url = `${apiUrl}?action=analyze&teamId=${teamId}`
   } else {
-    url = `${baseUrl}?action=export`
+    url = `${apiUrl}?action=export`
   }
 
   try {
@@ -49,7 +50,8 @@ async function runAnalysis(teamId?: string) {
 }
 
 async function runSync(teamId: string) {
-  const url = `http://localhost:3000/api/v1/debug/missing-players?action=sync&teamId=${teamId}`
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:3000'
+  const url = `${baseUrl}/api/v1/debug/missing-players?action=sync&teamId=${teamId}`
 
   try {
     console.log(chalk.yellow('Starting sync... This may take a while depending on the number of missing players.'))
