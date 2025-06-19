@@ -2,11 +2,21 @@ import { TaskHandler } from 'payload'
 import { createPlayerSync } from '@/services/sync/handlers/player.sync'
 
 export const syncPlayersHandler: TaskHandler<'syncPlayers'> = async () => {
-  const playerSync = createPlayerSync({
-    apiKey: process.env.SPORTMONKS_API_KEY || '',
-    baseUrl: process.env.SPORTMONKS_BASE_URL,
-    concurrencyLimit: 5, // Control API request concurrency
-  })
+  // Check for incremental sync flag from environment or default to false
+  const isIncremental = process.env.PLAYER_SYNC_INCREMENTAL === 'true'
+  const lastSyncHours = parseInt(process.env.PLAYER_SYNC_HOURS || '24', 10)
+
+  const playerSync = createPlayerSync(
+    {
+      apiKey: process.env.SPORTMONKS_API_KEY || '',
+      baseUrl: process.env.SPORTMONKS_BASE_URL,
+      concurrencyLimit: 8, // Optimized API request concurrency (within 3000/hour rate limit)
+    },
+    {
+      incremental: isIncremental,
+      lastSyncHours: lastSyncHours,
+    }
+  )
 
   try {
     const result = await playerSync.sync()

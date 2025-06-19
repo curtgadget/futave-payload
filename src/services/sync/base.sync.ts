@@ -72,6 +72,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
       // Process in batches to avoid memory issues
       const batchSize = syncOptions.batchSize || 100
       const totalBatches = Math.ceil(items.length / batchSize)
+      const startTime = Date.now()
 
       payload.logger.info({
         msg: `Processing ${items.length} ${syncOptions.collection} in ${totalBatches} batches`,
@@ -84,12 +85,28 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize)
         const batchNumber = Math.floor(i / batchSize) + 1
+        const batchStartTime = Date.now()
+
+        // Calculate progress percentage
+        const progressPercent = Math.round((batchNumber / totalBatches) * 100)
+        
+        // Estimate time remaining
+        const elapsedTime = Date.now() - startTime
+        const avgTimePerBatch = elapsedTime / (batchNumber - 1 || 1)
+        const remainingBatches = totalBatches - batchNumber
+        const estimatedTimeRemaining = Math.round((avgTimePerBatch * remainingBatches) / 1000)
 
         payload.logger.info({
-          msg: `Processing batch ${batchNumber}/${totalBatches}`,
+          msg: `Processing batch ${batchNumber}/${totalBatches} (${progressPercent}%) - ETA: ${estimatedTimeRemaining}s`,
           collection: syncOptions.collection,
           batch: batchNumber,
           batchSize: batch.length,
+          progress: {
+            percent: progressPercent,
+            current: batchNumber,
+            total: totalBatches,
+            estimatedTimeRemaining: estimatedTimeRemaining,
+          }
         })
 
         // Transform all items in the batch
@@ -211,47 +228,102 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
           }
         }
 
-        // Perform updates if any
+        // Perform bulk updates if any
         if (itemsToUpdate.length > 0) {
-          const limit = pLimit(10) // Limit concurrent updates to avoid overwhelming the DB
-          const updateResults = await Promise.all(
-            itemsToUpdate.map((item) =>
-              limit(async () => {
-                try {
-                  await payload.update({
-                    collection: syncOptions.collection as any,
-                    where: { id: { equals: item.id } },
-                    data: item.data,
-                  })
-                  return { success: true, id: item.id }
-                } catch (error) {
-                  stats.failed++
-                  const formattedError = formatError(error)
-                  stats.errors.push({
-                    id: item.id,
-                    error: formattedError.message,
-                    data: {
-                      errorDetails: formattedError,
-                      errorStack: formattedError.stack,
-                      errorCause: formattedError.cause,
-                    },
-                  })
-                  return { success: false, id: item.id }
-                }
-              }),
-            ),
-          )
+          try {
+            // Use MongoDB bulk write operations for better performance
+            const bulkOps = itemsToUpdate.map((item) => ({
+              updateOne: {
+                filter: { _id: item.id },
+                update: {
+                  $set: {
+                    ...item.data,
+                    updatedAt: new Date(),
+                  },
+                },
+              },
+            }))
 
-          // Count successful updates
-          stats.updated += updateResults.filter((r) => r.success).length
+            const bulkResult = await payload.db.collections[syncOptions.collection].bulkWrite(
+              bulkOps,
+              { ordered: false }, // Continue on error
+            )
+
+            stats.updated += bulkResult.modifiedCount || 0
+
+            // Log any mismatches between expected and actual updates
+            if (bulkResult.modifiedCount !== itemsToUpdate.length) {
+              console.warn(
+                `Warning: Expected to update ${itemsToUpdate.length} items, but only updated ${bulkResult.modifiedCount}`,
+              )
+            }
+
+            // Handle any write errors
+            if (bulkResult.hasWriteErrors && bulkResult.hasWriteErrors()) {
+              const writeErrors = bulkResult.getWriteErrors()
+              for (const writeError of writeErrors) {
+                stats.failed++
+                stats.errors.push({
+                  id: writeError.err?.op?._id || -1,
+                  error: `Bulk update failed: ${writeError.errmsg}`,
+                  data: {
+                    errorDetails: writeError,
+                  },
+                })
+              }
+            }
+          } catch (error) {
+            // Fallback to individual updates if bulk update fails entirely
+            console.warn('Bulk update failed, falling back to individual updates:', error)
+
+            const limit = pLimit(10) // Limit concurrent updates to avoid overwhelming the DB
+            const updateResults = await Promise.all(
+              itemsToUpdate.map((item) =>
+                limit(async () => {
+                  try {
+                    await payload.update({
+                      collection: syncOptions.collection as any,
+                      where: { id: { equals: item.id } },
+                      data: item.data,
+                    })
+                    return { success: true, id: item.id }
+                  } catch (error) {
+                    stats.failed++
+                    const formattedError = formatError(error)
+                    stats.errors.push({
+                      id: item.id,
+                      error: formattedError.message,
+                      data: {
+                        errorDetails: formattedError,
+                        errorStack: formattedError.stack,
+                        errorCause: formattedError.cause,
+                      },
+                    })
+                    return { success: false, id: item.id }
+                  }
+                }),
+              ),
+            )
+
+            // Count successful updates
+            stats.updated += updateResults.filter((r) => r.success).length
+          }
         }
 
+        const batchDuration = Date.now() - batchStartTime
+        const batchRate = Math.round((batch.length / batchDuration) * 1000) // items per second
+
         payload.logger.info({
-          msg: `Completed batch ${batchNumber}/${totalBatches}: created ${itemsToCreate.length}, updated ${itemsToUpdate.length}`,
+          msg: `Completed batch ${batchNumber}/${totalBatches}: created ${itemsToCreate.length}, updated ${itemsToUpdate.length} (${batchDuration}ms, ${batchRate} items/sec)`,
           collection: syncOptions.collection,
           batch: batchNumber,
           created: itemsToCreate.length,
           updated: itemsToUpdate.length,
+          performance: {
+            duration: batchDuration,
+            itemsPerSecond: batchRate,
+            itemsProcessed: batch.length,
+          }
         })
       }
 
