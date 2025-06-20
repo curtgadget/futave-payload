@@ -12,7 +12,7 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
     const endpoint = '/players'
     console.log('Calling getAll with endpoint:', endpoint)
 
-    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    // Fetch players with pagination (Sportmonks supports up to 1000 per page)
     return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
@@ -59,7 +59,7 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
     const endpoint = '/players'
     console.log('Calling getByCountry with endpoint:', endpoint)
 
-    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    // Fetch players with pagination (Sportmonks supports up to 1000 per page)
     return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
@@ -74,7 +74,7 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
     const endpoint = `/players/search/${name}`
     console.log('Calling getByName with endpoint:', endpoint)
 
-    // Note: Sportmonks API returns 25 players per page regardless of per_page parameter
+    // Fetch players with pagination (Sportmonks supports up to 1000 per page)
     return client.fetchAllPages<SportmonksPlayer>(endpoint, {
       ...params,
       include: params.include || DEFAULT_INCLUDE,
@@ -86,5 +86,6 @@ export function createPlayerEndpoint(config: SportmonksConfig) {
     getById,
     getByCountry,
     getByName,
+    client, // Expose client for direct API calls
   }
 }

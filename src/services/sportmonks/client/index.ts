@@ -91,15 +91,15 @@ export function createSportmonksClient(config: SportmonksConfig) {
     const results: T[] = []
     console.log(`Starting fetchAllPages for endpoint: ${endpoint} with params:`, params)
 
-    // Set default per_page to 100 to reduce total API calls
+    // Set default per_page to 50 (Sportmonks max without populate filter)
     const fetchParams = {
       ...params,
-      per_page: params.per_page || 100, // Maximize items per page to reduce total API calls
+      per_page: params.per_page || 50, // Maximum allowed with includes enabled
     }
     
     // Get max pages limit (0 = unlimited)
     const maxPages = params.maxPages || 0
-    console.log(`Pagination config: maxPages=${maxPages === 0 ? 'unlimited' : maxPages}`)
+    console.log(`Pagination config: per_page=${fetchParams.per_page}, maxPages=${maxPages === 0 ? 'unlimited' : maxPages}`)
 
     let currentPage = 1
 

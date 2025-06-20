@@ -1,4 +1,4 @@
-import chalk from 'chalk'
+// import chalk from 'chalk'
 
 export interface MissingPlayerInfo {
   playerId: number
@@ -36,13 +36,13 @@ class MissingPlayersDebugger {
     const positionInfo = info.positionId ? ` pos:${info.positionId}` : ''
 
     console.log(
-      chalk.yellow('[MISSING PLAYER]'),
-      chalk.cyan(`${timestamp}`),
-      chalk.red(`Player ${info.playerId}`),
-      chalk.blue(`Team ${info.teamId}${teamInfo}`),
-      chalk.green(`${jerseyInfo}${positionInfo}`),
-      chalk.magenta(`Context: ${info.context}`),
-      info.additionalInfo ? chalk.gray(JSON.stringify(info.additionalInfo)) : ''
+      '[MISSING PLAYER]',
+      `${timestamp}`,
+      `Player ${info.playerId}`,
+      `Team ${info.teamId}${teamInfo}`,
+      `${jerseyInfo}${positionInfo}`,
+      `Context: ${info.context}`,
+      info.additionalInfo ? JSON.stringify(info.additionalInfo) : ''
     )
   }
 

@@ -24,6 +24,7 @@ export interface Config {
     coaches: Coach;
     rivals: Rival;
     'sync-metadata': SyncMetadatum;
+    'player-sync-checkpoint': PlayerSyncCheckpoint;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -44,6 +45,7 @@ export interface Config {
     coaches: CoachesSelect<false> | CoachesSelect<true>;
     rivals: RivalsSelect<false> | RivalsSelect<true>;
     'sync-metadata': SyncMetadataSelect<false> | SyncMetadataSelect<true>;
+    'player-sync-checkpoint': PlayerSyncCheckpointSelect<false> | PlayerSyncCheckpointSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -887,6 +889,71 @@ export interface SyncMetadatum {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-sync-checkpoint".
+ */
+export interface PlayerSyncCheckpoint {
+  id: string;
+  /**
+   * Unique identifier for this sync process
+   */
+  syncId: string;
+  /**
+   * Current page being processed
+   */
+  currentPage: number;
+  /**
+   * Total pages discovered from API pagination info
+   */
+  totalPagesDiscovered?: number | null;
+  /**
+   * Total number of players processed so far
+   */
+  playersProcessed: number;
+  /**
+   * When this checkpoint was last updated
+   */
+  lastSyncTime: string;
+  /**
+   * When the current sync cycle started
+   */
+  syncStartTime?: string | null;
+  /**
+   * Current state of the sync process
+   */
+  mode: 'fresh-start' | 'resuming' | 'completed' | 'rate-limited' | 'failed';
+  rateLimit?: {
+    /**
+     * API calls used in current hour
+     */
+    callsUsed?: number | null;
+    /**
+     * When rate limit resets
+     */
+    resetTime?: string | null;
+    /**
+     * Timestamp of last API call
+     */
+    lastCallTime?: string | null;
+  };
+  stats?: {
+    playersCreated?: number | null;
+    playersUpdated?: number | null;
+    playersFailed?: number | null;
+    pagesCompleted?: number | null;
+  };
+  /**
+   * Last error message if sync failed
+   */
+  lastError?: string | null;
+  /**
+   * Calculated time when sync can resume after rate limit
+   */
+  nextResumeTime?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -1056,6 +1123,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'sync-metadata';
         value: string | SyncMetadatum;
+      } | null)
+    | ({
+        relationTo: 'player-sync-checkpoint';
+        value: string | PlayerSyncCheckpoint;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -1413,6 +1484,38 @@ export interface SyncMetadataSelect<T extends boolean = true> {
   lastSyncAt?: T;
   ttlDays?: T;
   description?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "player-sync-checkpoint_select".
+ */
+export interface PlayerSyncCheckpointSelect<T extends boolean = true> {
+  syncId?: T;
+  currentPage?: T;
+  totalPagesDiscovered?: T;
+  playersProcessed?: T;
+  lastSyncTime?: T;
+  syncStartTime?: T;
+  mode?: T;
+  rateLimit?:
+    | T
+    | {
+        callsUsed?: T;
+        resetTime?: T;
+        lastCallTime?: T;
+      };
+  stats?:
+    | T
+    | {
+        playersCreated?: T;
+        playersUpdated?: T;
+        playersFailed?: T;
+        pagesCompleted?: T;
+      };
+  lastError?: T;
+  nextResumeTime?: T;
   updatedAt?: T;
   createdAt?: T;
 }

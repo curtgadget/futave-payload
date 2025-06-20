@@ -50,10 +50,10 @@ export function createPlayerSync(sportmonksConfig: SportmonksConfig, options: Pl
   // Fetch all players with debugging (full sync)
   async function fetchAllPlayers() {
     console.log('Starting full player fetch with pagination debugging enabled')
-    console.log('NOTE: Increased pagination limit to 1000 pages (up from 100)')
-    console.log('This allows fetching up to 25,000 players (25 per page × 1000 pages)')
+    console.log('Fetching all players with optimized pagination')
+    console.log('Using up to 1000 results per page to minimize API calls')
 
-    // Sportmonks API returns 25 players per page regardless of per_page parameter
+    // Fetch all players using optimized pagination
     const players = await playerEndpoint.getAll()
     console.log(`Total players fetched: ${players.length}`)
 
@@ -71,7 +71,7 @@ export function createPlayerSync(sportmonksConfig: SportmonksConfig, options: Pl
     collection: 'players',
     fetchData: fetchPlayers, // Use the new function that supports incremental sync
     transformData: transformPlayer,
-    batchSize: 25, // Aligned with Sportmonks API page size for better efficiency
+    batchSize: 100, // Optimized batch size for database operations
     concurrency: 10,
   })
 }
