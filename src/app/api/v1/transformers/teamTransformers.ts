@@ -1287,7 +1287,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   }
 
   // If no statistics data available, return empty result
-  if (!rawTeam.statistics || typeof rawTeam.statistics !== 'object') {
+  if (!rawTeam.statistics) {
     console.warn(`No statistics found for team: ${rawTeam.id}`)
 
     // Still populate seasons from season_map if available
@@ -1301,9 +1301,20 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
     return result
   }
 
+  // Handle both array and object formats for statistics
+  let statisticsArray: any[] = []
+  if (Array.isArray(rawTeam.statistics)) {
+    statisticsArray = rawTeam.statistics
+  } else if (typeof rawTeam.statistics === 'object') {
+    // Convert object format to array
+    statisticsArray = Object.values(rawTeam.statistics)
+  } else {
+    console.warn(`Invalid statistics format for team: ${rawTeam.id}`)
+    return result
+  }
+
   // Extract available seasons from statistics data
   const availableSeasons: { id: string; name: string; league_name?: string }[] = []
-  const statisticsData = rawTeam.statistics as Record<string, any>
 
   // Create a map of season IDs to league names from activeseasons
   const seasonLeagueMap = new Map<string, string>()
@@ -1316,7 +1327,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   }
 
   // First pass: collect all available seasons
-  for (const [key, value] of Object.entries(statisticsData)) {
+  for (const value of statisticsArray) {
     // Skip if this is not a valid season entry
     if (typeof value !== 'object' || !value) continue
 
@@ -1371,7 +1382,7 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
   const targetSeasonId = seasonId || getBestDefaultSeason()
 
   // Process statistics by season
-  for (const [key, value] of Object.entries(statisticsData)) {
+  for (const value of statisticsArray) {
     // Skip if this is not a valid season entry
     if (typeof value !== 'object' || !value) continue
 

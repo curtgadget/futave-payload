@@ -863,10 +863,10 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Transform team stats
       const teamStatsResponse = transformTeamStats(rawTeam, seasonId)
-
+      
       // If we have players in the team, fetch their individual statistics
       if (Array.isArray(team.players) && team.players.length > 0) {
-        const seasonIdNumber = seasonId ? parseInt(seasonId) : teamStatsResponse.season_id
+        const seasonIdNumber = seasonId ? parseInt(seasonId, 10) : teamStatsResponse.current_season.season_id
 
         // Get player statistics for the selected season
 
@@ -1174,7 +1174,7 @@ function processPlayerStats(
     // Find statistics for the requested season
     const playerSeasonStats = findPlayerSeasonStats(player.statistics, seasonId)
 
-    // Create the base player stats object with available data
+    // Create the base player stats object with available data - initialize all standard stats
     const playerStat: PlayerSeasonStats = {
       player_id: String(player.id),
       name: player.name || player.display_name || player.common_name || `Player ${player.id}`,
@@ -1183,12 +1183,15 @@ function processPlayerStats(
       image_path: player.image_path || null,
       appearances: 0,
       minutes_played: 0,
+      goals: 0,
+      assists: 0,
+      cards: { yellow: 0, red: 0 },
     }
 
     // Add position name if we can determine it
     if (player.position_id) {
       const positionGroup = getPositionGroup(player.position_id)
-      playerStat.position = positionGroup.charAt(0).toUpperCase() + positionGroup.slice(0, -1)
+      playerStat.position = positionGroup.charAt(0).toUpperCase() + positionGroup.slice(1, -1)
     }
 
     // Process statistics details if available
@@ -1259,9 +1262,6 @@ function processPlayerStats(
             break
 
           case PlayerStatisticTypeIds.YELLOW_CARDS:
-            if (!playerStat.cards) {
-              playerStat.cards = { yellow: 0, red: 0 }
-            }
             // Yellow cards might be stored directly or in various fields
             if (typeof value === 'number') {
               playerStat.cards.yellow = value
@@ -1437,6 +1437,7 @@ function getPlayerJerseyNumber(player: any): number | undefined {
   return undefined
 }
 
+
 /**
  * Find player statistics for a specific season - improved to handle more data formats
  */
@@ -1444,6 +1445,13 @@ function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: 
   // Handle missing statistics
   if (!statistics) {
     return null
+  }
+
+  // Handle array format (which is what we actually have in the database)
+  if (Array.isArray(statistics)) {
+    return statistics.find((stat: any) => 
+      stat && stat.season_id === seasonId
+    )
   }
 
   // Convert to object if it's not already
