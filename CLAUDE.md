@@ -240,6 +240,8 @@ Explain the how/why/what before executing changes. Modify only what was agreed u
 Use context7, perplexity-ask, DuckDuckGo, and project files liberally. Reference official documentation. Verify information against multiple sources.
 Use MongoDB MCP whenever you need to verify the data model or any data. The database is futave-backend
 
+**CRITICAL: When user provides external API documentation links, ALWAYS use WebFetch tool to read and verify against current implementation before making assumptions.**
+
 ### 5. MEMORY MANAGEMENT
 
 Keep memory bank concise and current. Update memories and documentation after completing subtasks. Ensure knowledge graphs reflect current understanding.
@@ -335,37 +337,85 @@ When encountering system issues, API problems, or bugs, follow this systematic a
 
 ### Required Debugging Steps
 
-1. **Reproduce the Issue**
+1. **Database Investigation First**
+   - For data-related issues, start with MongoDB queries before examining code
+   - Use concrete examples (specific team IDs, player IDs) to validate issues
+   - Count actual results vs. expected results to identify gaps
+
+2. **Reproduce the Issue**
    - Test the reported endpoint/functionality to confirm the problem
    - Document the actual vs expected behavior
    - Note any error messages or unexpected outputs
 
-2. **Investigate Recent Changes**
+3. **Challenge Existing Assumptions**
+   - Question code comments that may be outdated (especially API behavior)
+   - Verify hardcoded limits against actual API documentation
+   - Cross-reference multiple sources: code, database, API docs, actual responses
+
+4. **Investigate Recent Changes**
    - Use git tools to examine recent commits that might have caused the issue
    - Look for database schema changes, API modifications, or data structure updates
    - Focus on changes to related files and collections
 
-3. **Examine Data Dependencies**
+5. **Examine Data Dependencies**
    - Check if the issue involves data from multiple collections
    - Verify data structure consistency between database and code expectations
    - Use MongoDB tools to investigate data availability and format
 
-4. **Implement Targeted Fixes**
+6. **Implement Targeted Fixes**
    - Make minimal, focused changes that address the root cause
    - Avoid broad refactoring unless explicitly requested
    - Update only the code that needs to work with the current data structure
 
-5. **Verify the Solution**
+7. **Verify the Solution**
    - Test the fix with the original failing case
    - Test with multiple scenarios to ensure broader functionality
    - Confirm that existing functionality is not broken
 
 ### Investigation Principles
 
+- **Database Contains Truth** - When code and reality conflict, the database reveals actual state
 - **Follow the data flow** - Trace from API endpoint → data fetcher → database query → data transformation
 - **Compare working vs non-working** - Test similar functionality that works to understand the difference
-- **Question assumptions** - Don't assume data structure; verify it through database investigation
+- **Question assumptions** - Don't assume data structure or API behavior; verify through investigation
+- **Use concrete examples** - Test with specific entities (LAFC team ID: 147671) rather than abstract queries
+- **Calculate throughput math** - Verify rate limits vs. pagination assumptions with actual numbers
 - **Document findings** - Keep track of what you discover for the user's understanding
+
+### Red Flags for Re-investigation
+
+- Comments claiming "API returns X per page" without recent verification
+- Hardcoded limits that seem arbitrary or don't match documentation
+- Mismatched totals between expected and actual results
+- Code that contradicts external API documentation provided by user
+
+## External API Documentation Protocol
+
+When user provides external API documentation links:
+
+### Mandatory Steps
+
+1. **Always use WebFetch tool** to read provided documentation thoroughly
+2. **Extract key constraints** (rate limits, pagination rules, parameter limits)
+3. **Verify against current implementation** before making assumptions
+4. **Ask clarifying questions** if documentation conflicts with existing code
+
+### Example Process
+```typescript
+// Before: Making assumptions
+per_page: 1000 // Wrong assumption about API limits
+
+// After: Verified from docs  
+per_page: 50 // Actual limit from Sportmonks documentation
+```
+
+### Documentation Analysis Checklist
+
+- [ ] Read the full documentation section provided
+- [ ] Identify specific parameter limits and constraints
+- [ ] Compare with current code implementation
+- [ ] Note any discrepancies between docs and code comments
+- [ ] Validate understanding with user before implementing changes
 
 NEVER commit changes unless the user explicitly asks you to. It is VERY IMPORTANT to only commit when explicitly asked, otherwise the user will feel that you are being too proactive.
 
