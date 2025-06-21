@@ -22,7 +22,7 @@ import type {
 import { transformTeamTable } from '../transformers/teamTransformers'
 import { calculateTopPlayerStats } from '../utils/statsUtils'
 import type { PlayerSeasonStats, TopPlayersStat } from '../types/team'
-import { PlayerStatisticTypeIds } from '@/constants/team'
+import { PlayerStatisticTypeIds, TeamStatisticTypeIds } from '@/constants/team'
 
 // Build temporal navigation URLs for league matches (copied from team logic)
 function buildTemporalNavigationUrls(
@@ -429,17 +429,6 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
     return null
   }
 
-  // Map type_id to statistic type based on observed data structure
-  const typeMapping = {
-    52: 'goals_for',        // Goals scored 
-    88: 'goals_against',    // Goals conceded
-    194: 'wins',            // Wins
-    215: 'draws',           // Draws  
-    216: 'losses',          // Losses
-    214: 'clean_sheets',    // Clean sheets
-    // Add more mappings as needed
-  }
-
   const extractedStats: any = {
     goals_for: 0,
     goals_against: 0,
@@ -453,15 +442,40 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
     red_cards: 0,
   }
 
-  // Extract statistics from details array
+  // Extract statistics from details array using constants
   for (const detail of seasonStats.details) {
     if (!detail || !detail.type_id || !detail.value) continue
 
-    const statType = typeMapping[detail.type_id]
-    if (statType && detail.value.all) {
-      // Extract the count value (most common format)
-      const value = detail.value.all.count || detail.value.all.total || 0
-      extractedStats[statType] = value
+    // Extract the count value (most common format)
+    const value = detail.value.all?.count || detail.value.all?.total || 0
+
+    // Use constants for type_id mapping
+    switch (detail.type_id) {
+      case TeamStatisticTypeIds.GOALS_FOR:
+        extractedStats.goals_for = value
+        break
+      case TeamStatisticTypeIds.GOALS_AGAINST:
+        extractedStats.goals_against = value
+        break
+      case TeamStatisticTypeIds.CLEAN_SHEETS:
+        extractedStats.clean_sheets = value
+        break
+      case TeamStatisticTypeIds.WINS:
+        extractedStats.wins = value
+        break
+      case TeamStatisticTypeIds.DRAWS:
+        extractedStats.draws = value
+        break
+      case TeamStatisticTypeIds.LOSSES:
+        extractedStats.losses = value
+        break
+      case TeamStatisticTypeIds.YELLOW_CARDS:
+        extractedStats.yellow_cards = value
+        break
+      case TeamStatisticTypeIds.RED_CARDS:
+        extractedStats.red_cards = value
+        break
+      // Add more cases as needed using constants
     }
   }
 
