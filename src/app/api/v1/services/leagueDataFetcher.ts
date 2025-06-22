@@ -247,9 +247,10 @@ function createPlayerStatCategories(playerStats: PlayerSeasonStats[], teamsMap: 
   top_assists: LeaguePlayerStatCategory
   most_minutes: LeaguePlayerStatCategory
   top_goals_assists: LeaguePlayerStatCategory
+  discipline: LeaguePlayerStatCategory
 } {
   const createCategory = (
-    category: 'goals' | 'assists' | 'minutes' | 'goals_assists',
+    category: 'goals' | 'assists' | 'minutes' | 'goals_assists' | 'discipline',
     label: string,
     getValue: (player: PlayerSeasonStats) => number
   ): LeaguePlayerStatCategory => {
@@ -285,6 +286,7 @@ function createPlayerStatCategories(playerStats: PlayerSeasonStats[], teamsMap: 
     top_assists: createCategory('assists', 'Most Assists', player => player.assists || 0),
     most_minutes: createCategory('minutes', 'Most Minutes Played', player => player.minutes_played || 0),
     top_goals_assists: createCategory('goals_assists', 'Goals + Assists', player => (player.goals || 0) + (player.assists || 0)),
+    discipline: createCategory('discipline', 'Most Yellow Cards', player => player.cards?.yellow || 0),
   }
 }
 
@@ -317,6 +319,7 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
   })
   
   const teamsWithStatsFiltered = teamsWithStatsData
+    .filter(team => team.stats !== null) // Only include teams with actual stats for the season
 
   // Create attack statistics category
   const attackStats = teamsWithStatsFiltered
@@ -446,10 +449,29 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
   for (const detail of seasonStats.details) {
     if (!detail || !detail.type_id || !detail.value) continue
 
-    // Extract the count value (most common format)
-    const value = detail.value.all?.count || detail.value.all?.total || 0
+    let value = 0
 
     // Use constants for type_id mapping
+    switch (detail.type_id) {
+      case TeamStatisticTypeIds.GOALS_FOR:
+      case TeamStatisticTypeIds.GOALS_AGAINST:
+      case TeamStatisticTypeIds.CLEAN_SHEETS:
+      case TeamStatisticTypeIds.WINS:
+      case TeamStatisticTypeIds.DRAWS:
+      case TeamStatisticTypeIds.LOSSES:
+        // These stats use .all.count or .all.total format
+        value = detail.value.all?.count || detail.value.all?.total || 0
+        break
+      case TeamStatisticTypeIds.YELLOW_CARDS:
+      case TeamStatisticTypeIds.RED_CARDS:
+        // Card stats use direct .count format
+        value = detail.value.count || 0
+        break
+      default:
+        continue
+    }
+
+    // Apply the extracted value to the correct stat
     switch (detail.type_id) {
       case TeamStatisticTypeIds.GOALS_FOR:
         extractedStats.goals_for = value
@@ -475,7 +497,6 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
       case TeamStatisticTypeIds.RED_CARDS:
         extractedStats.red_cards = value
         break
-      // Add more cases as needed using constants
     }
   }
 
@@ -1293,15 +1314,11 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       const leagueIdNum = parseInt(leagueId, 10)
 
       // Use direct MongoDB query since Payload queries don't work properly on JSON arrays
-      // The seasons/activeseasons fields are stored as arrays of objects with league_id property
+      // Prioritize activeseasons to exclude defunct teams like Chivas USA and MetroStars
       const mongoTeams = await payload.db.collections.teams
         .find({
-          $or: [
-            { seasons: { $elemMatch: { league_id: leagueIdNum } } },
-            { activeseasons: { $elemMatch: { league_id: leagueIdNum } } },
-            // For season_map, it might store season IDs, not league IDs, so this might not match
-            { season_map: { $elemMatch: { id: leagueIdNum } } }
-          ]
+          // Only include teams with active seasons for this league to avoid defunct teams
+          activeseasons: { $elemMatch: { league_id: leagueIdNum } }
         })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -1311,11 +1328,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Count total for pagination (separate query)
       const totalTeams = await payload.db.collections.teams
         .countDocuments({
-          $or: [
-            { seasons: { $elemMatch: { league_id: leagueIdNum } } },
-            { activeseasons: { $elemMatch: { league_id: leagueIdNum } } },
-            { season_map: { $elemMatch: { id: leagueIdNum } } }
-          ]
+          // Only count teams with active seasons for this league
+          activeseasons: { $elemMatch: { league_id: leagueIdNum } }
         })
 
       // Transform the MongoDB results to match the expected format
@@ -1606,13 +1620,17 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         throw new Error('No season specified and no current season available for this league')
       }
 
-      // Find all teams in this league using the same MongoDB query approach as league teams endpoint
+      // Find all teams in this league, prioritizing active seasons for current season stats
+      // For current/recent seasons, we should prioritize teams with activeseasons to avoid including defunct teams
       const mongoTeams = await payload.db.collections.teams
         .find({
           $or: [
-            { seasons: { $elemMatch: { league_id: numericId } } },
+            // Prioritize teams with active seasons for current league
             { activeseasons: { $elemMatch: { league_id: numericId } } },
-            { season_map: { $elemMatch: { id: numericId } } }
+            // Also include teams that have current season statistics but may not be in activeseasons yet
+            { statistics: { $elemMatch: { season_id: targetSeasonId } } },
+            // Fallback to historical seasons only if needed (but this can include defunct teams)
+            { seasons: { $elemMatch: { league_id: numericId } } }
           ]
         })
         .limit(100) // Should be enough for most leagues

@@ -217,7 +217,7 @@ export type LeagueMatchesResponse = {
 
 // Enhanced league player stats for specific categories
 export type LeaguePlayerStatCategory = {
-  category: 'goals' | 'assists' | 'minutes' | 'goals_assists'
+  category: 'goals' | 'assists' | 'minutes' | 'goals_assists' | 'discipline'
   label: string
   players: Array<{
     player_id: string
