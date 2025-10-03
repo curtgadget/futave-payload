@@ -41,6 +41,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
         msg: `Starting ${syncOptions.collection} sync`,
         collection: syncOptions.collection,
       })
+      console.log(`Starting ${syncOptions.collection} sync`)
 
       let items: T[]
       try {
@@ -48,6 +49,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
           msg: `Fetching ${syncOptions.collection} data (paginated)`,
           collection: syncOptions.collection,
         })
+        console.log(`Fetching ${syncOptions.collection} data...`)
 
         items = await syncOptions.fetchData()
 
@@ -56,12 +58,14 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
           collection: syncOptions.collection,
           itemCount: items.length,
         })
+        console.log(`Fetched ${items.length} ${syncOptions.collection}`)
 
         if (items.length <= 25) {
           payload.logger.warn({
             msg: `WARNING: Only ${items.length} items fetched. Pagination may not be working correctly.`,
             collection: syncOptions.collection,
           })
+          console.warn(`WARNING: Only ${items.length} items fetched. Pagination may not be working correctly.`)
         }
       } catch (fetchError) {
         throw Object.assign(new Error('Failed to fetch data'), {
@@ -81,6 +85,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
         batchSize,
         totalBatches,
       })
+      console.log(`Processing ${items.length} ${syncOptions.collection} in ${totalBatches} batches (batch size: ${batchSize})`)
 
       for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize)
@@ -108,6 +113,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
             estimatedTimeRemaining: estimatedTimeRemaining,
           }
         })
+        console.log(`Processing batch ${batchNumber}/${totalBatches} (${progressPercent}%) - ETA: ${estimatedTimeRemaining}s`)
 
         // Transform all items in the batch
         const transformedItems = await Promise.all(
@@ -325,6 +331,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
             itemsProcessed: batch.length,
           }
         })
+        console.log(`  Batch ${batchNumber} completed: ${itemsToCreate.length} created, ${itemsToUpdate.length} updated (${batchDuration}ms)`)
       }
 
       stats.endTime = Date.now()
@@ -344,6 +351,7 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
           errorCount: stats.errors.length,
         },
       })
+      console.log(`\n✅ ${message}`)
 
       if (stats.errors.length > 0) {
         payload.logger.warn({

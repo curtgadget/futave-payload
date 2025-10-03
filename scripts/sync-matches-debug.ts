@@ -3,7 +3,6 @@ import 'dotenv/config'
 import { getPayload } from 'payload'
 import config from '../src/payload.config'
 import { createMatchSyncWithWaveScore } from '../src/services/sync/handlers/matchWithWaveScore.sync'
-import { createRivalWithH2HSync } from '../src/services/sync/handlers/rivalWithH2H.sync'
 
 interface SyncOptions {
   daysBack?: number
@@ -12,7 +11,6 @@ interface SyncOptions {
   onlyFuture?: boolean
   startDate?: string
   endDate?: string
-  rivals?: boolean
 }
 
 function parseArgs(): SyncOptions {
@@ -21,8 +19,7 @@ function parseArgs(): SyncOptions {
     daysBack: 30,
     daysAhead: 30,
     waveScores: true,
-    onlyFuture: false,
-    rivals: false
+    onlyFuture: false
   }
 
   for (let i = 0; i < args.length; i++) {
@@ -56,9 +53,6 @@ function parseArgs(): SyncOptions {
       case '--only-future':
         options.onlyFuture = true
         break
-      case '--rivals':
-        options.rivals = true
-        break
       case '--help':
       case '-h':
         printUsage()
@@ -66,7 +60,7 @@ function parseArgs(): SyncOptions {
         break
       default:
         if (arg.startsWith('-')) {
-          console.error(`❌ Unknown option: ${arg}`)
+          console.error(`Unknown option: ${arg}`)
           printUsage()
           process.exit(1)
         }
@@ -81,7 +75,7 @@ function printUsage() {
   console.log('================')
   console.log()
   console.log('Usage:')
-  console.log('  node scripts/sync-matches.ts [options]')
+  console.log('  node scripts/sync-matches-debug.ts [options]')
   console.log()
   console.log('Options:')
   console.log('  -b, --days-back <num>      Days back from today (default: 30)')
@@ -90,21 +84,17 @@ function printUsage() {
   console.log('  -e, --end-date <date>      End date (YYYY-MM-DD format)')
   console.log('  --no-waves                Skip wave score calculation')
   console.log('  --only-future             Only sync future matches')
-  console.log('  --rivals                  Sync rivals and H2H data')
   console.log('  -h, --help                Show this help message')
   console.log()
   console.log('Examples:')
   console.log('  # Sync last 7 days and next 14 days')
-  console.log('  node scripts/sync-matches.ts -b 7 -a 14')
+  console.log('  node scripts/sync-matches-debug.ts -b 7 -a 14')
   console.log()
   console.log('  # Sync specific date range')
-  console.log('  node scripts/sync-matches.ts -s 2024-01-01 -e 2024-01-31')
+  console.log('  node scripts/sync-matches-debug.ts -s 2024-01-01 -e 2024-01-31')
   console.log()
   console.log('  # Sync only future matches with wave scores')
-  console.log('  node scripts/sync-matches.ts --only-future -a 60')
-  console.log()
-  console.log('  # Sync rivals and H2H data')
-  console.log('  node scripts/sync-matches.ts --rivals')
+  console.log('  node scripts/sync-matches-debug.ts --only-future -a 60')
   console.log()
 }
 
@@ -123,9 +113,34 @@ function calculateDateRange(options: SyncOptions): { startDate: string; endDate:
   }
 }
 
+// Override console methods to ensure visibility
+const originalLog = console.log
+const originalInfo = console.info
+const originalWarn = console.warn
+const originalError = console.error
+
+console.log = (...args: any[]) => {
+  originalLog('[LOG]', new Date().toISOString(), ...args)
+}
+
+console.info = (...args: any[]) => {
+  originalInfo('[INFO]', new Date().toISOString(), ...args)
+}
+
+console.warn = (...args: any[]) => {
+  originalWarn('[WARN]', new Date().toISOString(), ...args)
+}
+
+console.error = (...args: any[]) => {
+  originalError('[ERROR]', new Date().toISOString(), ...args)
+}
+
 async function syncMatches() {
+  console.log('=== STARTING MATCH SYNC DEBUG ===')
+  
   const options = parseArgs()
-  const payload = await getPayload({ config })
+  console.log('Parsed options:', options)
+  
   const { startDate, endDate } = calculateDateRange(options)
   
   console.log('🏈 Starting Match Sync')
@@ -148,38 +163,20 @@ async function syncMatches() {
     console.error('❌ SPORTMONKS_API_KEY environment variable is required')
     process.exit(1)
   }
+
+  console.log('API Config loaded successfully')
+  console.log(`  Base URL: ${apiConfig.baseUrl || 'default'}`)
+  console.log(`  API Key: ${apiConfig.apiKey.substring(0, 8)}...`)
   
   try {
-    // If rivals flag is set, sync rivals instead of matches
-    if (options.rivals) {
-      console.log('🤝 Syncing rivals and H2H data...')
-      const rivalSync = createRivalWithH2HSync(apiConfig, {
-        h2hTtlDays: 7,
-        rivalDataTtlDays: 90
-      })
-      
-      const result = await rivalSync.sync()
-      console.log()
-      console.log('✅ Rivals & H2H sync completed!')
-      console.log(`  Success: ${result.success}`)
-      console.log(`  Message: ${result.message}`)
-      
-      if (result.stats) {
-        console.log(`  Rivals created: ${result.stats.created}`)
-        console.log(`  Rivals updated: ${result.stats.updated}`)
-        console.log(`  Failed: ${result.stats.failed}`)
-        
-        if ('h2hPairs' in result.stats) {
-          console.log(`  H2H pairs: ${(result.stats as any).h2hPairs}`)
-          console.log(`  H2H synced: ${(result.stats as any).h2hSynced}`)
-        }
-      }
-      
-      return // Exit early for rivals sync
-    }
+    console.log('Getting Payload instance...')
+    const payload = await getPayload({ config })
+    console.log('✅ Payload instance created')
     
     // Phase 1: Sync match data
-    console.log('Phase 1: Syncing match data...')
+    console.log('\n=== Phase 1: Syncing match data ===')
+    console.log(`Creating match sync service for date range: ${startDate} to ${endDate}`)
+    
     const matchSync = createMatchSyncWithWaveScore(
       apiConfig,
       payload,
@@ -192,12 +189,18 @@ async function syncMatches() {
       }
     )
     
+    console.log('Starting sync operation...')
+    console.log('NOTE: Progress will be logged below. This may take a while...')
+    console.log('---')
+    
     const result = await matchSync.sync()
-    console.log()
-    console.log('✅ Match sync completed!')
+    
+    console.log('---')
+    console.log('\n✅ Match sync completed!')
     console.log(`  Created: ${result.stats.created}`)
     console.log(`  Updated: ${result.stats.updated}`)
     console.log(`  Failed: ${result.stats.failed}`)
+    console.log(`  Duration: ${result.stats.endTime ? (result.stats.endTime - result.stats.startTime) / 1000 : 'N/A'}s`)
     
     if (result.stats.failed > 0) {
       console.log(`\n⚠️  ${result.stats.failed} matches failed to sync`)
@@ -211,11 +214,12 @@ async function syncMatches() {
     
     // Phase 2: Calculate wave scores (if enabled and we have data)
     if (options.waveScores && (result.stats.created > 0 || result.stats.updated > 0)) {
-      console.log()
-      console.log('Phase 2: Calculating wave scores for future matches...')
+      console.log('\n=== Phase 2: Calculating wave scores for future matches ===')
       
       const today = new Date().toISOString().split('T')[0]
       const waveStartDate = options.onlyFuture ? today : startDate
+      
+      console.log(`Creating wave score sync for date range: ${waveStartDate} to ${endDate}`)
       
       const waveSync = createMatchSyncWithWaveScore(
         apiConfig,
@@ -229,9 +233,13 @@ async function syncMatches() {
         }
       )
       
+      console.log('Starting wave score calculation...')
+      console.log('---')
+      
       const waveResult = await waveSync.sync()
-      console.log()
-      console.log('🌊 Wave score calculation completed!')
+      
+      console.log('---')
+      console.log('\n🌊 Wave score calculation completed!')
       console.log(`  Updated with wave scores: ${waveResult.stats.updated}`)
       
       if (waveResult.stats.failed > 0) {
@@ -241,8 +249,7 @@ async function syncMatches() {
     
     // Show top wave matches if wave scores were calculated
     if (options.waveScores) {
-      console.log()
-      console.log('🏆 Top matches by wave score:')
+      console.log('\n🏆 Top matches by wave score:')
       const matches = await payload.find({
         collection: 'matches',
         where: {
@@ -269,11 +276,15 @@ async function syncMatches() {
   } catch (error) {
     console.error()
     console.error('❌ Sync failed:', error)
+    if (error instanceof Error) {
+      console.error('Stack trace:', error.stack)
+    }
     process.exit(1)
   }
   
   console.log()
   console.log('🎉 All done!')
+  console.log('=== END OF MATCH SYNC DEBUG ===')
 }
 
 // Handle CLI execution
