@@ -134,11 +134,24 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 - ✅ **Comprehensive Testing**: Added full test coverage for player endpoints
 - ✅ **Database Optimization**: Improved performance for player-related queries
 
+## Documentation
+
 ### API Documentation
-For complete API documentation including request/response examples, see:
-- [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint documentation with Wave Detector integration
+- [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint reference with Wave Detector integration
 - [Smart Sorting API](docs/smart-sorting-api.md) - Wave score integration and intelligent match discovery
+- [Matches Listing API](src/app/api/v1/documentation/matches-listing-api.md) - Match endpoints and filtering
+- [Countries API](src/app/api/v1/documentation/countries-api.md) - Country endpoints
 - [Sportmonks Sync Map](src/app/api/v1/documentation/sportmonks-sync-map.md) - Data synchronization details
+
+### Development & Debugging
+- [Scripts Documentation](scripts/README.md) - Available scripts and utilities
+- [Debug Missing Players](docs/DEBUG_MISSING_PLAYERS.md) - Player sync debugging guide
+- [Wave Detector Implementation Plan](scripts/wave-detector-implementation-plan.md) - Wave algorithm implementation details
+
+### Technical Reference
+- [Filtering System](src/docs/filtering.md) - Query filtering documentation
+- [Type Definitions](src/types/README.md) - TypeScript type reference
+- [Testing Guide](src/app/api/__tests__/README.md) - API testing documentation
 
 ## Development
 
