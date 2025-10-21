@@ -153,6 +153,43 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 - [Type Definitions](src/types/README.md) - TypeScript type reference
 - [Testing Guide](src/app/api/__tests__/README.md) - API testing documentation
 
+## Context Bundles for AI Development
+
+This project uses context bundles for AI-assisted development with Claude Code. These bundles help manage token limits and focus AI context on relevant code sections.
+
+### Available Bundles
+
+- **@collections** - Database schemas and Payload configuration
+  - `src/collections/**/*.ts`
+  - `src/payload.config.ts`
+
+- **@api-endpoints** - API routes and handlers
+  - `src/app/api/**/*.ts`
+
+- **@sync-system** - Data synchronization services and task handlers
+  - `src/services/sync/**/*.ts`
+  - `src/tasks/handlers/**/*.ts`
+
+- **@sportmonks-integration** - External API client and transformers
+  - `src/services/sportmonks/**/*.ts`
+
+- **@config** - Build and tooling configuration
+  - `next.config.mjs`
+  - `tsconfig.json`
+  - `package.json`
+
+### Usage
+
+Reference bundles in Claude Code conversations to load relevant context:
+
+```
+@collections - "Show me the matches collection schema"
+@api-endpoints - "What endpoints handle team data?"
+@sync-system - "How does the player sync work?"
+@sportmonks-integration - "Show me the Sportmonks transformers"
+@config - "What's our TypeScript configuration?"
+```
+
 ## Development
 
 This backend system is designed to support multiple frontend clients (React Native, Next.js, etc.) while maintaining a single source of truth for soccer data.

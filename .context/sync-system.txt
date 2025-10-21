@@ -1,0 +1,3 @@
+# Data Synchronization - Sync services and task handlers
+src/services/sync/**/*.ts
+src/tasks/handlers/**/*.ts

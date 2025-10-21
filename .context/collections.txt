@@ -1,0 +1,3 @@
+# Database Schemas - Payload collections and configuration
+src/collections/**/*.ts
+src/payload.config.ts

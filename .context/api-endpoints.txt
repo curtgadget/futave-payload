@@ -1,0 +1,2 @@
+# API Endpoints - All API routes and handlers
+src/app/api/**/*.ts

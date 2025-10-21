@@ -1,0 +1,4 @@
+# Configuration Files - Build and tooling configuration
+next.config.mjs
+tsconfig.json
+package.json

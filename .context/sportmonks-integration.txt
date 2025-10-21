@@ -1,0 +1,2 @@
+# Sportmonks Integration - External API client and transformers
+src/services/sportmonks/**/*.ts
