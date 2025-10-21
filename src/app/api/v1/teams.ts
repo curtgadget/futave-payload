@@ -185,8 +185,8 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
     let currentSeasonId: string | undefined
     if (team.activeseasons && Array.isArray(team.activeseasons) && team.activeseasons.length > 0) {
       // Prefer Premier League season if available
-      const plSeason = team.activeseasons.find((s: any) => s.league_id === 8)
-      currentSeasonId = plSeason ? String(plSeason.id) : String(team.activeseasons[0].id)
+      const plSeason: any = team.activeseasons.find((s: any) => s.league_id === 8)
+      currentSeasonId = plSeason ? String(plSeason.id) : String((team.activeseasons[0] as any).id)
     }
     
     // Fetch data from existing services
@@ -214,18 +214,20 @@ const getTeamOverviewCompactHandler = async (req: PayloadRequest) => {
     const recentFixtures = fixturesData.docs.slice(0, 3)
     
     // Update season info based on what was actually returned from stats
-    const actualSeasonId = statsData.season_id || currentSeasonId || parseInt(Object.keys(tableData)[0]) || 0
+    const actualSeasonId = statsData.current_season.season_id ||
+      (currentSeasonId ? parseInt(currentSeasonId) : undefined) ||
+      parseInt(Object.keys(tableData)[0]) || 0
     let seasonName = 'Current Season'
     
     // Try to get season name from team's activeseasons or season_map
     if (team.activeseasons && Array.isArray(team.activeseasons)) {
-      const activeSeason = team.activeseasons.find((s: any) => s.id === actualSeasonId)
+      const activeSeason: any = team.activeseasons.find((s: any) => s.id === actualSeasonId)
       if (activeSeason) {
         seasonName = activeSeason.name
       }
     }
     if (seasonName === 'Current Season' && team.season_map && Array.isArray(team.season_map)) {
-      const season = team.season_map.find((s: any) => s.id === actualSeasonId)
+      const season: any = team.season_map.find((s: any) => s.id === actualSeasonId)
       if (season) {
         seasonName = season.name
       }

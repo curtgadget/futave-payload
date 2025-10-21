@@ -831,9 +831,9 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const league = leagueResult.docs[0]
-      
+
       // Determine target season
-      let targetSeasonId: number
+      let targetSeasonId: number | null
       
       if (seasonId) {
         // Use the provided season ID
@@ -862,7 +862,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         }
       } else {
         // Use current season or most recent
-        targetSeasonId = league.current_season?.id ? parseInt(String(league.current_season.id), 10) : null
+        const currentSeason = league.currentseason as any
+        targetSeasonId = currentSeason?.id ? parseInt(String(currentSeason.id), 10) : null
         
         // If no current season, try to use the most recent season from standings
         if (!targetSeasonId) {
@@ -905,7 +906,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       })
 
       if (seasonsForName.docs.length > 0 && seasonsForName.docs[0].seasons && Array.isArray(seasonsForName.docs[0].seasons)) {
-        const seasonInfo = seasonsForName.docs[0].seasons.find((s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId))
+        const seasonInfo: any = seasonsForName.docs[0].seasons.find((s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId))
         if (seasonInfo && seasonInfo.name) {
           seasonName = seasonInfo.name
         }
@@ -921,8 +922,11 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           limit: 1,
         })
 
-        if (standingsForName.docs.length > 0 && standingsForName.docs[0].standings && standingsForName.docs[0].standings[String(targetSeasonId)]?.name) {
-          seasonName = standingsForName.docs[0].standings[String(targetSeasonId)].name
+        if (standingsForName.docs.length > 0 && standingsForName.docs[0].standings) {
+          const standings = standingsForName.docs[0].standings as any
+          if (standings[String(targetSeasonId)]?.name) {
+            seasonName = standings[String(targetSeasonId)].name
+          }
         }
       }
       
@@ -1191,14 +1195,15 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       const seasons = extractLeagueSeasons(mockLeagueOverview)
 
       // Build the response
+      const leagueData = league as any
       const response: LeagueOverviewResponse = {
         id: leagueId,
         name: league.name as string,
-        logo: league.logo as string | undefined,
-        country: league.country ? {
-          id: String(league.country.id),
-          name: league.country.name as string,
-          flag: league.country.flag as string | undefined
+        logo: league.logo_path as string | undefined,
+        country: leagueData.country ? {
+          id: String(leagueData.country.id),
+          name: leagueData.country.name as string,
+          flag: leagueData.country.flag as string | undefined
         } : undefined,
         season_id: targetSeasonId,
         season_name: seasonName,
@@ -1270,7 +1275,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         id: league.id as number,
         name: league.name as string,
         standings,
-        current_season: league.current_season || null,
+        current_season: league.currentseason || null,
       }
 
       // Transform the standings using the same logic as team standings
@@ -1590,8 +1595,9 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       
       // Determine target season (provided or current season)
       let targetSeasonId = seasonId ? parseInt(seasonId, 10) : null
-      if (!targetSeasonId && league.current_season?.id) {
-        targetSeasonId = parseInt(String(league.current_season.id), 10)
+      const currentSeason2 = league.currentseason as any
+      if (!targetSeasonId && currentSeason2?.id) {
+        targetSeasonId = parseInt(String(currentSeason2.id), 10)
       }
 
       // If no current season, try to use the most recent season from standings
@@ -1735,7 +1741,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       })
 
       // Determine season name
-      const seasonName = league.current_season?.name || `Season ${targetSeasonId}`
+      const currentSeason3 = league.currentseason as any
+      const seasonName = currentSeason3?.name || `Season ${targetSeasonId}`
 
       // Get all available seasons for the dropdown - need to get data from new collections
       const seasonsResult = await payload.find({
@@ -1862,17 +1869,18 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Get simplified seasons for the dropdown
       const simplifiedSeasons = extractLeagueSeasons(mockLeague)
       
-      // Convert to full LeagueSeason format with additional details
-      const seasons: LeagueSeason[] = simplifiedSeasons.map(simpleSeason => {
+      // Convert to full season format with additional details
+      const seasons: any[] = simplifiedSeasons.map(simpleSeason => {
         // Find full season data if available
-        const fullSeasonData = mockLeague.seasons?.find?.((s: any) => String(s.id) === simpleSeason.id)
+        const mockSeasons = Array.isArray(mockLeague.seasons) ? mockLeague.seasons : []
+        const fullSeasonData: any = mockSeasons.find((s: any) => String(s.id) === simpleSeason.id)
         
         return {
           id: simpleSeason.id,
           name: simpleSeason.name,
           start_date: fullSeasonData?.start_date,
           end_date: fullSeasonData?.end_date,
-          current: simpleSeason.id === String(league.current_season?.id),
+          current: simpleSeason.id === String((league as any).currentseason?.id),
           coverage: fullSeasonData?.coverage || {
             fixtures: true,
             standings: true,
@@ -1941,12 +1949,15 @@ export const leagueListDataFetcher: LeagueListDataFetcher = {
 
       // Map the results to match the expected LeaguesListResponse format
       const leagues = result.docs.map((league) => {
+        const leagueData = league as any
+
         // Extract current season if available
         let currentSeason = undefined
-        if (league.current_season) {
+        const leagueCurrentSeason = leagueData.currentseason
+        if (leagueCurrentSeason) {
           currentSeason = {
-            id: String(league.current_season.id),
-            name: league.current_season.name as string,
+            id: String(leagueCurrentSeason.id),
+            name: leagueCurrentSeason.name as string,
           }
         }
 
@@ -1954,12 +1965,12 @@ export const leagueListDataFetcher: LeagueListDataFetcher = {
         return {
           id: String(league.id),
           name: league.name as string,
-          logo: league.logo as string | undefined,
-          country: league.country
+          logo: league.logo_path as string | undefined,
+          country: leagueData.country
             ? {
-                id: String(league.country.id),
-                name: league.country.name as string,
-                flag: league.country.flag as string | undefined,
+                id: String(leagueData.country.id),
+                name: leagueData.country.name as string,
+                flag: leagueData.country.flag as string | undefined,
               }
             : undefined,
           current_season: currentSeason,

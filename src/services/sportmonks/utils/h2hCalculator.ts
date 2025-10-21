@@ -13,7 +13,7 @@ export interface H2HSummary {
     draws: number
   }
   last_meeting: {
-    date: string
+    date: string | null
     result: 'team_won' | 'rival_won' | 'draw'
     score: string
     venue_id: number

@@ -29,6 +29,7 @@ import type {
   MinimalTeamFixture,
   MinimalNextMatch,
   TeamCoach,
+  TeamSeason,
 } from '../types/team'
 
 // Team raw data types
@@ -175,7 +176,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   })
 
   // Create a map of player details for quick lookup
-  const playerDetailsMap = new Map(playersResult.docs.map((player: any) => [player.id, player]))
+  const playerDetailsMap: Map<number, any> = new Map(playersResult.docs.map((player: any) => [player.id, player]))
 
   // Collect all unique position IDs for metadata lookup
   const positionIds = new Set<number>()
@@ -227,20 +228,18 @@ function organizePlayersByPosition(
         id: String(squadMember.player_id),
         name: `Player ${squadMember.player_id}`, // Placeholder name
         display_name: `Player ${squadMember.player_id}`,
-        common_name: null,
-        first_name: null,
-        last_name: null,
-        gender: null,
-        date_of_birth: null,
-        height: null,
-        weight: null,
-        image_path: null,
+        common_name: undefined,
+        firstname: undefined,
+        lastname: undefined,
+        image_path: undefined,
         captain: squadMember.captain || false,
         jersey_number: squadMember.jersey_number || undefined,
         position_id: squadMember.position_id || undefined,
         detailed_position_id: squadMember.detailed_position_id || undefined,
-        country_id: null,
-        nationality: null,
+        nationality_id: undefined,
+        nationality_name: undefined,
+        nationality_image_path: undefined,
+        nationality_fifa_name: undefined,
       }
     } else {
       // Transform player details and override with squad-specific data
@@ -442,7 +441,11 @@ export async function getTeamFixturesCombined(
   }
 
   // 1. Combine and deduplicate fixtures
-  const combinedFixtures = combineAndDedupeFixtures(team.upcoming, team.latest)
+  const teamData = team as any
+  const combinedFixtures = combineAndDedupeFixtures(
+    Array.isArray(teamData.upcoming) ? teamData.upcoming : [],
+    Array.isArray(teamData.latest) ? teamData.latest : []
+  )
   
   // 2. Enrich with match details
   const enrichedFixtures = await enrichWithMatchDetails(payload, combinedFixtures)
@@ -712,11 +715,12 @@ export const teamDataFetcher: TabDataFetcher = {
       })
 
       // Create the raw team object
+      const teamWithSeasons = team as any
       const rawTeam = {
         id: team.id as number,
         name: team.name as string,
         standings: Object.keys(teamStandings).length > 0 ? teamStandings : null,
-        activeseasons: team.activeseasons,
+        activeseasons: Array.isArray(teamWithSeasons.activeseasons) ? teamWithSeasons.activeseasons : null,
       }
 
       const transformedStandings = transformTeamTable(rawTeam)
@@ -1263,6 +1267,9 @@ function processPlayerStats(
 
           case PlayerStatisticTypeIds.YELLOW_CARDS:
             // Yellow cards might be stored directly or in various fields
+            if (!playerStat.cards) {
+              playerStat.cards = { yellow: 0, red: 0 }
+            }
             if (typeof value === 'number') {
               playerStat.cards.yellow = value
             } else if (value.total && typeof value.total === 'number') {

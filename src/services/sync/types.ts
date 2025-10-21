@@ -24,4 +24,6 @@ export type SyncOptions<T> = {
   validateData?: (item: T) => void
   batchSize?: number // Size of batches for processing
   concurrency?: number // Number of concurrent operations
+  afterCreate?: (item: any) => Promise<any> | any // Callback after creating a new item
+  afterUpdate?: (item: any, existingDoc: any) => Promise<any> | any // Callback after updating an item
 }

@@ -46,9 +46,11 @@ export function createResumablePlayerSync(
       failed: 0,
       errors: [] as string[],
       startTime,
+      endTime: undefined as number | undefined,
       pagesProcessed: 0,
       totalPlayersProcessed: 0,
       isComplete: false,
+      nextResumeTime: undefined as Date | undefined,
     }
 
     try {
@@ -147,7 +149,7 @@ export function createResumablePlayerSync(
 
           for (const sportmonksPlayer of response.data) {
             try {
-              const transformedPlayer = transformPlayer(sportmonksPlayer)
+              const transformedPlayer = transformPlayer(sportmonksPlayer as any)
               
               // Check if player exists
               const existing = await payload.find({
@@ -161,20 +163,20 @@ export function createResumablePlayerSync(
                 await payload.update({
                   collection: 'players',
                   id: existing.docs[0].id,
-                  data: transformedPlayer,
+                  data: transformedPlayer as any,
                 })
                 pageUpdated++
               } else {
                 // Create new player
                 await payload.create({
                   collection: 'players',
-                  data: transformedPlayer,
+                  data: transformedPlayer as any,
                 })
                 pageCreated++
               }
             } catch (error) {
               pageFailed++
-              const errorMsg = `Player ${sportmonksPlayer.id}: ${error instanceof Error ? error.message : 'Unknown error'}`
+              const errorMsg = `Player ${(sportmonksPlayer as any).id}: ${error instanceof Error ? error.message : 'Unknown error'}`
               stats.errors.push(errorMsg)
               console.error(errorMsg)
             }

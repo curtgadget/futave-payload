@@ -174,13 +174,14 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
 
         // Prepare create and update operations
         const itemsToCreate: Record<string, any>[] = []
-        const itemsToUpdate: { id: number; data: Record<string, any> }[] = []
+        const itemsToUpdate: { id: number; data: Record<string, any>; existingDoc: any }[] = []
 
         for (const item of successfulItems) {
           if (existingMap.has(item.id)) {
             itemsToUpdate.push({
               id: item.id,
               data: item.data,
+              existingDoc: existingMap.get(item.id),
             })
           } else {
             itemsToCreate.push(item.data)
@@ -218,6 +219,17 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
               console.warn(
                 `Warning: Expected to insert ${itemsToCreate.length} items, but only inserted ${result.insertedCount}`,
               )
+            }
+
+            // Call afterCreate callback for each created item if provided
+            if (syncOptions.afterCreate) {
+              for (const item of itemsToCreate) {
+                try {
+                  await syncOptions.afterCreate(item)
+                } catch (error) {
+                  console.error(`afterCreate callback failed for item ${item.id}:`, error)
+                }
+              }
             }
           } catch (error) {
             stats.failed += itemsToCreate.length
@@ -264,13 +276,24 @@ export function createSyncService<T extends { id: number }>(options: SyncOptions
               )
             }
 
+            // Call afterUpdate callback for each updated item if provided
+            if (syncOptions.afterUpdate) {
+              for (const item of itemsToUpdate) {
+                try {
+                  await syncOptions.afterUpdate(item.data, item.existingDoc)
+                } catch (error) {
+                  console.error(`afterUpdate callback failed for item ${item.id}:`, error)
+                }
+              }
+            }
+
             // Handle any write errors
             if (bulkResult.hasWriteErrors && bulkResult.hasWriteErrors()) {
               const writeErrors = bulkResult.getWriteErrors()
               for (const writeError of writeErrors) {
                 stats.failed++
                 stats.errors.push({
-                  id: writeError.err?.op?._id || -1,
+                  id: (writeError.err?.op as any)?._id || -1,
                   error: `Bulk update failed: ${writeError.errmsg}`,
                   data: {
                     errorDetails: writeError,

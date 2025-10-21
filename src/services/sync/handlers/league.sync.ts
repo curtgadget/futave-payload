@@ -133,12 +133,12 @@ export function createLeagueSync(config: SportmonksConfig) {
             await payload.update({
               collection: 'leagues',
               where: { id: { equals: leagueId } },
-              data: transformedLeague,
+              data: transformedLeague as any,
             })
           } else {
             await payload.create({
               collection: 'leagues',
-              data: transformedLeague,
+              data: transformedLeague as any,
             })
           }
 
@@ -153,12 +153,12 @@ export function createLeagueSync(config: SportmonksConfig) {
             await payload.update({
               collection: 'leaguesseason',
               where: { leagueId: { equals: leagueId } },
-              data: transformedSeason,
+              data: transformedSeason as any,
             })
           } else {
             await payload.create({
               collection: 'leaguesseason',
-              data: transformedSeason,
+              data: transformedSeason as any,
             })
           }
 
@@ -173,12 +173,12 @@ export function createLeagueSync(config: SportmonksConfig) {
             await payload.update({
               collection: 'leaguesstandings',
               where: { leagueId: { equals: leagueId } },
-              data: transformedStandings,
+              data: transformedStandings as any,
             })
           } else {
             await payload.create({
               collection: 'leaguesstandings',
-              data: transformedStandings,
+              data: transformedStandings as any,
             })
           }
 

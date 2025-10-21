@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     
     // Check if leagues exist first
     const existingLeagues = await payload.db.connection.collection('leagues').find(
-      { _id: { $in: numericLeagueIds } },
-      { projection: { _id: 1, name: 1, featured: 1 } }
+      { id: { $in: numericLeagueIds } },
+      { projection: { id: 1, name: 1, featured: 1 } }
     ).toArray()
     
     console.log('Found existing leagues:', existingLeagues.length)
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Error setting featured leagues:', error)
     return Response.json(
-      { success: false, error: 'Failed to set featured leagues', details: error.message },
+      { success: false, error: 'Failed to set featured leagues', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

@@ -27,7 +27,6 @@ export async function GET(request: Request) {
     const leagues = await payload.find({
       collection: 'leagues',
       where: query,
-      select: ['id', 'name', 'featured', 'priority', 'tier', 'country_id'],
       sort: 'name',
       limit
     })

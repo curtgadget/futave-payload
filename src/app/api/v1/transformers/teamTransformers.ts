@@ -13,7 +13,6 @@ import type {
   TeamCoach,
   TeamFixture,
   TeamFixturesResponse,
-  TeamOverviewResponse,
   TeamPlayer,
   TeamSeason,
   TeamSquadBase,
@@ -995,11 +994,19 @@ export function transformTeamFixtures(
       docs: [],
       meta: {
         pagination: {
-          totalFixtures: 0,
-          hasNextPage: false,
-          hasPrevPage: false,
-          nextPageUrl: null,
-          prevPageUrl: null,
+          page: 1,
+          limit: 0,
+          total: 0,
+          totalPages: 0,
+          type: 'upcoming',
+          hasMorePages: false,
+          hasPreviousPages: false,
+          nextPage: null,
+          previousPage: null,
+          hasNewer: false,
+          hasOlder: false,
+          newerUrl: null,
+          olderUrl: null,
         },
       },
       nextMatch: null,
@@ -1066,11 +1073,19 @@ export function transformTeamFixtures(
     docs: fixtures,
     meta: {
       pagination: {
-        totalFixtures: fixtures.length,
-        hasNextPage: false,
-        hasPrevPage: false,
-        nextPageUrl: null,
-        prevPageUrl: null,
+        page: 1,
+        limit: fixtures.length,
+        total: fixtures.length,
+        totalPages: 1,
+        type: 'upcoming',
+        hasMorePages: false,
+        hasPreviousPages: false,
+        nextPage: null,
+        previousPage: null,
+        hasNewer: false,
+        hasOlder: false,
+        newerUrl: null,
+        olderUrl: null,
       },
     },
     nextMatch: nextMatch,
@@ -1231,7 +1246,7 @@ export function transformTeamSquad(rawTeam: RawTeam): TeamSquadResponse {
           console.warn(`Error transforming coach data:`, error)
           // Return a default coach object in case of error
           return {
-            id: '0',
+            id: 0,
             name: 'Unknown Coach',
           }
         }
@@ -1259,7 +1274,10 @@ export function transformTeamStats(rawTeam: RawTeam, seasonId?: string): TeamSta
         goals_against: 0,
         goal_difference: 0,
       },
-      season_id: seasonId ? parseInt(seasonId) : 0,
+      current_season: {
+        season_id: seasonId ? parseInt(seasonId) : 0,
+        season_name: 'Current Season',
+      },
       seasons: [],
       top_stats: [],
     }

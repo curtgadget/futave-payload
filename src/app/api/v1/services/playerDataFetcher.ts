@@ -339,16 +339,18 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
+      const playerData = player as any
+
       // Get the most recent stat for current team stats
-      const recentStat = player.statistics && player.statistics.length > 0
-        ? player.statistics.sort((a: any, b: any) => b.season_id - a.season_id)[0]
+      const recentStat = playerData.statistics && playerData.statistics.length > 0
+        ? playerData.statistics.sort((a: any, b: any) => b.season_id - a.season_id)[0]
         : null
 
       // Batch fetch all related data
       const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload, !!recentStat)
-      
+
       // Format trophies with cached data
-      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
+      const formattedTrophies = formatTrophiesFromCache(playerData.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
 
       // Format current team stats with cached data
@@ -373,7 +375,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
 
       // Build career data (same logic as getCareer method)
       const seasonLookup = buildSeasonNameLookup(Array.from(teamsMap.values()))
-      const career = (player.statistics || []).map((stat: PlayerStatistic) => {
+      const career = (playerData.statistics || []).map((stat: PlayerStatistic) => {
         const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
         const appearances = getStatValue(stat.details, PlayerStatTypeIds.APPEARANCES)
         const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
@@ -436,7 +438,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
       })
 
       // Sort career by season_id descending (most recent first)
-      career.sort((a, b) => parseInt(b.season.id) - parseInt(a.season.id))
+      career.sort((a: any, b: any) => parseInt(b.season.id) - parseInt(a.season.id))
 
       return {
         ...baseData,
@@ -466,17 +468,19 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
+      const playerData = player as any
+
       // Filter statistics by season if provided
-      let statistics = player.statistics || []
+      let statistics = playerData.statistics || []
       if (seasonId) {
         statistics = statistics.filter((stat: any) => stat.season_id.toString() === seasonId)
       }
 
       // Batch fetch all related data
       const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload)
-      
+
       // Format trophies with cached data
-      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
+      const formattedTrophies = formatTrophiesFromCache(playerData.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
       
       // Convert maps to arrays for formatSeasonStats
@@ -491,7 +495,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
 
       // Get unique seasons
       const seasons = Array.from(new Set(statistics.map((stat: any) => stat.season_id))).map(
-        (id) => ({
+        (id: any) => ({
           id: id.toString(),
           name: getSeasonName(id, seasonLookup),
         }),
@@ -524,18 +528,20 @@ export const playerDataFetcher: PlayerDataFetcher = {
         throw new Error(`No player found with ID: ${playerId}`)
       }
 
+      const playerData = player as any
+
       // Batch fetch all related data
       const { teamsMap, leaguesMap, countriesMap } = await fetchPlayerRelatedData(player, payload)
-      
+
       // Format trophies with cached data
-      const formattedTrophies = formatTrophiesFromCache(player.trophies || [], teamsMap, leaguesMap, countriesMap)
+      const formattedTrophies = formatTrophiesFromCache(playerData.trophies || [], teamsMap, leaguesMap, countriesMap)
       const baseData = formatPlayerData(player, formattedTrophies)
 
       // Build season lookup from team data
       const seasonLookup = buildSeasonNameLookup(Array.from(teamsMap.values()))
 
       // Convert statistics to career format
-      const career = (player.statistics || []).map((stat: PlayerStatistic) => {
+      const career = (playerData.statistics || []).map((stat: PlayerStatistic) => {
         const goals = getStatValue(stat.details, PlayerStatTypeIds.GOALS)
         const appearances = getStatValue(stat.details, PlayerStatTypeIds.APPEARANCES)
         const starts = getStatValue(stat.details, PlayerStatTypeIds.LINEUPS)
@@ -598,7 +604,7 @@ export const playerDataFetcher: PlayerDataFetcher = {
       })
 
       // Sort by season_id descending (most recent first)
-      career.sort((a, b) => parseInt(b.season.id) - parseInt(a.season.id))
+      career.sort((a: any, b: any) => parseInt(b.season.id) - parseInt(a.season.id))
 
       return {
         ...baseData,
@@ -654,10 +660,11 @@ export const playerListDataFetcher: PlayerListDataFetcher = {
       }
 
       // Get total count for pagination
-      const totalItems = await payload.db.count({
+      const totalCountResult = await payload.db.count({
         collection: 'players',
         where,
       })
+      const totalItems = (totalCountResult as any).totalDocs || 0
 
       // Fetch players with pagination
       const result = await payload.db.find({
@@ -665,7 +672,7 @@ export const playerListDataFetcher: PlayerListDataFetcher = {
         where,
         limit,
         skip: (page - 1) * limit,
-        sort: { name: 1 },
+        sort: ['name'] as any,
       })
 
       // Format player data

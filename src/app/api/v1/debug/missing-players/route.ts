@@ -67,9 +67,9 @@ export async function GET(request: NextRequest) {
 
       // Log each missing player
       missingPlayerIds.forEach(playerId => {
-        const squadPlayer = team.players.find((p: any) => 
+        const squadPlayer: any = Array.isArray(team.players) ? team.players.find((p: any) =>
           (p.player_id || p.id) === playerId
-        )
+        ) : undefined
         
         missingPlayersDebugger.logMissingPlayer({
           playerId,

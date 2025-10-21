@@ -64,11 +64,10 @@ export async function syncAllHandler(req: NextRequest | PayloadRequest) {
 
     await payload.jobs.queue({
       task: 'syncMatches',
-      input: { 
-        startDate, 
-        endDate, 
-        backfill: true,
-        calculateWaveScores: false // Skip wave scores for historical data
+      input: {
+        startDate,
+        endDate,
+        backfill: true
       },
       queue: 'backfill',
     })

@@ -27,7 +27,7 @@ export const DEFAULT_LEAGUE_PRIORITIES = {
   // Tier 2 - Major European Leagues (70-90 range)
   'Eredivisie': { priority: 85, tier: 'tier2', featured: false },
   'Primeira Liga': { priority: 85, tier: 'tier2', featured: false },
-  'Premier League': { priority: 80, tier: 'tier2', featured: false }, // Scottish
+  'Scottish Premier League': { priority: 80, tier: 'tier2', featured: false },
   'Superliga': { priority: 75, tier: 'tier2', featured: false }, // Danish
   'Premiership': { priority: 75, tier: 'tier2', featured: false }, // Scottish
   
@@ -111,7 +111,7 @@ export async function initializeLeaguePriorities(payload: Payload): Promise<void
         id: leagueId,
         data: {
           priority: config.priority,
-          tier: config.tier,
+          tier: config.tier as "tier1" | "tier2" | "tier3" | "tier4",
           featured: config.featured
         }
       })

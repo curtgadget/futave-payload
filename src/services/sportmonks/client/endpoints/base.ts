@@ -26,7 +26,7 @@ export function createBaseEndpoint<T>(config: SportmonksConfig) {
   ): Promise<T> {
     const fullEndpoint = `${endpoint}/${id}`
     const response = await client.fetchFromApi<SportmonksResponse<T[]>>(fullEndpoint, params)
-    return response.data[0]
+    return response.data[0] as T
   }
 
   return {

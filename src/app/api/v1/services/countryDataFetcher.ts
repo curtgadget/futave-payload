@@ -106,12 +106,12 @@ class CountryDataFetcher {
     return {
       countries,
       pagination: {
-        current_page: result.page,
-        per_page: result.limit,
-        total: result.totalDocs,
-        total_pages: result.totalPages,
-        has_next_page: result.hasNextPage,
-        has_prev_page: result.hasPrevPage,
+        current_page: result.page ?? 1,
+        per_page: result.limit ?? 25,
+        total: result.totalDocs ?? 0,
+        total_pages: result.totalPages ?? 1,
+        has_next_page: result.hasNextPage ?? false,
+        has_prev_page: result.hasPrevPage ?? false,
       },
     }
   }

@@ -82,8 +82,10 @@ export function createMissingPlayersSync(sportmonksConfig: SportmonksConfig) {
           if (teamId) {
             logMissingPlayer(playerId, teamId, 'sync', {
               teamName,
-              error: errorMessage,
-              syncFailed: true,
+              additionalInfo: {
+                error: errorMessage,
+                syncFailed: true,
+              }
             })
           }
           
@@ -134,7 +136,7 @@ export function createMissingPlayersSync(sportmonksConfig: SportmonksConfig) {
           await payload.update({
             collection: 'players',
             id: existingPlayer.docs[0].id,
-            data: transformedPlayer,
+            data: transformedPlayer as any,
           })
           stats.updated++
           console.log(`Updated player ${player.id}: ${transformedPlayer.name}`)
@@ -142,7 +144,7 @@ export function createMissingPlayersSync(sportmonksConfig: SportmonksConfig) {
           // Create new player
           await payload.create({
             collection: 'players',
-            data: transformedPlayer,
+            data: transformedPlayer as any,
           })
           stats.created++
           console.log(`Created player ${player.id}: ${transformedPlayer.name}`)
