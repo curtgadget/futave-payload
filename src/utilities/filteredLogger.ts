@@ -1,4 +1,4 @@
-import chalk from 'chalk'
+// import chalk from 'chalk' // Commented out to avoid build issues
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
 export type LogCategory = 'missing-players' | 'sync' | 'api' | 'db' | 'general'
@@ -55,18 +55,19 @@ class FilteredLogger {
       output += '\n' + JSON.stringify(data, null, 2)
     }
 
-    if (this.config.colorize) {
-      switch (level) {
-        case 'debug':
-          return chalk.gray(output)
-        case 'info':
-          return chalk.blue(output)
-        case 'warn':
-          return chalk.yellow(output)
-        case 'error':
-          return chalk.red(output)
-      }
-    }
+    // Chalk removed to avoid build dependency issues
+    // if (this.config.colorize) {
+    //   switch (level) {
+    //     case 'debug':
+    //       return chalk.gray(output)
+    //     case 'info':
+    //       return chalk.blue(output)
+    //     case 'warn':
+    //       return chalk.yellow(output)
+    //     case 'error':
+    //       return chalk.red(output)
+    //   }
+    // }
 
     return output
   }
