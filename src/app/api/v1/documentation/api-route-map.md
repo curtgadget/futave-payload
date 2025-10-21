@@ -1871,6 +1871,206 @@ List all countries.
 - **✅ Player Trophies**: Added trophy and achievement data to player responses
 - **✅ Team Context**: Improved team and league name resolution across all endpoints
 
+## Debug & Testing Endpoints
+
+### Data Validation
+
+#### GET /api/v1/debug/compare
+
+Compare local database data against Sportmonks API to identify discrepancies and generate sync recommendations. This endpoint is crucial for testing and validating data quality after sync operations.
+
+**Purpose**: Validate that your local database accurately mirrors Sportmonks API data by comparing entities side-by-side and identifying missing or outdated information.
+
+**Query Parameters:**
+- `teamId` (required): Team ID to compare data for
+- `entity` (required): Type of comparison to perform
+  - `fixtures`: Compare upcoming/recent matches
+  - `teams`: Compare team metadata (name, founded, country, etc.)
+  - `players`: Compare squad rosters
+  - `standings`: Compare league table positions
+  - `playerstats`: Compare player statistics (goals, assists, appearances, minutes)
+- `debug` (optional): Enable detailed debug information (default: false)
+
+**Response Structure:**
+```json
+{
+  "teamId": 147671,
+  "teamName": "Los Angeles FC",
+  "entity": "playerstats",
+  "note": "Additional context about the comparison",
+  "activeSeasons": [
+    {
+      "id": 24962,
+      "name": "2025"
+    }
+  ],
+  "comparison": {
+    "totalLocalPlayers": 31,
+    "playersCompared": 10,
+    "matching": 0,
+    "withDiscrepancies": 31
+  },
+  "discrepancies": [
+    {
+      "playerId": 96893,
+      "name": "Denis Bouanga",
+      "local": {
+        "goals": 25,
+        "assists": 8,
+        "appearances": 30,
+        "minutes": 2571
+      },
+      "sportmonks": {
+        "goals": 26,
+        "assists": 9,
+        "appearances": 32,
+        "minutes": 2750
+      },
+      "match": false,
+      "differences": {
+        "goals": -1,
+        "assists": -1,
+        "appearances": -2,
+        "minutes": -179
+      }
+    }
+  ],
+  "syncRecommendations": [
+    {
+      "job": "syncPlayers",
+      "reason": "24 player(s) have outdated statistics",
+      "command": "GET /api/queue-jobs/sync (includes syncPlayers)",
+      "affectedPlayers": [
+        {
+          "id": 96893,
+          "name": "Denis Bouanga",
+          "differences": {
+            "goals": -1,
+            "assists": -1
+          }
+        }
+      ]
+    }
+  ],
+  "analysis": {
+    "syncNeeded": true,
+    "recommendation": "31 player(s) have mismatched statistics - run syncPlayers job to update"
+  }
+}
+```
+
+**Entity-Specific Comparisons:**
+
+1. **Fixtures** (`entity=fixtures`)
+   - Compares upcoming and recent matches
+   - Identifies missing fixtures in local database
+   - Recommends: `syncMatches` job
+   ```bash
+   GET /api/v1/debug/compare?teamId=147671&entity=fixtures
+   ```
+
+2. **Teams** (`entity=teams`)
+   - Compares team metadata (name, founded, country)
+   - Checks coach and player counts
+   - Identifies metadata mismatches
+   ```bash
+   GET /api/v1/debug/compare?teamId=147671&entity=teams
+   ```
+
+3. **Players** (`entity=players`)
+   - Compares squad rosters
+   - Identifies missing players
+   - Recommends: `syncPlayers` job
+   ```bash
+   GET /api/v1/debug/compare?teamId=147671&entity=players
+   ```
+
+4. **Standings** (`entity=standings`)
+   - Compares league table positions across active seasons
+   - Validates points, wins, draws, losses
+   - Recommends: `syncTeams` job
+   ```bash
+   GET /api/v1/debug/compare?teamId=147671&entity=standings
+   ```
+
+5. **Player Statistics** (`entity=playerstats`)
+   - Compares player statistics for top performers
+   - Validates goals, assists, appearances, minutes
+   - Aggregates across active seasons
+   - Recommends: `syncPlayers` job
+   ```bash
+   GET /api/v1/debug/compare?teamId=147671&entity=playerstats
+   ```
+
+**Sync Recommendations:**
+
+Each comparison provides actionable sync recommendations when discrepancies are found:
+
+```json
+{
+  "syncRecommendations": [
+    {
+      "job": "syncPlayers",
+      "reason": "24 player(s) have outdated statistics",
+      "command": "GET /api/queue-jobs/sync (includes syncPlayers)",
+      "affectedPlayers": [...]
+    }
+  ]
+}
+```
+
+**Available Sync Jobs:**
+- `syncMatches`: Updates match data (fixtures, scores, events)
+- `syncPlayers`: Updates player data (rosters, statistics)
+- `syncTeams`: Updates team data (metadata, standings)
+- `syncLeagues`: Updates league data
+- `syncCoaches`: Updates coach data
+
+**Debug Mode:**
+
+Enable debug mode for detailed structural information:
+
+```bash
+GET /api/v1/debug/compare?teamId=147671&entity=standings&debug=true
+```
+
+Debug mode includes:
+- Raw data structure samples
+- Field-level inspection
+- Detailed logging of comparison logic
+- Full player comparisons (not just discrepancies)
+
+**Error Responses:**
+
+```json
+{
+  "error": "Team 14767 not found in local database"
+}
+```
+
+```json
+{
+  "error": "Missing required parameter: teamId",
+  "hint": "Usage: /api/v1/debug/compare?teamId=147671&entity=fixtures",
+  "supportedEntities": ["fixtures", "teams", "players", "standings", "playerstats"]
+}
+```
+
+**Use Cases:**
+
+1. **Post-Sync Validation**: Verify data accuracy after running sync jobs
+2. **Troubleshooting Discrepancies**: Identify specific data issues (e.g., "Why is this player showing 23 goals instead of 24?")
+3. **Data Quality Monitoring**: Regular checks to ensure local database stays in sync
+4. **Sync Planning**: Determine which sync jobs need to run based on identified gaps
+
+**Best Practices:**
+
+- Run comparisons after sync jobs to validate success
+- Use `playerstats` comparison to catch subtle statistical discrepancies
+- Check `standings` regularly during active seasons
+- Use debug mode when investigating specific issues
+- Follow sync recommendations to resolve discrepancies
+
 ## Implementation Guide
 
 ### Adding a New API Endpoint
