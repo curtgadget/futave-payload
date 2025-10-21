@@ -47,6 +47,12 @@ node scripts/test-sportmonks.ts
 # Debug and sync missing players
 pnpm debug-players
 
+# Run player sync with memory optimization (recommended for large syncs)
+NODE_OPTIONS="--expose-gc" pnpm payload jobs:run syncPlayers 2
+
+# Run player sync with increased heap size (if needed)
+NODE_OPTIONS="--expose-gc --max-old-space-size=4096" pnpm payload jobs:run syncPlayers 2
+
 # Monitor API rate limit status
 curl http://localhost:3000/api/v1/rate-limit-status
 ```

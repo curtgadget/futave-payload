@@ -40,6 +40,7 @@ export function createResumablePlayerSync(
   
   async function resumablePlayerSync(): Promise<PlayerSyncResult> {
     const startTime = Date.now()
+    const MAX_ERRORS_IN_MEMORY = 100 // Limit error array to prevent memory leak
     let stats = {
       created: 0,
       updated: 0,
@@ -54,6 +55,8 @@ export function createResumablePlayerSync(
     }
 
     try {
+      // Initialize Payload once outside the loop to prevent memory leak
+      const payload = await getPayload({ config })
       // Check if we can resume
       const canResume = await playerSyncCheckpointService.canResume(syncId)
       if (!canResume) {
@@ -142,7 +145,6 @@ export function createResumablePlayerSync(
           }
 
           // Process players on this page
-          const payload = await getPayload({ config })
           let pageCreated = 0
           let pageUpdated = 0
           let pageFailed = 0
@@ -177,7 +179,10 @@ export function createResumablePlayerSync(
             } catch (error) {
               pageFailed++
               const errorMsg = `Player ${(sportmonksPlayer as any).id}: ${error instanceof Error ? error.message : 'Unknown error'}`
-              stats.errors.push(errorMsg)
+              // Limit errors array to prevent memory leak
+              if (stats.errors.length < MAX_ERRORS_IN_MEMORY) {
+                stats.errors.push(errorMsg)
+              }
               console.error(errorMsg)
             }
           }
@@ -210,6 +215,11 @@ export function createResumablePlayerSync(
           console.log(`✅ Page ${currentPage} complete: +${pageCreated} created, +${pageUpdated} updated, +${pageFailed} failed`)
           currentPage++
 
+          // Suggest garbage collection every 50 pages to prevent memory buildup
+          if (pagesThisRun % 50 === 0 && global.gc) {
+            global.gc()
+          }
+
           // Check for completion based on pagination
           if (response.pagination && !response.pagination.has_more) {
             console.log('✅ API indicates no more pages - sync complete!')
@@ -235,7 +245,10 @@ export function createResumablePlayerSync(
 
           // Handle other errors
           const errorMsg = `Page ${currentPage}: ${error instanceof Error ? error.message : 'Unknown error'}`
-          stats.errors.push(errorMsg)
+          // Limit errors array to prevent memory leak
+          if (stats.errors.length < MAX_ERRORS_IN_MEMORY) {
+            stats.errors.push(errorMsg)
+          }
           console.error(errorMsg)
           
           // Update checkpoint with error
