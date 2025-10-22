@@ -25,9 +25,10 @@ const validTasks: PayloadTaskSlug[] = [
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { task: string } }
+  { params }: { params: Promise<{ task: string }> }
 ) {
-  const task = params.task as PayloadTaskSlug
+  const { task: taskParam } = await params
+  const task = taskParam as PayloadTaskSlug
 
   // Validate task
   if (!validTasks.includes(task)) {
