@@ -15,7 +15,7 @@ type PayloadTaskSlug =
   | 'syncCoaches'
   | 'syncRivals'
 
-type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill' | 'dev'
+type PayloadQueueSlug = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'backfill' | 'dev'
 
 type SyncJob = {
   task: PayloadTaskSlug
@@ -24,23 +24,34 @@ type SyncJob = {
 }
 
 const syncJobs: SyncJob[] = [
-  { task: 'syncLeagues' },
-  { task: 'syncTeams' },
+  // HOURLY QUEUE: Time-sensitive data (live scores, new fixtures)
+  // Runs: Every hour during match days
   {
     task: 'syncMatches',
     input: {
       startDate: new Date(Date.now() - ONE_DAY_MS).toISOString().split('T')[0],
       endDate: new Date(Date.now() + NINETY_DAYS_MS).toISOString().split('T')[0],
-      calculateWaveScores: true, // Wave scores are calculated for matches up to 14 days ahead
+      calculateWaveScores: true,
     },
     queue: 'hourly',
   },
-  { task: 'syncPlayers', queue: 'nightly' }, // Full sync (220k players) - runs weekly
-  { task: 'syncActivePlayerStats', queue: 'hourly' }, // Incremental stats sync (~5k active players) - runs daily
-  { task: 'syncMetadataTypes' },
-  { task: 'syncCountries' },
-  { task: 'syncCoaches', queue: 'nightly' },
-  { task: 'syncRivals', queue: 'nightly' },
+
+  // DAILY QUEUE: Fresh data needed daily
+  // Runs: Once per day (2 AM)
+  { task: 'syncActivePlayerStats', queue: 'daily' }, // ~5k active players, 5-10 min
+  { task: 'syncTeams', queue: 'daily' }, // Team form, transfers, ~30-60 min
+
+  // WEEKLY QUEUE: Complete refresh, less time-sensitive
+  // Runs: Sunday 2 AM
+  { task: 'syncPlayers', queue: 'weekly' }, // Full 220k players, ~60 min
+  { task: 'syncLeagues', queue: 'weekly' }, // League metadata, fast
+  { task: 'syncCoaches', queue: 'weekly' }, // Coach updates, fast
+
+  // MONTHLY QUEUE: Static/reference data
+  // Runs: 1st of month or on-demand
+  { task: 'syncMetadataTypes', queue: 'monthly' }, // Rarely changes
+  { task: 'syncCountries', queue: 'monthly' }, // Rarely changes
+  { task: 'syncRivals', queue: 'monthly' }, // Rarely changes
 ]
 
 export async function syncAllHandler(req: NextRequest | PayloadRequest) {

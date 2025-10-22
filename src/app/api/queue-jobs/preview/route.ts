@@ -12,7 +12,7 @@ type PayloadTaskSlug =
   | 'syncCountries'
   | 'syncCoaches'
 
-type PayloadQueueSlug = 'hourly' | 'nightly' | 'daily' | 'backfill' | 'dev'
+type PayloadQueueSlug = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'backfill' | 'dev'
 
 type SyncJob = {
   task: PayloadTaskSlug
@@ -32,20 +32,22 @@ function formatDuration(ms: number): string {
 }
 
 const syncJobs: SyncJob[] = [
-  { task: 'syncLeagues' },
-  { task: 'syncTeams' },
-  {
-    task: 'syncMatches',
-    input: {
-      startDate: new Date(Date.now() - ONE_DAY_MS).toISOString().split('T')[0],
-      endDate: new Date(Date.now() + NINETY_DAYS_MS).toISOString().split('T')[0],
-    },
-    queue: 'hourly',
-  },
-  { task: 'syncPlayers', queue: 'nightly' },
-  { task: 'syncMetadataTypes' },
-  { task: 'syncCountries' },
-  { task: 'syncCoaches', queue: 'nightly' },
+  // HOURLY: Time-sensitive data
+  { task: 'syncMatches', queue: 'hourly' },
+
+  // DAILY: Fresh data needed daily
+  { task: 'syncActivePlayerStats', queue: 'daily' },
+  { task: 'syncTeams', queue: 'daily' },
+
+  // WEEKLY: Complete refresh
+  { task: 'syncPlayers', queue: 'weekly' },
+  { task: 'syncLeagues', queue: 'weekly' },
+  { task: 'syncCoaches', queue: 'weekly' },
+
+  // MONTHLY: Static/reference data
+  { task: 'syncMetadataTypes', queue: 'monthly' },
+  { task: 'syncCountries', queue: 'monthly' },
+  { task: 'syncRivals', queue: 'monthly' },
 ]
 
 export async function previewHandler() {
