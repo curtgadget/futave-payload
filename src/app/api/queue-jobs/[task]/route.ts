@@ -7,6 +7,7 @@ type PayloadTaskSlug =
   | 'syncTeams'
   | 'syncMatches'
   | 'syncPlayers'
+  | 'syncActivePlayerStats'
   | 'syncMetadataTypes'
   | 'syncCountries'
   | 'syncCoaches'
@@ -17,6 +18,7 @@ const validTasks: PayloadTaskSlug[] = [
   'syncTeams',
   'syncMatches',
   'syncPlayers',
+  'syncActivePlayerStats',
   'syncMetadataTypes',
   'syncCountries',
   'syncCoaches',

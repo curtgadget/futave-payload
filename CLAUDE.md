@@ -47,11 +47,14 @@ node scripts/test-sportmonks.ts
 # Debug and sync missing players
 pnpm debug-players
 
-# Run player sync with 8GB heap (REQUIRED for full sync of 220k+ players)
-NODE_OPTIONS="--expose-gc --max-old-space-size=8192" pnpm payload jobs:run syncPlayers 2
+# Run WEEKLY full player sync with 8GB heap (all 220k players)
+NODE_OPTIONS="--expose-gc --max-old-space-size=8192" pnpm payload jobs:run syncPlayers 1
+
+# Run DAILY active player stats sync (only ~5k active players, fast)
+pnpm payload jobs:run syncActivePlayerStats 1
 
 # Run player sync with 12GB heap (if 8GB still crashes)
-NODE_OPTIONS="--expose-gc --max-old-space-size=12288" pnpm payload jobs:run syncPlayers 2
+NODE_OPTIONS="--expose-gc --max-old-space-size=12288" pnpm payload jobs:run syncPlayers 1
 
 # Check player sync status and progress
 ./scripts/check-sync-simple.sh
@@ -60,7 +63,8 @@ NODE_OPTIONS="--expose-gc --max-old-space-size=12288" pnpm payload jobs:run sync
 ./scripts/watch-sync.sh
 
 # Queue individual sync jobs
-curl -X POST http://localhost:3000/api/queue-jobs/syncPlayers
+curl -X POST http://localhost:3000/api/queue-jobs/syncPlayers  # Weekly full sync
+curl -X POST http://localhost:3000/api/queue-jobs/syncActivePlayerStats  # Daily stats sync
 curl -X POST http://localhost:3000/api/queue-jobs/syncTeams
 curl -X POST http://localhost:3000/api/queue-jobs/syncMatches
 

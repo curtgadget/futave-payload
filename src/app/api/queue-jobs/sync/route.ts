@@ -9,6 +9,7 @@ type PayloadTaskSlug =
   | 'syncTeams'
   | 'syncMatches'
   | 'syncPlayers'
+  | 'syncActivePlayerStats'
   | 'syncMetadataTypes'
   | 'syncCountries'
   | 'syncCoaches'
@@ -34,7 +35,8 @@ const syncJobs: SyncJob[] = [
     },
     queue: 'hourly',
   },
-  { task: 'syncPlayers', queue: 'nightly' },
+  { task: 'syncPlayers', queue: 'nightly' }, // Full sync (220k players) - runs weekly
+  { task: 'syncActivePlayerStats', queue: 'hourly' }, // Incremental stats sync (~5k active players) - runs daily
   { task: 'syncMetadataTypes' },
   { task: 'syncCountries' },
   { task: 'syncCoaches', queue: 'nightly' },

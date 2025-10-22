@@ -29,6 +29,7 @@ import { syncLeaguesHandler } from './tasks/handlers/syncLeagues'
 import { syncTeamsHandler } from './tasks/handlers/syncTeams'
 import { syncMatchesHandler } from './tasks/handlers/syncMatches'
 import { syncPlayersHandler } from './tasks/handlers/syncPlayers'
+import { syncActivePlayerStatsHandler } from './tasks/handlers/syncActivePlayerStats'
 import { syncMetadataTypesHandler } from './tasks/handlers/syncMetadataTypes'
 import { syncCountriesHandler } from './tasks/handlers/syncCountries'
 import { syncCoachesHandler } from './tasks/handlers/syncCoaches'
@@ -134,6 +135,20 @@ export default buildConfig({
       {
         slug: 'syncPlayers',
         handler: syncPlayersHandler,
+        outputSchema: [
+          {
+            name: 'message',
+            type: 'text',
+          },
+          {
+            name: 'stats',
+            type: 'json',
+          },
+        ],
+      },
+      {
+        slug: 'syncActivePlayerStats',
+        handler: syncActivePlayerStatsHandler,
         outputSchema: [
           {
             name: 'message',
