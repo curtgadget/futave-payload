@@ -59,6 +59,14 @@ NODE_OPTIONS="--expose-gc --max-old-space-size=12288" pnpm payload jobs:run sync
 # Watch player sync progress in real-time (refreshes every 30s)
 ./scripts/watch-sync.sh
 
+# Queue individual sync jobs
+curl -X POST http://localhost:3000/api/queue-jobs/syncPlayers
+curl -X POST http://localhost:3000/api/queue-jobs/syncTeams
+curl -X POST http://localhost:3000/api/queue-jobs/syncMatches
+
+# Queue all sync jobs at once
+curl http://localhost:3000/api/queue-jobs/sync
+
 # Monitor API rate limit status
 curl http://localhost:3000/api/v1/rate-limit-status
 ```
