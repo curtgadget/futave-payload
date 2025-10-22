@@ -11,6 +11,7 @@ export type ResumablePlayerSyncOptions = {
   resetCheckpoint?: boolean // Force fresh start
   maxPagesPerRun?: number // Limit pages per execution (for rate limiting)
   syncId?: string // Custom sync ID for parallel syncs
+  heapSizeWarningMB?: number // Warn when heap exceeds this size (default: 6000MB)
 }
 
 interface PlayerSyncResult {
@@ -31,12 +32,13 @@ interface PlayerSyncResult {
 }
 
 export function createResumablePlayerSync(
-  sportmonksConfig: SportmonksConfig, 
+  sportmonksConfig: SportmonksConfig,
   options: ResumablePlayerSyncOptions = {}
 ) {
   const playerEndpoint = createPlayerEndpoint(sportmonksConfig)
   const syncId = options.syncId || 'player-sync-main'
   const maxPagesPerRun = options.maxPagesPerRun || 2800 // ~2800 calls leaving buffer for other endpoints
+  const heapWarningMB = options.heapSizeWarningMB || 6000 // Warn at 6GB to prevent 8GB crash
   
   async function resumablePlayerSync(): Promise<PlayerSyncResult> {
     const startTime = Date.now()
@@ -149,10 +151,11 @@ export function createResumablePlayerSync(
           let pageUpdated = 0
           let pageFailed = 0
 
-          for (const sportmonksPlayer of response.data) {
+          for (let i = 0; i < response.data.length; i++) {
+            const sportmonksPlayer = response.data[i]
             try {
               const transformedPlayer = transformPlayer(sportmonksPlayer as any)
-              
+
               // Check if player exists
               const existing = await payload.find({
                 collection: 'players',
@@ -176,6 +179,10 @@ export function createResumablePlayerSync(
                 })
                 pageCreated++
               }
+
+              // Clear player data from array to free memory immediately
+              response.data[i] = null as any
+
             } catch (error) {
               pageFailed++
               const errorMsg = `Player ${(sportmonksPlayer as any).id}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -213,11 +220,28 @@ export function createResumablePlayerSync(
           })
 
           console.log(`✅ Page ${currentPage} complete: +${pageCreated} created, +${pageUpdated} updated, +${pageFailed} failed`)
+
+          // Clear response data to free memory
+          response.data = []
+
           currentPage++
 
-          // Suggest garbage collection every 50 pages to prevent memory buildup
-          if (pagesThisRun % 50 === 0 && global.gc) {
-            global.gc()
+          // More aggressive GC: every 10 pages instead of 50
+          if (pagesThisRun % 10 === 0) {
+            if (global.gc) {
+              global.gc()
+            }
+            // Log memory usage for monitoring
+            const used = process.memoryUsage()
+            const heapUsedMB = Math.round(used.heapUsed / 1024 / 1024)
+            const heapTotalMB = Math.round(used.heapTotal / 1024 / 1024)
+            console.log(`💾 Memory: ${heapUsedMB}MB / ${heapTotalMB}MB heap`)
+
+            // Warn if approaching memory limit
+            if (heapUsedMB > heapWarningMB) {
+              console.warn(`⚠️  WARNING: Heap usage (${heapUsedMB}MB) exceeds ${heapWarningMB}MB threshold!`)
+              console.warn(`⚠️  Consider stopping sync and increasing heap: NODE_OPTIONS="--expose-gc --max-old-space-size=8192"`)
+            }
           }
 
           // Check for completion based on pagination

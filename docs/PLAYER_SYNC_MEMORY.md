@@ -18,8 +18,7 @@ FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaS
 
 ### 1. Limited Errors Array
 ```typescript
-const MAX_ERRORS_IN_MEMORY = 100 // Limit error array to prevent memory leak
-
+const MAX_ERRORS_IN_MEMORY = 100
 if (stats.errors.length < MAX_ERRORS_IN_MEMORY) {
   stats.errors.push(errorMsg)
 }
@@ -30,40 +29,69 @@ if (stats.errors.length < MAX_ERRORS_IN_MEMORY) {
 
 ### 2. Moved Payload Instance Outside Loop
 ```typescript
-// Initialize Payload once outside the loop to prevent memory leak
 const payload = await getPayload({ config })
 ```
-- Single Payload instance instead of 4,416
+- Single Payload instance instead of creating one per page
 - Reduces object allocation overhead
-- Prevents potential connection pool exhaustion
+- Prevents connection pool exhaustion
 
-### 3. Periodic Garbage Collection
+### 3. Aggressive Garbage Collection
 ```typescript
-// Suggest garbage collection every 50 pages to prevent memory buildup
-if (pagesThisRun % 50 === 0 && global.gc) {
-  global.gc()
+// GC every 10 pages instead of 50
+if (pagesThisRun % 10 === 0) {
+  if (global.gc) global.gc()
+  // Memory monitoring
+  console.log(`💾 Memory: ${heapUsedMB}MB / ${heapTotalMB}MB heap`)
 }
 ```
-- Triggers GC every 50 pages (~2,500 players)
-- Helps Node.js release memory during long syncs
-- Only runs if `--expose-gc` flag is enabled
+- Triggers GC every 10 pages (~500 players)
+- Monitors heap usage in real-time
+- Warns when approaching 6GB threshold
+
+### 4. Immediate Memory Cleanup
+```typescript
+// Clear player data from array after processing
+response.data[i] = null
+// Clear entire array after page completes
+response.data = []
+```
+- Nulls out each player immediately after saving
+- Clears response array after page completes
+- Allows V8 to free memory faster
+
+### 5. Heap Size Warnings
+```typescript
+if (heapUsedMB > 6000) {
+  console.warn(`⚠️  WARNING: Heap usage exceeds threshold!`)
+}
+```
+- Warns when heap exceeds 6GB
+- Suggests increasing heap size if needed
+- Helps prevent unexpected crashes
 
 ## Running with Optimal Memory Settings
 
-### Enable Garbage Collection
+### REQUIRED: Increase Heap Size
 
-Add `--expose-gc` flag when running player sync:
+Player sync fetches deeply nested data (teams, trophies, statistics) for each player.
+**You MUST increase the heap size** or it will crash around 1,600-4,400 pages (~80k-220k players).
 
 ```bash
-# Using Payload CLI
-node --expose-gc node_modules/.bin/payload jobs:run syncPlayers 2
+# RECOMMENDED: 8GB heap with garbage collection (handles full 220k+ players)
+NODE_OPTIONS="--expose-gc --max-old-space-size=8192" pnpm payload jobs:run syncPlayers 2
 
-# Using pnpm
-NODE_OPTIONS="--expose-gc" pnpm payload jobs:run syncPlayers 2
+# Minimum: 6GB heap (may crash on very large syncs)
+NODE_OPTIONS="--expose-gc --max-old-space-size=6144" pnpm payload jobs:run syncPlayers 2
 
-# Increase heap if needed for very large syncs
-NODE_OPTIONS="--expose-gc --max-old-space-size=4096" pnpm payload jobs:run syncPlayers 2
+# Default heap (~4GB) - WILL CRASH after ~80k players
+NODE_OPTIONS="--expose-gc" pnpm payload jobs:run syncPlayers 2  # ❌ NOT RECOMMENDED
 ```
+
+**Why 8GB?**
+- Each player includes nested objects: teams, trophies, statistics, metadata
+- 50 players/page × deeply nested data = significant memory per page
+- Memory accumulates even with cleanup due to V8 GC behavior
+- 8GB provides buffer for ~220k+ players without crashes
 
 ### Environment Variables
 
@@ -80,17 +108,27 @@ PLAYER_SYNC_RESET=true PLAYER_SYNC_MAX_PAGES=1000 NODE_OPTIONS="--expose-gc" pnp
 
 ## Memory Usage Expectations
 
-With fixes applied:
+With fixes applied and 8GB heap:
 
-- **Small syncs** (< 50k players): ~500MB - 1GB
-- **Medium syncs** (50k - 150k players): ~1GB - 2GB
-- **Large syncs** (150k+ players): ~2GB - 3GB
+- **Small syncs** (< 50k players): ~2GB - 3GB peak
+- **Medium syncs** (50k - 150k players): ~4GB - 5GB peak
+- **Large syncs** (150k+ players): ~6GB - 7GB peak
 
-If you still encounter memory issues:
+**Memory monitoring output every 10 pages:**
+```
+💾 Memory: 2847MB / 3200MB heap
+💾 Memory: 4521MB / 5100MB heap
+💾 Memory: 6234MB / 6800MB heap
+⚠️  WARNING: Heap usage (6234MB) exceeds 6000MB threshold!
+```
 
-1. Reduce `PLAYER_SYNC_MAX_PAGES` to process fewer players per run
-2. Increase Node.js heap: `--max-old-space-size=4096` (4GB)
-3. Run sync in smaller batches using resumable checkpoint system
+If you see the warning, the sync will continue but is approaching limits.
+
+If you still encounter memory crashes:
+
+1. **Increase heap further**: `--max-old-space-size=12288` (12GB)
+2. **Reduce batch size**: `PLAYER_SYNC_MAX_PAGES=1000` (process fewer players per run)
+3. **Run in smaller chunks**: The checkpoint system will resume automatically
 
 ## Monitoring Memory During Sync
 

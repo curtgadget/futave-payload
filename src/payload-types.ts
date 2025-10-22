@@ -81,6 +81,7 @@ export interface Config {
     rivals: Rival;
     'sync-metadata': SyncMetadatum;
     'player-sync-checkpoint': PlayerSyncCheckpoint;
+    'validation-results': ValidationResult;
     'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -102,6 +103,7 @@ export interface Config {
     rivals: RivalsSelect<false> | RivalsSelect<true>;
     'sync-metadata': SyncMetadataSelect<false> | SyncMetadataSelect<true>;
     'player-sync-checkpoint': PlayerSyncCheckpointSelect<false> | PlayerSyncCheckpointSelect<true>;
+    'validation-results': ValidationResultsSelect<false> | ValidationResultsSelect<true>;
     'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -1017,6 +1019,68 @@ export interface PlayerSyncCheckpoint {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "validation-results".
+ */
+export interface ValidationResult {
+  id: string;
+  jobType: 'syncTeams' | 'syncPlayers' | 'syncMatches' | 'syncLeagues' | 'manual';
+  /**
+   * Team ID that was validated (if applicable)
+   */
+  teamId?: number | null;
+  teamName?: string | null;
+  entity: 'fixtures' | 'teams' | 'players' | 'standings' | 'playerstats';
+  status: 'pass' | 'fail' | 'error' | 'pending';
+  totalDiscrepancies?: number | null;
+  /**
+   * Summary of comparison results
+   */
+  comparisonSummary?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Detailed discrepancy data
+   */
+  discrepancies?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Recommended sync jobs to fix discrepancies
+   */
+  syncRecommendations?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Error message if validation failed
+   */
+  error?: string | null;
+  /**
+   * Validation execution time in milliseconds
+   */
+  executionTime?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-jobs".
  */
 export interface PayloadJob {
@@ -1190,6 +1254,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'player-sync-checkpoint';
         value: string | PlayerSyncCheckpoint;
+      } | null)
+    | ({
+        relationTo: 'validation-results';
+        value: string | ValidationResult;
       } | null)
     | ({
         relationTo: 'payload-jobs';
@@ -1586,6 +1654,25 @@ export interface PlayerSyncCheckpointSelect<T extends boolean = true> {
       };
   lastError?: T;
   nextResumeTime?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "validation-results_select".
+ */
+export interface ValidationResultsSelect<T extends boolean = true> {
+  jobType?: T;
+  teamId?: T;
+  teamName?: T;
+  entity?: T;
+  status?: T;
+  totalDiscrepancies?: T;
+  comparisonSummary?: T;
+  discrepancies?: T;
+  syncRecommendations?: T;
+  error?: T;
+  executionTime?: T;
   updatedAt?: T;
   createdAt?: T;
 }
