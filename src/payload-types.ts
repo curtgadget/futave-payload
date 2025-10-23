@@ -124,6 +124,7 @@ export interface Config {
       syncTeams: TaskSyncTeams;
       syncMatches: TaskSyncMatches;
       syncPlayers: TaskSyncPlayers;
+      syncActivePlayerStats: TaskSyncActivePlayerStats;
       syncMetadataTypes: TaskSyncMetadataTypes;
       syncCountries: TaskSyncCountries;
       syncCoaches: TaskSyncCoaches;
@@ -1137,6 +1138,7 @@ export interface PayloadJob {
           | 'syncTeams'
           | 'syncMatches'
           | 'syncPlayers'
+          | 'syncActivePlayerStats'
           | 'syncMetadataTypes'
           | 'syncCountries'
           | 'syncCoaches'
@@ -1180,6 +1182,7 @@ export interface PayloadJob {
         | 'syncTeams'
         | 'syncMatches'
         | 'syncPlayers'
+        | 'syncActivePlayerStats'
         | 'syncMetadataTypes'
         | 'syncCountries'
         | 'syncCoaches'
@@ -1805,6 +1808,25 @@ export interface TaskSyncMatches {
  * via the `definition` "TaskSyncPlayers".
  */
 export interface TaskSyncPlayers {
+  input?: unknown;
+  output: {
+    message?: string | null;
+    stats?:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSyncActivePlayerStats".
+ */
+export interface TaskSyncActivePlayerStats {
   input?: unknown;
   output: {
     message?: string | null;
