@@ -136,12 +136,17 @@ curl -H "Authorization: API-Key your-generated-key-here" \
 
 ## Documentation
 
+### Data Synchronization
+- **[Sync System Guide](docs/SYNC_SYSTEM_GUIDE.md)** - Complete guide to running and configuring syncs
+- [Sync Queue Strategy](docs/SYNC_QUEUE_STRATEGY.md) - Queue design and scheduling details
+- [Player Sync Strategy](docs/PLAYER_SYNC_STRATEGY.md) - Player sync optimization
+- [Sportmonks Sync Map](src/app/api/v1/documentation/sportmonks-sync-map.md) - Architecture details
+
 ### API Documentation
 - [API Route Map](src/app/api/v1/documentation/api-route-map.md) - Complete endpoint reference with Wave Detector integration
 - [Smart Sorting API](docs/smart-sorting-api.md) - Wave score integration and intelligent match discovery
 - [Matches Listing API](src/app/api/v1/documentation/matches-listing-api.md) - Match endpoints and filtering
 - [Countries API](src/app/api/v1/documentation/countries-api.md) - Country endpoints
-- [Sportmonks Sync Map](src/app/api/v1/documentation/sportmonks-sync-map.md) - Data synchronization details
 
 ### Development & Debugging
 - [Scripts Documentation](scripts/README.md) - Available scripts and utilities

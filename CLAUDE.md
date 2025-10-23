@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Commands
 
+> **For complete sync system documentation, see [docs/SYNC_SYSTEM_GUIDE.md](docs/SYNC_SYSTEM_GUIDE.md)**
+
 ```bash
 # Install dependencies
 pnpm install
@@ -38,7 +40,7 @@ node scripts/sync-matches.ts
 # Calculate wave scores for matches
 node scripts/calculate-wave-scores.ts
 
-# Test smart sorting functionality  
+# Test smart sorting functionality
 node scripts/test-smart-sorting.ts
 
 # Test Sportmonks API integration
