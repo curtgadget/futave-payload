@@ -4,21 +4,23 @@ Complete guide to FutAve's data synchronization system - how to run syncs, confi
 
 ## Quick Reference
 
+> **Note:** Replace `$BASE_URL` with your deployment URL (e.g., `http://localhost:3000` for local dev, `https://api.futave.com` for production)
+
 ### Running Syncs
 
 ```bash
 # Queue all sync jobs automatically (respects schedules)
-curl http://localhost:3000/api/queue-jobs/sync
+curl $BASE_URL/api/queue-jobs/sync
 
 # Queue specific queue (hourly, daily, weekly, monthly, backfill)
-curl http://localhost:3000/api/queue-jobs/sync?queue=hourly
-curl http://localhost:3000/api/queue-jobs/sync?queue=daily
-curl http://localhost:3000/api/queue-jobs/sync?queue=weekly
+curl "$BASE_URL/api/queue-jobs/sync?queue=hourly"
+curl "$BASE_URL/api/queue-jobs/sync?queue=daily"
+curl "$BASE_URL/api/queue-jobs/sync?queue=weekly"
 
 # Queue individual sync job
-curl -X POST http://localhost:3000/api/queue-jobs/syncMatches
-curl -X POST http://localhost:3000/api/queue-jobs/syncPlayers
-curl -X POST http://localhost:3000/api/queue-jobs/syncTeams
+curl -X POST $BASE_URL/api/queue-jobs/syncMatches
+curl -X POST $BASE_URL/api/queue-jobs/syncPlayers
+curl -X POST $BASE_URL/api/queue-jobs/syncTeams
 
 # Run sync job with worker (direct execution)
 pnpm payload jobs:run syncMatches 1
@@ -32,7 +34,7 @@ NODE_OPTIONS="--expose-gc --max-old-space-size=8192" pnpm payload jobs:run syncP
 
 ```bash
 # View all queued and processing jobs
-curl http://localhost:3000/api/queue-jobs/preview
+curl $BASE_URL/api/queue-jobs/preview
 
 # Check player sync status specifically
 ./scripts/check-sync-simple.sh
@@ -41,7 +43,7 @@ curl http://localhost:3000/api/queue-jobs/preview
 ./scripts/watch-sync.sh
 
 # Check API rate limit status
-curl http://localhost:3000/api/v1/rate-limit-status
+curl $BASE_URL/api/v1/rate-limit-status
 ```
 
 ---
@@ -64,13 +66,13 @@ curl http://localhost:3000/api/v1/rate-limit-status
 **Examples:**
 ```bash
 # Queue with default settings (last day to +90 days, with wave scores)
-curl -X POST http://localhost:3000/api/queue-jobs/syncMatches
+curl -X POST $BASE_URL/api/queue-jobs/syncMatches
 
 # Run with custom date range
 pnpm payload jobs:run syncMatches 1 --input '{"startDate":"2025-10-01","endDate":"2025-10-31"}'
 
 # Backfill historical data
-curl "http://localhost:3000/api/queue-jobs/sync?queue=backfill"
+curl "$BASE_URL/api/queue-jobs/sync?queue=backfill"
 ```
 
 ---
@@ -119,7 +121,7 @@ ENABLE_AUTO_VALIDATION=true NODE_OPTIONS="--expose-gc --max-old-space-size=8192"
 **Examples:**
 ```bash
 # Queue daily stats sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncActivePlayerStats
+curl -X POST $BASE_URL/api/queue-jobs/syncActivePlayerStats
 
 # Run with worker
 pnpm payload jobs:run syncActivePlayerStats 1
@@ -145,7 +147,7 @@ pnpm payload jobs:run syncActivePlayerStats 1
 **Examples:**
 ```bash
 # Queue team sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncTeams
+curl -X POST $BASE_URL/api/queue-jobs/syncTeams
 
 # Run with validation
 ENABLE_AUTO_VALIDATION=true pnpm payload jobs:run syncTeams 1
@@ -163,7 +165,7 @@ ENABLE_AUTO_VALIDATION=true pnpm payload jobs:run syncTeams 1
 **Examples:**
 ```bash
 # Queue league sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncLeagues
+curl -X POST $BASE_URL/api/queue-jobs/syncLeagues
 
 # Run with worker
 pnpm payload jobs:run syncLeagues 1
@@ -181,7 +183,7 @@ pnpm payload jobs:run syncLeagues 1
 **Examples:**
 ```bash
 # Queue coach sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncCoaches
+curl -X POST $BASE_URL/api/queue-jobs/syncCoaches
 
 # Run with worker
 pnpm payload jobs:run syncCoaches 1
@@ -199,7 +201,7 @@ pnpm payload jobs:run syncCoaches 1
 **Examples:**
 ```bash
 # Queue metadata sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncMetadataTypes
+curl -X POST $BASE_URL/api/queue-jobs/syncMetadataTypes
 
 # Run with worker
 pnpm payload jobs:run syncMetadataTypes 1
@@ -217,7 +219,7 @@ pnpm payload jobs:run syncMetadataTypes 1
 **Examples:**
 ```bash
 # Queue country sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncCountries
+curl -X POST $BASE_URL/api/queue-jobs/syncCountries
 
 # Run with worker
 pnpm payload jobs:run syncCountries 1
@@ -235,7 +237,7 @@ pnpm payload jobs:run syncCountries 1
 **Examples:**
 ```bash
 # Queue rivals sync
-curl -X POST http://localhost:3000/api/queue-jobs/syncRivals
+curl -X POST $BASE_URL/api/queue-jobs/syncRivals
 
 # Run with worker
 pnpm payload jobs:run syncRivals 1
@@ -322,10 +324,10 @@ FutAve uses a frequency-based queue system where queue names match execution sch
 
 ```bash
 # View all jobs
-curl http://localhost:3000/api/queue-jobs/preview
+curl $BASE_URL/api/queue-jobs/preview
 
 # View specific job in admin
-# Navigate to: http://localhost:3000/admin/collections/payload-jobs
+# Navigate to: $BASE_URL/admin/collections/payload-jobs
 ```
 
 ### Check Player Sync Progress
@@ -342,7 +344,7 @@ curl http://localhost:3000/api/queue-jobs/preview
 
 ```bash
 # Check current rate limit status
-curl http://localhost:3000/api/v1/rate-limit-status
+curl $BASE_URL/api/v1/rate-limit-status
 ```
 
 ### View Sync Logs
@@ -363,22 +365,22 @@ docker-compose logs -f payload
 
 ```bash
 # Quick sync of recent data
-curl -X POST http://localhost:3000/api/queue-jobs/syncMatches
-curl -X POST http://localhost:3000/api/queue-jobs/syncActivePlayerStats
+curl -X POST $BASE_URL/api/queue-jobs/syncMatches
+curl -X POST $BASE_URL/api/queue-jobs/syncActivePlayerStats
 ```
 
 ### Weekly Full Refresh
 
 ```bash
 # Let automatic scheduler handle it, or manually trigger:
-curl "http://localhost:3000/api/queue-jobs/sync?queue=weekly"
+curl "$BASE_URL/api/queue-jobs/sync?queue=weekly"
 ```
 
 ### Backfill Historical Data
 
 ```bash
 # Backfill last year of matches
-curl "http://localhost:3000/api/queue-jobs/sync?queue=backfill"
+curl "$BASE_URL/api/queue-jobs/sync?queue=backfill"
 ```
 
 ### Debug Missing Player Data
