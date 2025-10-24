@@ -91,7 +91,7 @@ export const syncActivePlayerStatsHandler: TaskHandler<'syncActivePlayerStats'> 
         const playerIdsFilter = batch.join(';')
 
         const response = await playerEndpoint.client.fetchFromApi('/players', {
-          filters: `playerIds:${playerIdsFilter}`,
+          filterString: `playerIds:${playerIdsFilter}`,
           include: 'statistics.details;teams', // Stats + teams for transfers
           per_page: BATCH_SIZE,
         })
