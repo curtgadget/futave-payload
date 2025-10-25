@@ -45,6 +45,10 @@ export async function POST(
 
   const payload = await getPayload({ config: configPromise })
 
+  // Check for force parameter
+  const url = new URL(request.url)
+  const force = url.searchParams.get('force') === 'true'
+
   // Check if there's already a pending or processing job for this task
   const existingJobs = await payload.find({
     collection: 'payload-jobs',
@@ -74,18 +78,41 @@ export async function POST(
   })
 
   if (existingJobs.docs.length > 0) {
-    const existingJob = existingJobs.docs[0]
+    const existingJob = existingJobs.docs[0] as any
     const status = existingJob.processing ? 'processing' : 'queued'
 
-    return Response.json(
-      {
-        message: `Job already ${status}`,
-        task,
-        status,
-        jobId: existingJob.id,
-      },
-      { status: 409 }
-    )
+    // Check if job is stuck (processing for more than 2 hours)
+    const TWO_HOURS = 2 * 60 * 60 * 1000
+    const jobAge = Date.now() - new Date(existingJob.updatedAt).getTime()
+    const isStuck = existingJob.processing && jobAge > TWO_HOURS
+
+    if (isStuck || force) {
+      // Mark stuck/forced job as failed and create new one
+      await payload.update({
+        collection: 'payload-jobs',
+        id: existingJob.id,
+        data: {
+          processing: false,
+          hasError: true,
+          completedAt: new Date().toISOString(),
+        },
+      })
+
+      payload.logger.info(
+        `Cleared ${isStuck ? 'stuck' : 'existing'} ${task} job (ID: ${existingJob.id})`
+      )
+    } else {
+      return Response.json(
+        {
+          message: `Job already ${status}`,
+          task,
+          status,
+          jobId: existingJob.id,
+          hint: 'Add ?force=true to restart anyway',
+        },
+        { status: 409 }
+      )
+    }
   }
 
   // Parse input from request body if provided
