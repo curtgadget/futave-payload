@@ -86,18 +86,18 @@ const parseWaveQuery = (req: PayloadRequest) => {
 
 const getFinalScore = (scoresArr: any[], participantId: number): number | null => {
   if (!Array.isArray(scoresArr)) return null
-  
-  const currentScore = scoresArr.find((score: any) => 
-    ['CURRENT', 'FT', 'AET', 'LIVE'].includes(score.type?.name)
+
+  const current = scoresArr.find(
+    (s) => s.participant_id === participantId && s.description === 'CURRENT'
   )
-  
-  if (!currentScore) return null
-  
-  const participantScore = currentScore.scores?.find(
-    (s: any) => s.participant_id === participantId
+  if (current) return current.score?.goals ?? null
+
+  const secondHalf = scoresArr.find(
+    (s) => s.participant_id === participantId && s.description === '2ND_HALF'
   )
-  
-  return participantScore?.score?.goals ?? null
+  if (secondHalf) return secondHalf.score?.goals ?? null
+
+  return null
 }
 
 const matchesWavesHandler: APIRouteV1 = {
