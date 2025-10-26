@@ -61,6 +61,9 @@ export class StandingsCalculator {
     }
 
     // Calculate fresh standings
+    if (league.current_standings?.season_id && seasonId && league.current_standings.season_id !== seasonId) {
+      console.log(`Cache season mismatch for league ${leagueId}: cached=${league.current_standings.season_id}, requested=${seasonId}. Calculating fresh...`)
+    }
     const freshTable = await this.calculateStandings(leagueId, seasonId)
     
     if (freshTable) {
@@ -122,7 +125,7 @@ export class StandingsCalculator {
         collection: 'matches',
         where: {
           and: [
-            { 'league_id.id': { equals: leagueId } }, // Handle league_id as object reference
+            { league_id: { equals: leagueId } }, // league_id is stored as plain number
             { season_id: { equals: seasonId } },
             { state_id: { equals: 5 } } // Full time / finished matches
           ]
@@ -132,9 +135,11 @@ export class StandingsCalculator {
       })
 
       if (matches.docs.length === 0) {
-        console.warn(`No completed matches found for league ${leagueId}, season ${seasonId}`)
+        console.warn(`No completed matches found for league ${leagueId}, season ${seasonId}. Cannot calculate standings.`)
         return null
       }
+
+      console.log(`Calculating standings for league ${leagueId}, season ${seasonId} from ${matches.docs.length} completed matches`)
 
       // Calculate standings
       const teamStats = new Map<number, {
@@ -152,6 +157,7 @@ export class StandingsCalculator {
 
       // Process each match
       let processedMatches = 0
+
       for (const match of matches.docs) {
         const participants = match.participants as any[]
         const scores = match.scores as any[]
@@ -249,6 +255,8 @@ export class StandingsCalculator {
           awayStats.recent_results = awayStats.recent_results.slice(-5)
         }
       }
+
+      console.log(`[Standings] Processed ${processedMatches} of ${matches.docs.length} matches for league ${leagueId}, season ${seasonId}. Teams in table: ${teamStats.size}`)
 
       // Convert to standings array and sort
       const standings = Array.from(teamStats.values())
