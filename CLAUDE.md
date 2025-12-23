@@ -92,8 +92,9 @@ FutAve is a soccer live scores platform built with Next.js and Payload CMS, usin
 
 The Wave Detector is an intelligent match excitement scoring system that helps surface the most compelling matches to users:
 
-- 6 Scoring Factors: Rivalry (0-30), Position (0-20), Zone (0-20), Form (0-15), H2H Drama (0-10), Timing (0-5)
-- Tier Classification: S-Tier (80-100), A-Tier (60-79), B-Tier (40-59), C-Tier (0-39)
+- 7 Scoring Factors: Rivalry (0-30), Position (0-20), Zone (0-20), Form (0-15), H2H Drama (0-10), Timing (0-5), Prestige (0-10)
+- Tier Classification: S-Tier (≥80), A-Tier (≥60), B-Tier (≥40), C-Tier (<40)
+- League Prestige: Boosts matches based on league tier (tier1=10pts, tier2=7pts, tier3=4pts, tier4=0pts)
 - Real-time Calculation: Scores calculated during match sync for upcoming matches
 - Smart Sorting: Combines league priority with wave scores for optimal discovery
 - Performance Optimized: Cached standings calculations with 6-hour expiry
@@ -107,7 +108,7 @@ The Wave Detector is an intelligent match excitement scoring system that helps s
 2. **Collections** (/src/collections/)
    - MongoDB schemas for Leagues, Matches, Teams, Players, Coaches, Countries, MetadataTypes, Rivals
    - Each collection defines its fields, relationships, and admin UI configuration
-   - Matches collection includes Wave Detector scoring system with 6 factors
+   - Matches collection includes Wave Detector scoring system with 7 factors
    - Leagues collection includes cached standings for performance optimization
 
 3. **Data Synchronization** (/src/tasks/handlers/)

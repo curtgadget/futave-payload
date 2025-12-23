@@ -1,6 +1,7 @@
-import type { Match, Team, Rival } from '@/payload-types'
+import type { Match, Team, Rival, League } from '@/payload-types'
 import type { Payload } from 'payload'
 import { StandingsCalculator } from '../standings/calculator'
+import { getLeaguePrestige } from '@/constants/leagues'
 
 export interface WaveScore {
   total: number
@@ -12,6 +13,7 @@ export interface WaveScore {
     form: number
     h2h: number
     timing: number
+    prestige: number
   }
   calculated_at: string
   expires_at: string
@@ -24,8 +26,27 @@ export interface WaveFactors {
   form: number
   h2h: number
   timing: number
+  prestige: number
 }
 
+/**
+ * Wave Score Calculator
+ *
+ * Calculates excitement scores (0-110) for matches based on 7 factors:
+ * - Rivalry: 0-30 (classic rivalries)
+ * - Position: 0-20 (table proximity)
+ * - Zone: 0-20 (title race, Europe, relegation battles)
+ * - Form: 0-15 (recent results similarity)
+ * - H2H: 0-10 (head-to-head drama)
+ * - Timing: 0-5 (season stage, weekends)
+ * - Prestige: 0-10 (league tier: tier1=10, tier2=7, tier3=4, tier4=0)
+ *
+ * Tier Classification:
+ * - S-Tier: ≥80 (Must-watch matches)
+ * - A-Tier: ≥60 (Highly compelling)
+ * - B-Tier: ≥40 (Worth watching)
+ * - C-Tier: <40 (Standard matches)
+ */
 export class WaveScoreCalculator {
   private standingsCalculator: StandingsCalculator
 
@@ -68,17 +89,19 @@ export class WaveScoreCalculator {
       zone,
       form,
       h2h,
-      timing
+      timing,
+      prestige
     ] = await Promise.all([
       this.calculateRivalryScore(homeTeam.id, awayTeam.id),
       this.calculatePositionProximity(match, homeTeam, awayTeam),
       this.calculateZoneImportance(match, homeTeam, awayTeam),
       this.calculateFormDifferential(match, homeTeam, awayTeam),
       this.calculateH2HDrama(homeTeam.id, awayTeam.id),
-      this.calculateTimingBonus(match)
+      this.calculateTimingBonus(match),
+      this.calculateLeaguePrestige(match)
     ])
 
-    return { rivalry, position, zone, form, h2h, timing }
+    return { rivalry, position, zone, form, h2h, timing, prestige }
   }
 
   /**
@@ -292,7 +315,7 @@ export class WaveScoreCalculator {
     if (seasonProgress > 0.85) return 5  // Final weeks
     if (seasonProgress > 0.75) return 3  // Late season
     if (seasonProgress > 0.65) return 1  // Mid-late season
-    
+
     // Derby/weekend bonus
     const dayOfWeek = matchDate.getDay()
     if (dayOfWeek === 0 || dayOfWeek === 6) { // Weekend
@@ -300,6 +323,32 @@ export class WaveScoreCalculator {
     }
 
     return 0
+  }
+
+  /**
+   * Calculate league prestige score (0-10)
+   */
+  private async calculateLeaguePrestige(match: Match): Promise<number> {
+    try {
+      // Get league data to access tier
+      const leagueId = typeof match.league_id === 'object' ? match.league_id.id : match.league_id
+
+      const leagueResult = await this.payload.find({
+        collection: 'leagues',
+        where: { id: { equals: leagueId } },
+        limit: 1
+      })
+
+      if (leagueResult.docs.length === 0) {
+        return 0
+      }
+
+      const league = leagueResult.docs[0] as League
+      return getLeaguePrestige(league.tier)
+    } catch (error) {
+      console.error('Error calculating league prestige:', error)
+      return 0
+    }
   }
 
   /**

@@ -10,7 +10,7 @@ import type { APIRouteV1 } from '../index'
 // Create mock functions with any type to avoid strict typing issues
 const createMockFn = () => jest.fn() as any
 
-// Mock Payload CMS and dependencies  
+// Mock Payload CMS and dependencies
 export const mockPayload = {
   find: createMockFn(),
   create: createMockFn(),
@@ -86,12 +86,14 @@ jest.mock('@/utilities/auth', () => ({
 /**
  * Create a mock PayloadRequest for testing
  */
-export function createMockRequest(options: {
-  url?: string
-  method?: string
-  headers?: Record<string, string>
-  body?: any
-} = {}): PayloadRequest {
+export function createMockRequest(
+  options: {
+    url?: string
+    method?: string
+    headers?: Record<string, string>
+    body?: any
+  } = {},
+): PayloadRequest {
   const { url = 'http://localhost:3000/api/v1/test', method = 'GET', headers = {}, body } = options
 
   return {
@@ -121,7 +123,7 @@ export class APIResponse {
   constructor(
     public status: number,
     public data: any,
-    public headers: Headers = new Headers()
+    public headers: Headers = new Headers(),
   ) {}
 
   static async fromResponse(response: Response): Promise<APIResponse> {
@@ -171,7 +173,7 @@ export class APIResponse {
  */
 export async function executeEndpoint(
   route: APIRouteV1,
-  request: PayloadRequest
+  request: PayloadRequest,
 ): Promise<APIResponse> {
   const response = await route.handler(request)
   return APIResponse.fromResponse(response)
@@ -180,13 +182,17 @@ export async function executeEndpoint(
 /**
  * Create test request for team endpoints
  */
-export function createTeamRequest(teamId: string, resource: string, options: {
-  queryParams?: Record<string, string>
-  method?: string
-  headers?: Record<string, string>
-} = {}): PayloadRequest {
+export function createTeamRequest(
+  teamId: string,
+  resource: string,
+  options: {
+    queryParams?: Record<string, string>
+    method?: string
+    headers?: Record<string, string>
+  } = {},
+): PayloadRequest {
   const { queryParams = {}, method = 'GET', headers = {} } = options
-  
+
   const url = new URL(`http://localhost:3000/api/v1/team/${teamId}/${resource}`)
   Object.entries(queryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
@@ -202,16 +208,20 @@ export function createTeamRequest(teamId: string, resource: string, options: {
 /**
  * Create test request for league endpoints
  */
-export function createLeagueRequest(leagueId: string, resource?: string, options: {
-  queryParams?: Record<string, string>
-  method?: string
-  headers?: Record<string, string>
-} = {}): PayloadRequest {
+export function createLeagueRequest(
+  leagueId: string,
+  resource?: string,
+  options: {
+    queryParams?: Record<string, string>
+    method?: string
+    headers?: Record<string, string>
+  } = {},
+): PayloadRequest {
   const { queryParams = {}, method = 'GET', headers = {} } = options
-  
+
   let basePath: string
   let finalQueryParams = { ...queryParams }
-  
+
   if (resource) {
     // For league resource endpoints: league/{id}/{resource}
     // If leagueId is empty, we'll create an invalid path to test error handling
@@ -224,9 +234,9 @@ export function createLeagueRequest(leagueId: string, resource?: string, options
       finalQueryParams.id = leagueId
     }
   }
-  
+
   const url = new URL(`http://localhost:3000/api/v1/${basePath}`)
-  
+
   Object.entries(finalQueryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
   })
@@ -241,13 +251,16 @@ export function createLeagueRequest(leagueId: string, resource?: string, options
 /**
  * Create test request for player endpoints
  */
-export function createPlayerRequest(playerId: string, options: {
-  queryParams?: Record<string, string>
-  method?: string
-  headers?: Record<string, string>
-} = {}): PayloadRequest {
+export function createPlayerRequest(
+  playerId: string,
+  options: {
+    queryParams?: Record<string, string>
+    method?: string
+    headers?: Record<string, string>
+  } = {},
+): PayloadRequest {
   const { queryParams = {}, method = 'GET', headers = {} } = options
-  
+
   const url = new URL(`http://localhost:3000/api/v1/player/${playerId}`)
   Object.entries(queryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
@@ -263,13 +276,15 @@ export function createPlayerRequest(playerId: string, options: {
 /**
  * Create test request for players list endpoint
  */
-export function createPlayersListRequest(options: {
-  queryParams?: Record<string, string>
-  method?: string
-  headers?: Record<string, string>
-} = {}): PayloadRequest {
+export function createPlayersListRequest(
+  options: {
+    queryParams?: Record<string, string>
+    method?: string
+    headers?: Record<string, string>
+  } = {},
+): PayloadRequest {
   const { queryParams = {}, method = 'GET', headers = {} } = options
-  
+
   const url = new URL(`http://localhost:3000/api/v1/players`)
   Object.entries(queryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
@@ -285,18 +300,22 @@ export function createPlayersListRequest(options: {
 /**
  * Create test request for match endpoints
  */
-export function createMatchRequest(matchId: string, tab?: string, options: {
-  queryParams?: Record<string, string>
-  method?: string
-  headers?: Record<string, string>
-} = {}): PayloadRequest {
+export function createMatchRequest(
+  matchId: string,
+  tab?: string,
+  options: {
+    queryParams?: Record<string, string>
+    method?: string
+    headers?: Record<string, string>
+  } = {},
+): PayloadRequest {
   const { queryParams = {}, method = 'GET', headers = {} } = options
-  
+
   let basePath = `match/${matchId}`
   if (tab) {
     basePath += `/${tab}`
   }
-  
+
   const url = new URL(`http://localhost:3000/api/v1/${basePath}`)
   Object.entries(queryParams).forEach(([key, value]) => {
     url.searchParams.set(key, value)
@@ -316,18 +335,27 @@ export const apiTestSetup = {
   beforeEach: () => {
     // Clear all mocks
     jest.clearAllMocks()
-    
+
     // Suppress console.error during tests to avoid cluttering test output
     // This prevents expected error logs from endpoints during error testing scenarios
     jest.spyOn(console, 'error').mockImplementation(() => {})
-    
+
     // Reset mock implementations to default behavior
     mockPayload.find.mockResolvedValue({ docs: [] })
     mockTeamDataFetcher.getTable.mockResolvedValue({})
-    mockTeamDataFetcher.getFixtures.mockResolvedValue({ docs: [], meta: { pagination: {} }, nextMatch: null })
+    mockTeamDataFetcher.getFixtures.mockResolvedValue({
+      docs: [],
+      meta: { pagination: {} },
+      nextMatch: null,
+    })
     mockTeamDataFetcher.getSquad.mockResolvedValue({ players: {}, coaches: [] })
-    mockTeamDataFetcher.getStats.mockResolvedValue({ player_stats: [], team_stats: {}, top_stats: [] })
-    
+    mockTeamDataFetcher.getStats.mockResolvedValue({
+      player_stats: [],
+      team_stats: {},
+      top_stats: [],
+      current_season: {},
+    })
+
     // Reset league data fetcher mocks
     mockLeagueDataFetcher.getOverview.mockResolvedValue({
       id: '1',
@@ -339,16 +367,48 @@ export const apiTestSetup = {
       upcoming_matches: [],
       recent_results: [],
       stats_summary: { top_scorers: [], top_assists: [], top_rated: [] },
-      metadata: { total_teams: 0, total_matches_played: 0, total_goals: 0, average_goals_per_match: 0 }
+      metadata: {
+        total_teams: 0,
+        total_matches_played: 0,
+        total_goals: 0,
+        average_goals_per_match: 0,
+      },
     })
     mockLeagueDataFetcher.getStandings.mockResolvedValue({})
-    mockLeagueDataFetcher.getTeams.mockResolvedValue({ id: '1', name: 'Test League', teams: [], pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } })
-    mockLeagueDataFetcher.getMatches.mockResolvedValue({ docs: [], meta: { pagination: {} }, nextMatch: null })
-    mockLeagueDataFetcher.getStats.mockResolvedValue({ id: '1', name: 'Test League', season_id: 1, season_name: 'Test Season', seasons: [], overview: {}, player_stats: {}, team_stats: {}, top_stats: [], legacy_player_stats: [] })
-    mockLeagueDataFetcher.getSeasons.mockResolvedValue({ id: '1', name: 'Test League', seasons: [] })
-    
-    mockLeagueListDataFetcher.getLeagues.mockResolvedValue({ data: [], meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } } })
-    
+    mockLeagueDataFetcher.getTeams.mockResolvedValue({
+      id: '1',
+      name: 'Test League',
+      teams: [],
+      pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 },
+    })
+    mockLeagueDataFetcher.getMatches.mockResolvedValue({
+      docs: [],
+      meta: { pagination: {} },
+      nextMatch: null,
+    })
+    mockLeagueDataFetcher.getStats.mockResolvedValue({
+      id: '1',
+      name: 'Test League',
+      season_id: 1,
+      season_name: 'Test Season',
+      seasons: [],
+      overview: {},
+      player_stats: {},
+      team_stats: {},
+      top_stats: [],
+      legacy_player_stats: [],
+    })
+    mockLeagueDataFetcher.getSeasons.mockResolvedValue({
+      id: '1',
+      name: 'Test League',
+      seasons: [],
+    })
+
+    mockLeagueListDataFetcher.getLeagues.mockResolvedValue({
+      data: [],
+      meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } },
+    })
+
     // Reset player data fetcher mocks
     mockPlayerDataFetcher.getOverview.mockResolvedValue({
       id: '1',
@@ -356,7 +416,7 @@ export const apiTestSetup = {
       position: 'Forward',
       nationality: 'Test Country',
       current_team_stats: undefined,
-      career: []
+      career: [],
     })
     mockPlayerDataFetcher.getStats.mockResolvedValue({
       id: '1',
@@ -364,21 +424,21 @@ export const apiTestSetup = {
       position: 'Forward',
       nationality: 'Test Country',
       stats: [],
-      seasons: []
+      seasons: [],
     })
     mockPlayerDataFetcher.getCareer.mockResolvedValue({
       id: '1',
       name: 'Test Player',
       position: 'Forward',
       nationality: 'Test Country',
-      career: []
+      career: [],
     })
-    
+
     mockPlayerListDataFetcher.getPlayers.mockResolvedValue({
       data: [],
-      meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } }
+      meta: { pagination: { page: 1, limit: 50, totalItems: 0, totalPages: 0 } },
     })
-    
+
     mockAuthMiddleware.mockResolvedValue(null) // No auth error by default
   },
 
@@ -398,11 +458,19 @@ export const leagueEndpointAssertions = {
    */
   assertOverviewResponse: (response: APIResponse) => {
     const expectedProperties = [
-      'id', 'name', 'season_id', 'season_name', 'seasons',
-      'table_summary', 'upcoming_matches', 'recent_results', 'stats_summary', 'metadata'
+      'id',
+      'name',
+      'season_id',
+      'season_name',
+      'seasons',
+      'table_summary',
+      'upcoming_matches',
+      'recent_results',
+      'stats_summary',
+      'metadata',
     ]
-    
-    expectedProperties.forEach(prop => {
+
+    expectedProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -410,7 +478,7 @@ export const leagueEndpointAssertions = {
     expect(response.data.table_summary).toHaveProperty('top_teams')
     expect(response.data.table_summary).toHaveProperty('promotion_teams')
     expect(response.data.table_summary).toHaveProperty('relegation_teams')
-    
+
     // Assert arrays
     expect(Array.isArray(response.data.seasons)).toBe(true)
     expect(Array.isArray(response.data.upcoming_matches)).toBe(true)
@@ -424,7 +492,7 @@ export const leagueEndpointAssertions = {
    */
   assertStandingsResponse: (response: APIResponse) => {
     expect(typeof response.data).toBe('object')
-    
+
     // Should be a record of season IDs to standings data
     Object.values(response.data).forEach((seasonData: any) => {
       expect(seasonData).toHaveProperty('id')
@@ -444,7 +512,7 @@ export const leagueEndpointAssertions = {
     response.expectToHaveProperty('name')
     response.expectToHaveProperty('teams')
     response.expectToHaveProperty('pagination')
-    
+
     expect(Array.isArray(response.data.teams)).toBe(true)
     expect(response.data.pagination).toHaveProperty('page')
     expect(response.data.pagination).toHaveProperty('limit')
@@ -460,7 +528,7 @@ export const leagueEndpointAssertions = {
   assertMatchesResponse: (response: APIResponse) => {
     response.expectToHaveProperty('docs')
     response.expectToHaveProperty('meta')
-    
+
     expect(Array.isArray(response.data.docs)).toBe(true)
     expect(response.data.meta).toHaveProperty('pagination')
 
@@ -471,8 +539,17 @@ export const leagueEndpointAssertions = {
    * Assert league stats response structure
    */
   assertStatsResponse: (response: APIResponse) => {
-    const expectedProperties = ['id', 'name', 'season_id', 'season_name', 'seasons', 'overview', 'player_stats', 'team_stats']
-    expectedProperties.forEach(prop => {
+    const expectedProperties = [
+      'id',
+      'name',
+      'season_id',
+      'season_name',
+      'seasons',
+      'overview',
+      'player_stats',
+      'team_stats',
+    ]
+    expectedProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -490,7 +567,7 @@ export const leagueEndpointAssertions = {
   assertLeaguesListResponse: (response: APIResponse) => {
     response.expectToHaveProperty('data')
     response.expectToHaveProperty('meta')
-    
+
     expect(Array.isArray(response.data.data)).toBe(true)
     expect(response.data.meta).toHaveProperty('pagination')
     expect(response.data.meta.pagination).toHaveProperty('page')
@@ -511,11 +588,18 @@ export const teamEndpointAssertions = {
    */
   assertOverviewResponse: (response: APIResponse) => {
     const expectedProperties = [
-      'id', 'name', 'season_id', 'season_name', 'form', 
-      'next_match', 'current_position', 'stats', 'recent_fixtures'
+      'id',
+      'name',
+      'season_id',
+      'season_name',
+      'form',
+      'next_match',
+      'current_position',
+      'stats',
+      'recent_fixtures',
     ]
-    
-    expectedProperties.forEach(prop => {
+
+    expectedProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -523,7 +607,7 @@ export const teamEndpointAssertions = {
     expect(response.data.stats).toHaveProperty('top_rated')
     expect(response.data.stats).toHaveProperty('top_scorers')
     expect(response.data.stats).toHaveProperty('top_assists')
-    
+
     // Assert form is an array
     expect(Array.isArray(response.data.form)).toBe(true)
 
@@ -535,7 +619,7 @@ export const teamEndpointAssertions = {
    */
   assertTableResponse: (response: APIResponse) => {
     expect(typeof response.data).toBe('object')
-    
+
     // Should be a record of season IDs to standings data
     Object.values(response.data).forEach((seasonData: any) => {
       expect(seasonData).toHaveProperty('id')
@@ -554,7 +638,7 @@ export const teamEndpointAssertions = {
     response.expectToHaveProperty('docs')
     response.expectToHaveProperty('meta')
     response.expectToHaveProperty('nextMatch')
-    
+
     expect(Array.isArray(response.data.docs)).toBe(true)
     expect(response.data.meta).toHaveProperty('pagination')
 
@@ -567,10 +651,10 @@ export const teamEndpointAssertions = {
   assertSquadResponse: (response: APIResponse) => {
     response.expectToHaveProperty('players')
     response.expectToHaveProperty('coaches')
-    
+
     const { players } = response.data
     const expectedPositions = ['goalkeepers', 'defenders', 'midfielders', 'forwards']
-    expectedPositions.forEach(position => {
+    expectedPositions.forEach((position) => {
       expect(players).toHaveProperty(position)
       expect(Array.isArray(players[position])).toBe(true)
     })
@@ -583,7 +667,7 @@ export const teamEndpointAssertions = {
    */
   assertStatsResponse: (response: APIResponse) => {
     const expectedProperties = ['player_stats', 'team_stats', 'season_id', 'seasons', 'top_stats']
-    expectedProperties.forEach(prop => {
+    expectedProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -604,32 +688,32 @@ export const mockLeagueData = {
     country: {
       id: '1',
       name: 'England',
-      flag: 'https://example.com/england-flag.png'
+      flag: 'https://example.com/england-flag.png',
     },
     season_id: 20,
     season_name: '2023-24',
     seasons: [
       { id: '20', name: '2023-24' },
-      { id: '19', name: '2022-23' }
+      { id: '19', name: '2022-23' },
     ],
     table_summary: {
       top_teams: [],
       promotion_teams: [],
-      relegation_teams: []
+      relegation_teams: [],
     },
     upcoming_matches: [],
     recent_results: [],
     stats_summary: {
       top_scorers: [],
       top_assists: [],
-      top_rated: []
+      top_rated: [],
     },
     metadata: {
       total_teams: 20,
       total_matches_played: 380,
       total_goals: 1000,
-      average_goals_per_match: 2.63
-    }
+      average_goals_per_match: 2.63,
+    },
   },
 
   standings: {
@@ -641,8 +725,8 @@ export const mockLeagueData = {
       season_id: 20,
       stage_id: null,
       stage_name: null,
-      standings: []
-    }
+      standings: [],
+    },
   },
 
   teams: {
@@ -653,8 +737,8 @@ export const mockLeagueData = {
       page: 1,
       limit: 50,
       totalItems: 20,
-      totalPages: 1
-    }
+      totalPages: 1,
+    },
   },
 
   matches: {
@@ -673,10 +757,10 @@ export const mockLeagueData = {
         hasNewer: false,
         hasOlder: false,
         newerUrl: null,
-        olderUrl: null
-      }
+        olderUrl: null,
+      },
     },
-    nextMatch: null
+    nextMatch: null,
   },
 
   stats: {
@@ -686,7 +770,7 @@ export const mockLeagueData = {
     season_name: '2023-24',
     seasons: [
       { id: '20', name: '2023-24' },
-      { id: '19', name: '2022-23' }
+      { id: '19', name: '2022-23' },
     ],
     overview: {
       teams_count: 20,
@@ -698,22 +782,22 @@ export const mockLeagueData = {
       total_appearances: 7000,
       total_minutes_played: 500000,
       average_goals_per_player: 2.0,
-      average_assists_per_player: 0.6
+      average_assists_per_player: 0.6,
     },
     player_stats: {
       top_scorers: { category: 'goals', label: 'Top Goal Scorers', players: [] },
       top_assists: { category: 'assists', label: 'Most Assists', players: [] },
       most_minutes: { category: 'minutes', label: 'Most Minutes Played', players: [] },
-      top_goals_assists: { category: 'goals_assists', label: 'Goals + Assists', players: [] }
+      top_goals_assists: { category: 'goals_assists', label: 'Goals + Assists', players: [] },
     },
     team_stats: {
       attack: { category: 'attack', label: 'Goals Scored', teams: [] },
       defense: { category: 'defense', label: 'Clean Sheets', teams: [] },
       discipline: { category: 'discipline', label: 'Best Disciplinary Record', teams: [] },
-      performance: { category: 'performance', label: 'Most Wins', teams: [] }
+      performance: { category: 'performance', label: 'Most Wins', teams: [] },
     },
     top_stats: [],
-    legacy_player_stats: []
+    legacy_player_stats: [],
   },
 
   leaguesList: {
@@ -725,23 +809,23 @@ export const mockLeagueData = {
         country: {
           id: '1',
           name: 'England',
-          flag: 'https://example.com/england-flag.png'
+          flag: 'https://example.com/england-flag.png',
         },
         current_season: {
           id: '20',
-          name: '2023-24'
-        }
-      }
+          name: '2023-24',
+        },
+      },
     ],
     meta: {
       pagination: {
         page: 1,
         limit: 50,
         totalItems: 1,
-        totalPages: 1
-      }
-    }
-  }
+        totalPages: 1,
+      },
+    },
+  },
 }
 
 /**
@@ -754,8 +838,8 @@ export const playerEndpointAssertions = {
   assertOverviewResponse: (response: APIResponse) => {
     // Only check for required properties that should always be present
     const requiredProperties = ['id', 'name', 'trophies', 'career']
-    
-    requiredProperties.forEach(prop => {
+
+    requiredProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -770,11 +854,9 @@ export const playerEndpointAssertions = {
    * Assert player stats response structure
    */
   assertStatsResponse: (response: APIResponse) => {
-    const requiredProperties = [
-      'id', 'name', 'stats', 'seasons'
-    ]
-    
-    requiredProperties.forEach(prop => {
+    const requiredProperties = ['id', 'name', 'stats', 'seasons']
+
+    requiredProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -789,11 +871,9 @@ export const playerEndpointAssertions = {
    * Assert player career response structure
    */
   assertCareerResponse: (response: APIResponse) => {
-    const requiredProperties = [
-      'id', 'name', 'career'
-    ]
-    
-    requiredProperties.forEach(prop => {
+    const requiredProperties = ['id', 'name', 'career']
+
+    requiredProperties.forEach((prop) => {
       response.expectToHaveProperty(prop)
     })
 
@@ -809,7 +889,7 @@ export const playerEndpointAssertions = {
   assertPlayersListResponse: (response: APIResponse) => {
     response.expectToHaveProperty('data')
     response.expectToHaveProperty('meta')
-    
+
     expect(Array.isArray(response.data.data)).toBe(true)
     expect(response.data.meta).toHaveProperty('pagination')
     expect(response.data.meta.pagination).toHaveProperty('page')
@@ -830,13 +910,19 @@ export const matchEndpointAssertions = {
    */
   assertOverviewResponse: (response: APIResponse) => {
     response.expectToHaveProperty('data')
-    
+
     const requiredProperties = [
-      'id', 'league', 'homeTeam', 'awayTeam', 'score', 'status', 
-      'startingAt', 'lineups'
+      'id',
+      'league',
+      'homeTeam',
+      'awayTeam',
+      'score',
+      'status',
+      'startingAt',
+      'lineups',
     ]
-    
-    requiredProperties.forEach(prop => {
+
+    requiredProperties.forEach((prop) => {
       expect(response.data.data).toHaveProperty(prop)
     })
 
@@ -849,11 +935,11 @@ export const matchEndpointAssertions = {
     // Assert lineup structures
     expect(response.data.data.lineups).toHaveProperty('home')
     expect(response.data.data.lineups).toHaveProperty('away')
-    
+
     // Check lineup components
     const homeLineup = response.data.data.lineups.home
     const awayLineup = response.data.data.lineups.away
-    
+
     const lineupsProps = ['formation', 'startingXI', 'bench', 'sidelined', 'coach']
     lineupsProps.forEach((prop: string) => {
       expect(homeLineup).toHaveProperty(prop)
@@ -876,13 +962,13 @@ export const matchEndpointAssertions = {
    */
   assertLineupsResponse: (response: APIResponse) => {
     response.expectToHaveProperty('lineups')
-    
+
     expect(response.data.lineups).toHaveProperty('home')
     expect(response.data.lineups).toHaveProperty('away')
-    
+
     const homeLineup = response.data.lineups.home
     const awayLineup = response.data.lineups.away
-    
+
     const lineupsProps = ['formation', 'startingXI', 'bench', 'sidelined', 'coach']
     lineupsProps.forEach((prop: string) => {
       expect(homeLineup).toHaveProperty(prop)
@@ -905,23 +991,23 @@ export const matchEndpointAssertions = {
    */
   assertCoachInformation: (response: APIResponse, tabName: string = 'overview') => {
     let lineups
-    
+
     if (tabName === 'lineups') {
       lineups = response.data.lineups
     } else {
       lineups = response.data.data.lineups
     }
-    
+
     const homeCoach = lineups.home.coach
     const awayCoach = lineups.away.coach
-    
+
     if (homeCoach) {
       expect(homeCoach).toHaveProperty('coach_id')
       expect(homeCoach).toHaveProperty('coach_name')
       expect(typeof homeCoach.coach_id).toBe('number')
       expect(typeof homeCoach.coach_name).toBe('string')
     }
-    
+
     if (awayCoach) {
       expect(awayCoach).toHaveProperty('coach_id')
       expect(awayCoach).toHaveProperty('coach_name')
@@ -946,11 +1032,11 @@ export const mockTeamData = {
     stats: {
       top_rated: [],
       top_scorers: [],
-      top_assists: []
+      top_assists: [],
     },
-    recent_fixtures: []
+    recent_fixtures: [],
   },
-  
+
   table: {
     '20': {
       id: 1,
@@ -960,8 +1046,8 @@ export const mockTeamData = {
       season_id: 20,
       stage_id: null,
       stage_name: null,
-      standings: []
-    }
+      standings: [],
+    },
   },
 
   fixtures: {
@@ -980,10 +1066,10 @@ export const mockTeamData = {
         hasNewer: false,
         hasOlder: false,
         newerUrl: null,
-        olderUrl: null
-      }
+        olderUrl: null,
+      },
     },
-    nextMatch: null
+    nextMatch: null,
   },
 
   squad: {
@@ -991,9 +1077,9 @@ export const mockTeamData = {
       goalkeepers: [],
       defenders: [],
       midfielders: [],
-      forwards: []
+      forwards: [],
     },
-    coaches: []
+    coaches: [],
   },
 
   stats: {
@@ -1005,12 +1091,12 @@ export const mockTeamData = {
       losses: 0,
       goals_for: 0,
       goals_against: 0,
-      goal_difference: 0
+      goal_difference: 0,
     },
     season_id: 20,
     seasons: [],
-    top_stats: []
-  }
+    top_stats: [],
+  },
 }
 
 // Export commonly used player test data
@@ -1022,7 +1108,7 @@ export const mockPlayerData = {
     nationality: 'Portugal',
     team: {
       id: '50',
-      name: 'Al Nassr'
+      name: 'Al Nassr',
     },
     photo: 'https://example.com/ronaldo.jpg',
     jersey_number: 7,
@@ -1030,20 +1116,25 @@ export const mockPlayerData = {
     age: 39,
     height: {
       metric: '187 cm',
-      imperial: '6\'2"'
+      imperial: '6\'2"',
     },
     weight: {
       metric: '83 kg',
-      imperial: '183 lbs'
+      imperial: '183 lbs',
     },
     foot: 'right' as const,
     trophies: [
       {
-        team: { id: '1', name: 'Real Madrid', logo: 'https://example.com/rm.png', country: 'Spain' },
+        team: {
+          id: '1',
+          name: 'Real Madrid',
+          logo: 'https://example.com/rm.png',
+          country: 'Spain',
+        },
         league: { id: '564', name: 'Champions League', logo: 'https://example.com/ucl.png' },
         season: { id: '12', name: '2017-18' },
-        trophy: { id: '1', position: 1, name: 'Winner' }
-      }
+        trophy: { id: '1', position: 1, name: 'Winner' },
+      },
     ],
     current_team_stats: {
       season: { id: '20', name: '2023-24' },
@@ -1056,12 +1147,17 @@ export const mockPlayerData = {
       assists: 11,
       yellow_cards: 2,
       red_cards: 0,
-      rating: 8.2
+      rating: 8.2,
     },
     career: [
       {
         team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
-        league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png', country: 'Saudi Arabia' },
+        league: {
+          id: '955',
+          name: 'Saudi Pro League',
+          logo: 'https://example.com/spl.png',
+          country: 'Saudi Arabia',
+        },
         season: { id: '20', name: '2023-24' },
         start_date: '2023-01-01',
         end_date: null,
@@ -1070,9 +1166,9 @@ export const mockPlayerData = {
         goals: 35,
         assists: 11,
         minutes_played: 2610,
-        rating: 8.2
-      }
-    ]
+        rating: 8.2,
+      },
+    ],
   },
 
   stats: {
@@ -1095,13 +1191,13 @@ export const mockPlayerData = {
         rating: 8.2,
         shots: { total: 150, on_target: 75, accuracy: 50 },
         passes: { total: 800, key: 45, accuracy: 85 },
-        dribbles: { attempts: 80, success: 48, success_rate: 60 }
-      }
+        dribbles: { attempts: 80, success: 48, success_rate: 60 },
+      },
     ],
     seasons: [
       { id: '20', name: '2023-24' },
-      { id: '19', name: '2022-23' }
-    ]
+      { id: '19', name: '2022-23' },
+    ],
   },
 
   career: {
@@ -1112,7 +1208,12 @@ export const mockPlayerData = {
     career: [
       {
         team: { id: '50', name: 'Al Nassr', logo: 'https://example.com/alnassr.png' },
-        league: { id: '955', name: 'Saudi Pro League', logo: 'https://example.com/spl.png', country: 'Saudi Arabia' },
+        league: {
+          id: '955',
+          name: 'Saudi Pro League',
+          logo: 'https://example.com/spl.png',
+          country: 'Saudi Arabia',
+        },
         season: { id: '20', name: '2023-24' },
         start_date: '2023-01-01',
         end_date: null,
@@ -1121,11 +1222,16 @@ export const mockPlayerData = {
         goals: 35,
         assists: 11,
         minutes_played: 2610,
-        rating: 8.2
+        rating: 8.2,
       },
       {
         team: { id: '12', name: 'Manchester United', logo: 'https://example.com/mufc.png' },
-        league: { id: '8', name: 'Premier League', logo: 'https://example.com/pl.png', country: 'England' },
+        league: {
+          id: '8',
+          name: 'Premier League',
+          logo: 'https://example.com/pl.png',
+          country: 'England',
+        },
         season: { id: '19', name: '2022-23' },
         start_date: '2022-07-01',
         end_date: '2022-12-31',
@@ -1134,9 +1240,9 @@ export const mockPlayerData = {
         goals: 3,
         assists: 2,
         minutes_played: 1200,
-        rating: 6.8
-      }
-    ]
+        rating: 6.8,
+      },
+    ],
   },
 
   playersList: {
@@ -1148,12 +1254,12 @@ export const mockPlayerData = {
         nationality: 'Portugal',
         team: {
           id: '50',
-          name: 'Al Nassr'
+          name: 'Al Nassr',
         },
         photo: 'https://example.com/ronaldo.jpg',
         jersey_number: 7,
         date_of_birth: '1985-02-05',
-        age: 39
+        age: 39,
       },
       {
         id: '1000',
@@ -1162,21 +1268,21 @@ export const mockPlayerData = {
         nationality: 'Argentina',
         team: {
           id: '60',
-          name: 'Inter Miami'
+          name: 'Inter Miami',
         },
         photo: 'https://example.com/messi.jpg',
         jersey_number: 10,
         date_of_birth: '1987-06-24',
-        age: 37
-      }
+        age: 37,
+      },
     ],
     meta: {
       pagination: {
         page: 1,
         limit: 50,
         totalItems: 2,
-        totalPages: 1
-      }
-    }
-  }
+        totalPages: 1,
+      },
+    },
+  },
 }

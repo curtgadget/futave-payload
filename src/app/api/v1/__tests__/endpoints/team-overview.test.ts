@@ -5,6 +5,7 @@ import {
   apiTestSetup,
   teamEndpointAssertions,
   mockTeamDataFetcher,
+  mockPayload,
   APIResponse,
 } from '../../test-helpers/apiTestFramework'
 
@@ -14,6 +15,14 @@ import teamOverviewEndpoint from '../../teams'
 describe('Team Overview API Endpoint', () => {
   beforeEach(() => {
     apiTestSetup.beforeEach()
+
+    // Default mock for findByID to return a team
+    mockPayload.findByID.mockResolvedValue({
+      id: 123,
+      name: 'Test Team',
+      activeseasons: [{ id: 20, name: '2023-24', league_id: 8 }],
+      season_map: [],
+    })
   })
 
   afterEach(() => {
@@ -38,70 +47,69 @@ describe('Team Overview API Endpoint', () => {
             final_score: { home: 2, away: 1 },
             participants: [
               { id: 123, name: 'Test Team', meta: { location: 'home' } },
-              { id: 456, name: 'Opponent Team', meta: { location: 'away' } }
-            ]
+              { id: 456, name: 'Opponent Team', meta: { location: 'away' } },
+            ],
           },
           {
-            id: '2', 
+            id: '2',
             starting_at: '2024-01-05T20:00:00Z',
             final_score: { home: 0, away: 3 },
             participants: [
               { id: 789, name: 'Away Team', meta: { location: 'home' } },
-              { id: 123, name: 'Test Team', meta: { location: 'away' } }
-            ]
-          }
+              { id: 123, name: 'Test Team', meta: { location: 'away' } },
+            ],
+          },
         ],
         nextMatch: {
           starting_at: '2024-01-20T15:00:00Z',
           league: { id: 8, name: 'Premier League' },
           home_team: { id: 123, name: 'Test Team' },
-          away_team: { id: 999, name: 'Next Opponent' }
-        }
+          away_team: { id: 999, name: 'Next Opponent' },
+        },
       }
 
       const mockTableData = {
         '20': {
           id: 1,
           name: 'Premier League',
-          standings: [{
-            id: 1,
-            name: 'Premier League Table',
-            standings: [{
-              team_id: 123,
-              position: 5,
-              points: 45,
-              played: 25,
-              goal_difference: 8,
-              form: 'WWLDW',
-              qualification_status: null
-            }]
-          }]
-        }
+          standings: [
+            {
+              id: 1,
+              name: 'Premier League Table',
+              standings: [
+                {
+                  team_id: 123,
+                  position: 5,
+                  points: 45,
+                  played: 25,
+                  goal_difference: 8,
+                  form: 'WWLDW',
+                  qualification_status: null,
+                },
+              ],
+            },
+          ],
+        },
       }
 
       const mockStatsData = {
+        current_season: {},
         season_id: 20,
         seasons: [{ id: 20, name: '2023-24' }],
         top_stats: [
           {
             category: 'goals',
-            players: [
-              { player_id: '1', name: 'Striker One', value: 15, position: 'Forward' }
-            ]
+            players: [{ player_id: '1', name: 'Striker One', value: 15, position: 'Forward' }],
           },
           {
-            category: 'assists', 
-            players: [
-              { player_id: '2', name: 'Midfielder One', value: 8, position: 'Midfielder' }
-            ]
+            category: 'assists',
+            players: [{ player_id: '2', name: 'Midfielder One', value: 8, position: 'Midfielder' }],
           },
           {
             category: 'rating',
-            players: [
-              { player_id: '3', name: 'Defender One', value: 7.8, position: 'Defender' }
-            ]
-          }
-        ]
+            players: [{ player_id: '3', name: 'Defender One', value: 7.8, position: 'Defender' }],
+          },
+        ],
       }
 
       // Setup mocks
@@ -133,7 +141,7 @@ describe('Team Overview API Endpoint', () => {
         played: 25,
         goal_difference: 8,
         form: ['W', 'W', 'L', 'D', 'W'],
-        qualification_status: null
+        qualification_status: null,
       })
 
       // Verify top stats structure
@@ -155,10 +163,10 @@ describe('Team Overview API Endpoint', () => {
 
     it('should handle data fetcher errors gracefully', async () => {
       const teamId = '123'
-      
+
       // Setup one of the fetchers to fail
       mockTeamDataFetcher.getFixtures.mockRejectedValue(new Error('Database connection failed'))
-      
+
       const request = createTeamRequest(teamId, 'overview')
       const response = await executeEndpoint(teamOverviewEndpoint, request)
 
@@ -168,17 +176,18 @@ describe('Team Overview API Endpoint', () => {
 
     it('should handle partial data gracefully', async () => {
       const teamId = '456'
-      
+
       // Setup minimal mock data
       mockTeamDataFetcher.getFixtures.mockResolvedValue({
         docs: [],
-        nextMatch: null
+        nextMatch: null,
       })
       mockTeamDataFetcher.getTable.mockResolvedValue({})
       mockTeamDataFetcher.getStats.mockResolvedValue({
         season_id: 20,
         seasons: [],
-        top_stats: []
+        top_stats: [],
+        current_season: {},
       })
 
       const request = createTeamRequest(teamId, 'overview')
@@ -199,37 +208,49 @@ describe('Team Overview API Endpoint', () => {
 
     it('should calculate team form correctly for different scenarios', async () => {
       const teamId = '123'
-      
+
       // Test scenarios with different match results
       const testCases = [
         {
           name: 'all wins',
           matches: [
-            { final_score: { home: 3, away: 1 }, participants: [
-              { id: 123, meta: { location: 'home' } },
-              { id: 456, meta: { location: 'away' } }
-            ]},
-            { final_score: { home: 0, away: 2 }, participants: [
-              { id: 789, meta: { location: 'home' } },
-              { id: 123, meta: { location: 'away' } }
-            ]}
+            {
+              final_score: { home: 3, away: 1 },
+              participants: [
+                { id: 123, meta: { location: 'home' } },
+                { id: 456, meta: { location: 'away' } },
+              ],
+            },
+            {
+              final_score: { home: 0, away: 2 },
+              participants: [
+                { id: 789, meta: { location: 'home' } },
+                { id: 123, meta: { location: 'away' } },
+              ],
+            },
           ],
-          expectedResults: ['W', 'W']
+          expectedResults: ['W', 'W'],
         },
         {
           name: 'mixed results',
           matches: [
-            { final_score: { home: 1, away: 1 }, participants: [
-              { id: 123, meta: { location: 'home' } },
-              { id: 456, meta: { location: 'away' } }
-            ]},
-            { final_score: { home: 2, away: 0 }, participants: [
-              { id: 789, meta: { location: 'home' } },
-              { id: 123, meta: { location: 'away' } }
-            ]}
+            {
+              final_score: { home: 1, away: 1 },
+              participants: [
+                { id: 123, meta: { location: 'home' } },
+                { id: 456, meta: { location: 'away' } },
+              ],
+            },
+            {
+              final_score: { home: 2, away: 0 },
+              participants: [
+                { id: 789, meta: { location: 'home' } },
+                { id: 123, meta: { location: 'away' } },
+              ],
+            },
           ],
-          expectedResults: ['D', 'L']
-        }
+          expectedResults: ['D', 'L'],
+        },
       ]
 
       for (const testCase of testCases) {
@@ -237,18 +258,23 @@ describe('Team Overview API Endpoint', () => {
           docs: testCase.matches.map((match, index) => ({
             id: index.toString(),
             starting_at: `2024-01-${10 + index}T15:00:00Z`,
-            ...match
+            ...match,
           })),
-          nextMatch: null
+          nextMatch: null,
         })
         mockTeamDataFetcher.getTable.mockResolvedValue({})
-        mockTeamDataFetcher.getStats.mockResolvedValue({ season_id: 20, seasons: [], top_stats: [] })
+        mockTeamDataFetcher.getStats.mockResolvedValue({
+          season_id: 20,
+          seasons: [],
+          top_stats: [],
+          current_season: {},
+        })
 
         const request = createTeamRequest(teamId, 'overview')
         const response = await executeEndpoint(teamOverviewEndpoint, request)
 
         response.expectStatus(200)
-        
+
         const formResults = response.data.form.map((match: any) => match.result)
         expect(formResults).toEqual(testCase.expectedResults)
       }
@@ -275,7 +301,7 @@ describe('Team Overview API Endpoint', () => {
 
     it('should limit form to maximum 5 matches', async () => {
       const teamId = '123'
-      
+
       // Create 10 matches but expect only 5 in form
       const matches = Array.from({ length: 10 }, (_, i) => ({
         id: i.toString(),
@@ -283,16 +309,21 @@ describe('Team Overview API Endpoint', () => {
         final_score: { home: 2, away: 1 },
         participants: [
           { id: 123, meta: { location: 'home' } },
-          { id: 456 + i, meta: { location: 'away' } }
-        ]
+          { id: 456 + i, meta: { location: 'away' } },
+        ],
       }))
 
       mockTeamDataFetcher.getFixtures.mockResolvedValue({
         docs: matches,
-        nextMatch: null
+        nextMatch: null,
       })
       mockTeamDataFetcher.getTable.mockResolvedValue({})
-      mockTeamDataFetcher.getStats.mockResolvedValue({ season_id: 20, seasons: [], top_stats: [] })
+      mockTeamDataFetcher.getStats.mockResolvedValue({
+        season_id: 20,
+        seasons: [],
+        top_stats: [],
+        current_season: {},
+      })
 
       const request = createTeamRequest(teamId, 'overview')
       const response = await executeEndpoint(teamOverviewEndpoint, request)
@@ -303,23 +334,28 @@ describe('Team Overview API Endpoint', () => {
 
     it('should limit recent fixtures to maximum 3 matches', async () => {
       const teamId = '123'
-      
+
       const matches = Array.from({ length: 8 }, (_, i) => ({
         id: i.toString(),
         starting_at: `2024-01-${10 + i}T15:00:00Z`,
         final_score: { home: 1, away: 0 },
         participants: [
           { id: 123, meta: { location: 'home' } },
-          { id: 456 + i, meta: { location: 'away' } }
-        ]
+          { id: 456 + i, meta: { location: 'away' } },
+        ],
       }))
 
       mockTeamDataFetcher.getFixtures.mockResolvedValue({
         docs: matches,
-        nextMatch: null
+        nextMatch: null,
       })
       mockTeamDataFetcher.getTable.mockResolvedValue({})
-      mockTeamDataFetcher.getStats.mockResolvedValue({ season_id: 20, seasons: [], top_stats: [] })
+      mockTeamDataFetcher.getStats.mockResolvedValue({
+        season_id: 20,
+        seasons: [],
+        top_stats: [],
+        current_season: {},
+      })
 
       const request = createTeamRequest(teamId, 'overview')
       const response = await executeEndpoint(teamOverviewEndpoint, request)

@@ -68,7 +68,7 @@ const parseWaveQuery = (req: PayloadRequest) => {
       limit: 20,
       date: null,
       league_id: null,
-      min_score: 0
+      min_score: 0,
     }
   }
 
@@ -80,20 +80,59 @@ const parseWaveQuery = (req: PayloadRequest) => {
     limit: Math.min(parseInt(params.get('limit') || '20'), 100),
     date: params.get('date') || new Date().toISOString().split('T')[0],
     league_id: params.get('league_id') ? parseInt(params.get('league_id')!) : null,
-    min_score: parseInt(params.get('min_score') || '0')
+    min_score: parseInt(params.get('min_score') || '0'),
   }
 }
 
 const getFinalScore = (scoresArr: any[], participantId: number): number | null => {
   if (!Array.isArray(scoresArr)) return null
 
+  // Handle nested structure (Sportmonks v3)
+  // Look for CURRENT score type
+  const currentType = scoresArr.find(
+    (s) => (s.description === 'CURRENT' || s.type?.name === 'CURRENT') && Array.isArray(s.scores),
+  )
+
+  if (currentType) {
+    const participantScore = currentType.scores.find(
+      (ps: any) => ps.participant_id === participantId,
+    )
+    if (participantScore) return participantScore.score?.goals ?? null
+  }
+
+  // Look for FT score type
+  const ftType = scoresArr.find(
+    (s) => (s.description === 'FT' || s.type?.name === 'FT') && Array.isArray(s.scores),
+  )
+
+  if (ftType) {
+    const participantScore = ftType.scores.find((ps: any) => ps.participant_id === participantId)
+    if (participantScore) return participantScore.score?.goals ?? null
+  }
+
+  // Fallback to 2ND_HALF for nested structure
+  const secondHalfType = scoresArr.find(
+    (s) => (s.description === '2ND_HALF' || s.type?.name === '2ND_HALF') && Array.isArray(s.scores),
+  )
+
+  if (secondHalfType) {
+    const participantScore = secondHalfType.scores.find(
+      (ps: any) => ps.participant_id === participantId,
+    )
+    if (participantScore) return participantScore.score?.goals ?? null
+  }
+
+  // Handle flat structure (Legacy/v2)
   const current = scoresArr.find(
-    (s) => s.participant_id === participantId && s.description === 'CURRENT'
+    (s) => s.participant_id === participantId && s.description === 'CURRENT',
   )
   if (current) return current.score?.goals ?? null
 
+  const ft = scoresArr.find((s) => s.participant_id === participantId && s.description === 'FT')
+  if (ft) return ft.score?.goals ?? null
+
   const secondHalf = scoresArr.find(
-    (s) => s.participant_id === participantId && s.description === '2ND_HALF'
+    (s) => s.participant_id === participantId && s.description === '2ND_HALF',
   )
   if (secondHalf) return secondHalf.score?.goals ?? null
 
@@ -110,7 +149,7 @@ const matchesWavesHandler: APIRouteV1 = {
     try {
       // Build MongoDB query
       const where: any = {}
-      
+
       // Minimum score filter
       if (query.min_score > 0) {
         where['wave_score.total'] = { greater_than_equal: query.min_score }
@@ -125,7 +164,7 @@ const matchesWavesHandler: APIRouteV1 = {
 
         where.starting_at = {
           greater_than_equal: startOfDay.toISOString(),
-          less_than_equal: endOfDay.toISOString()
+          less_than_equal: endOfDay.toISOString(),
         }
       }
 
@@ -140,18 +179,18 @@ const matchesWavesHandler: APIRouteV1 = {
         where,
         sort: '-wave_score.total', // Sort by wave score descending
         limit: query.limit,
-        page: query.page
+        page: query.page,
       })
 
       // Filter and transform matches to response format
-      const matchesWithScores = result.docs.filter((match: Match) => 
-        match.wave_score && match.wave_score.total !== undefined
+      const matchesWithScores = result.docs.filter(
+        (match: Match) => match.wave_score && match.wave_score.total !== undefined,
       )
-      
+
       const matches: WaveMatchSummary[] = matchesWithScores.map((match: Match) => {
         const participants = match.participants as any[]
-        const homeTeam = participants?.find(p => p.meta?.location === 'home') || {}
-        const awayTeam = participants?.find(p => p.meta?.location === 'away') || {}
+        const homeTeam = participants?.find((p) => p.meta?.location === 'home') || {}
+        const awayTeam = participants?.find((p) => p.meta?.location === 'away') || {}
         const scores = match.scores as any[]
         const state = match.state as any
         const league = match.league as any
@@ -161,29 +200,29 @@ const matchesWavesHandler: APIRouteV1 = {
           starting_at: match.starting_at,
           state: {
             short_name: state?.short_name || 'NS',
-            state: state?.state || 'NOT_STARTED'
+            state: state?.state || 'NOT_STARTED',
           },
           home_team: {
             id: homeTeam.id || 0,
             name: homeTeam.name || 'TBD',
             short_code: homeTeam.short_code,
-            image_path: homeTeam.image_path
+            image_path: homeTeam.image_path,
           },
           away_team: {
             id: awayTeam.id || 0,
             name: awayTeam.name || 'TBD',
             short_code: awayTeam.short_code,
-            image_path: awayTeam.image_path
+            image_path: awayTeam.image_path,
           },
           score: {
             home: getFinalScore(scores, homeTeam.id),
-            away: getFinalScore(scores, awayTeam.id)
+            away: getFinalScore(scores, awayTeam.id),
           },
           league: {
             id: league?.id || match.league_id,
             name: league?.name || 'Unknown League',
             image_path: league?.logo_path,
-            country_id: league?.country_id
+            country_id: league?.country_id,
           },
           wave_score: {
             total: match.wave_score?.total || 0,
@@ -194,9 +233,9 @@ const matchesWavesHandler: APIRouteV1 = {
               zone: match.wave_score?.factors?.zone || 0,
               form: match.wave_score?.factors?.form || 0,
               h2h: match.wave_score?.factors?.h2h || 0,
-              timing: match.wave_score?.factors?.timing || 0
-            }
-          }
+              timing: match.wave_score?.factors?.timing || 0,
+            },
+          },
         }
       })
 
@@ -209,21 +248,17 @@ const matchesWavesHandler: APIRouteV1 = {
           filters: {
             date: query.date || undefined,
             league_id: query.league_id || undefined,
-            min_score: query.min_score || undefined
-          }
-        }
+            min_score: query.min_score || undefined,
+          },
+        },
       }
 
       return Response.json(response)
-
     } catch (error) {
       console.error('Error in matches waves endpoint:', error)
-      return Response.json(
-        { error: 'Failed to fetch wave matches' },
-        { status: 500 }
-      )
+      return Response.json({ error: 'Failed to fetch wave matches' }, { status: 500 })
     }
-  }
+  },
 }
 
 export default matchesWavesHandler
