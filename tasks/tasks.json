@@ -740,6 +740,81 @@
       ],
       "priority": "medium",
       "subtasks": []
+    },
+    {
+      "id": 18,
+      "title": "Implement Match Context Agent for AI-Enriched Wave Scores",
+      "description": "Create an intelligent context agent that enriches wave scores with external context by gathering and synthesizing match significance factors beyond the existing statistical calculations. The agent adds a 'context' factor (0-15 points) to wave scores using AI-powered analysis.",
+      "details": "## Overview\nThe Context Agent runs daily to analyze upcoming matches (next 48 hours) and adds a 'context' factor (0-15 points) to wave scores. It uses a hybrid approach: leveraging existing Sportmonks data, computing derived signals from MongoDB, and using LLMs (Claude via Instructor-js, Perplexity for search) for qualitative analysis.\n\n## Context Signals (6 factors totaling 0-15 points)\n1. **Squad Availability/Injuries (0-4 pts)**: Key player injuries, 3+ first-team unavailable, returning from crisis\n2. **Schedule Congestion (0-3 pts)**: Midweek fatigue, Champions League proximity, cup implications\n3. **Historical Significance (0-2 pts)**: Anniversary matches, first meeting since dramatic encounter\n4. **Manager Pressure (0-3 pts)**: Hot seat situations, new manager early tenure, winless runs\n5. **Transfer Narratives (0-2 pts)**: Player vs former club, high-profile debut\n6. **Weather/Travel (0-1 pt)**: Extreme conditions, long-distance travel\n\n## Technical Implementation\n- Use Instructor-js with Zod schemas for validated LLM output\n- Perplexity API for real-time news search (manager pressure)\n- Claude for synthesis of all signals into final score and narrative\n- Store context_score group on Match collection with factors breakdown, narrative, and talking_points\n- Integrate as 8th factor in wave score calculator\n- Daily cron job processing matches 24-48h ahead\n\n## File Structure\n```\nsrc/services/contextAgent/\n├── index.ts (orchestrator)\n├── types.ts\n├── gatherers/\n│   ├── injuryGatherer.ts\n│   ├── scheduleGatherer.ts\n│   ├── historyGatherer.ts\n│   ├── newsGatherer.ts\n│   └── transferGatherer.ts\n├── llm/\n│   ├── client.ts (Instructor + Anthropic)\n│   ├── schemas.ts (Zod schemas)\n│   └── perplexity.ts\n├── synthesizer.ts\n└── scheduler.ts\n```\n\n## New Dependencies\n- @instructor-ai/instructor\n- zod\n- @anthropic-ai/sdk\n\n## Cost Estimate\n~$0.04 per match, ~$20/month at 500 matches",
+      "testStrategy": "1. Unit test each gatherer with mock data\n2. Test Zod schemas validate correctly and reject invalid LLM output\n3. Integration test the full pipeline with sample matches\n4. Test scheduler runs correctly and handles failures gracefully\n5. Verify context scores are stored on Match documents\n6. Test wave calculator correctly includes context factor\n7. Performance test: ensure processing 100 matches takes < 5 minutes\n8. Test fallback behavior when external APIs fail",
+      "priority": "high",
+      "dependencies": [6],
+      "status": "pending",
+      "subtasks": [
+        {
+          "id": 1,
+          "title": "Set Up Context Agent Foundation and LLM Abstraction Layer",
+          "description": "Create the context agent service structure, install dependencies, and set up the LLM abstraction layer with Instructor-js and Zod schemas.",
+          "dependencies": [],
+          "details": "1. Create src/services/contextAgent/ directory structure\n2. Install dependencies: pnpm add @instructor-ai/instructor zod @anthropic-ai/sdk\n3. Create types.ts with interfaces for all context signals and results\n4. Set up llm/client.ts with Instructor + Anthropic client wrapper\n5. Create llm/schemas.ts with Zod schemas for ContextFactors and ContextResult\n6. Create llm/perplexity.ts for Perplexity API search client\n7. Add ANTHROPIC_API_KEY and PERPLEXITY_API_KEY to .env.example",
+          "status": "pending",
+          "testStrategy": "Test LLM client can generate structured output matching Zod schema. Test Perplexity client returns search results."
+        },
+        {
+          "id": 2,
+          "title": "Add context_score Fields to Match Collection",
+          "description": "Update the Match collection schema to include the context_score group with all factor scores, narrative, and talking points.",
+          "dependencies": [1],
+          "details": "Add to src/collections/Matches.ts:\n```typescript\n{\n  name: 'context_score',\n  type: 'group',\n  fields: [\n    { name: 'total', type: 'number', min: 0, max: 15 },\n    { name: 'factors', type: 'group', fields: [\n      { name: 'injury', type: 'number', min: 0, max: 4 },\n      { name: 'schedule', type: 'number', min: 0, max: 3 },\n      { name: 'history', type: 'number', min: 0, max: 2 },\n      { name: 'manager', type: 'number', min: 0, max: 3 },\n      { name: 'transfer', type: 'number', min: 0, max: 2 },\n      { name: 'weather', type: 'number', min: 0, max: 1 },\n    ]},\n    { name: 'narrative', type: 'textarea' },\n    { name: 'talking_points', type: 'json' },\n    { name: 'confidence', type: 'select', options: ['high', 'medium', 'low'] },\n    { name: 'calculated_at', type: 'date' },\n  ]\n}\n```",
+          "status": "pending",
+          "testStrategy": "Verify Match collection accepts context_score data. Test that all fields are correctly stored and retrieved."
+        },
+        {
+          "id": 3,
+          "title": "Implement Internal Data Gatherers (Injury, Schedule, History)",
+          "description": "Create gatherers that use existing Sportmonks data and MongoDB queries to extract context signals without external API calls.",
+          "dependencies": [1],
+          "details": "1. Create gatherers/injuryGatherer.ts:\n   - Extract sidelined data from match.sidelined\n   - Cross-reference with team rosters to identify key players\n   - Calculate injury impact score (0-4)\n\n2. Create gatherers/scheduleGatherer.ts:\n   - Query matches within 7-day window for both teams\n   - Detect congestion (played <3 days ago, playing in <3 days)\n   - Identify Champions League/cup proximity\n   - Calculate schedule score (0-3)\n\n3. Create gatherers/historyGatherer.ts:\n   - Query historical H2H matches for anniversaries\n   - Detect 5, 10, 25, 50 year anniversaries\n   - Find memorable past encounters (high-scoring, red cards)\n   - Calculate history score (0-2)",
+          "status": "pending",
+          "testStrategy": "Unit test each gatherer with mock match data. Test edge cases: no injuries, no history, heavy congestion."
+        },
+        {
+          "id": 4,
+          "title": "Implement External Intelligence Gatherers (News, Transfer)",
+          "description": "Create gatherers that use Perplexity API for manager news and analyze transfer data for narrative detection.",
+          "dependencies": [1, 3],
+          "details": "1. Create gatherers/newsGatherer.ts:\n   - Use Perplexity to search for manager pressure news\n   - Query: '[manager name] [team name] job security pressure'\n   - Parse response for pressure indicators\n   - Calculate manager score (0-3)\n\n2. Create gatherers/transferGatherer.ts:\n   - Check player transfers field on team rosters\n   - Detect 'player vs former club' scenarios\n   - Identify high-profile recent signings\n   - Calculate transfer score (0-2)\n\n3. Add weather analysis to existing weather data:\n   - Check match.weatherreport for extreme conditions\n   - Calculate weather score (0-1)",
+          "status": "pending",
+          "testStrategy": "Test Perplexity integration with real API calls. Mock responses for unit tests. Test transfer detection with known scenarios."
+        },
+        {
+          "id": 5,
+          "title": "Build Claude Synthesis Layer",
+          "description": "Create the synthesizer that combines all gathered signals and uses Claude via Instructor to generate the final context score and narrative.",
+          "dependencies": [1, 3, 4],
+          "details": "1. Create synthesizer.ts:\n   - Accept all gathered context signals\n   - Build comprehensive prompt with match details and signals\n   - Use Instructor's generateStructured() with ContextResultSchema\n   - Return validated ContextResult with score, factors, narrative, talking_points\n\n2. Implement error handling:\n   - Retry on LLM failures\n   - Fallback to computed score if LLM unavailable\n   - Log all synthesis attempts for debugging\n\n3. Add caching:\n   - Cache synthesis results by match ID\n   - Invalidate cache if input signals change",
+          "status": "pending",
+          "testStrategy": "Test synthesis with various signal combinations. Verify Zod validation catches invalid output. Test retry and fallback behavior."
+        },
+        {
+          "id": 6,
+          "title": "Integrate Context Score into Wave Calculator",
+          "description": "Update the wave score calculator to include the context factor as the 8th scoring component.",
+          "dependencies": [2, 5],
+          "details": "1. Update src/services/waveDetector/calculator.ts:\n   - Add 'context' to WaveFactors interface (0-15)\n   - Update factor breakdown to include context\n   - Modify total score calculation (now 0-125 max)\n   - Update tier thresholds if needed\n\n2. Update wave score calculation flow:\n   - Check if context_score exists on match\n   - Include in factor breakdown if available\n   - Handle matches without context gracefully\n\n3. Update CLAUDE.md documentation:\n   - Document 8-factor scoring system\n   - Update tier classification notes",
+          "status": "pending",
+          "testStrategy": "Test wave calculator with and without context scores. Verify total calculation is correct. Test tier classification boundaries."
+        },
+        {
+          "id": 7,
+          "title": "Create Context Agent Orchestrator and Scheduler",
+          "description": "Build the main orchestrator that coordinates all gatherers and create the scheduled job for daily processing.",
+          "dependencies": [5, 6],
+          "details": "1. Create index.ts (orchestrator):\n   - processMatch(match): Run all gatherers in parallel, then synthesize\n   - processBatch(matches): Process multiple matches with rate limiting\n   - Handle errors gracefully, continue processing on failure\n\n2. Create scheduler.ts:\n   - Daily cron job at 6 AM UTC\n   - Query matches starting in next 24-48 hours\n   - Filter to tier 1-2 leagues for cost management\n   - Call orchestrator.processBatch()\n   - Log results and any errors\n\n3. Add API endpoint for manual triggering:\n   - POST /api/context-agent/process\n   - Accept match IDs or date range\n   - Return processing results",
+          "status": "pending",
+          "testStrategy": "Integration test full pipeline with sample matches. Test scheduler runs correctly. Test error handling doesn't block batch processing."
+        }
+      ]
     }
   ]
 }
