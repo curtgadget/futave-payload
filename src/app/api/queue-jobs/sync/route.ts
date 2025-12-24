@@ -2,6 +2,7 @@ import { NINETY_DAYS_MS, ONE_DAY_MS } from '@/constants/time'
 import configPromise from '@payload-config'
 import { getPayload, PayloadRequest } from 'payload'
 import { NextRequest } from 'next/server'
+import { createSyncAuthMiddleware } from '@/utilities/syncAuth'
 
 type PayloadTaskSlug =
   | 'inline'
@@ -55,6 +56,13 @@ const syncJobs: SyncJob[] = [
 ]
 
 export async function syncAllHandler(req: NextRequest | PayloadRequest) {
+  // Verify sync token using middleware pattern (same as v1 API auth)
+  const syncAuth = createSyncAuthMiddleware()
+  const authResult = syncAuth(req)
+  if (authResult) {
+    return authResult // Return 401 response
+  }
+
   const payload = await getPayload({ config: configPromise })
   let queueParam: string | null = null
 
@@ -80,7 +88,7 @@ export async function syncAllHandler(req: NextRequest | PayloadRequest) {
       input: {
         startDate,
         endDate,
-        backfill: true
+        backfill: true,
       },
       queue: 'backfill',
     })

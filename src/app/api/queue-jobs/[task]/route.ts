@@ -1,6 +1,7 @@
 import configPromise from '@payload-config'
 import { getPayload } from 'payload'
 import { NextRequest } from 'next/server'
+import { createSyncAuthMiddleware } from '@/utilities/syncAuth'
 
 type PayloadTaskSlug =
   | 'syncLeagues'
@@ -27,8 +28,15 @@ const validTasks: PayloadTaskSlug[] = [
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ task: string }> }
+  { params }: { params: Promise<{ task: string }> },
 ) {
+  // Verify sync token using middleware pattern (same as v1 API auth)
+  const syncAuth = createSyncAuthMiddleware()
+  const authResult = syncAuth(request)
+  if (authResult) {
+    return authResult // Return 401 response
+  }
+
   const { task: taskParam } = await params
   const task = taskParam as PayloadTaskSlug
 
@@ -39,7 +47,7 @@ export async function POST(
         error: 'Invalid task',
         validTasks,
       },
-      { status: 400 }
+      { status: 400 },
     )
   }
 
@@ -99,7 +107,7 @@ export async function POST(
       })
 
       payload.logger.info(
-        `Cleared ${isStuck ? 'stuck' : 'existing'} ${task} job (ID: ${existingJob.id})`
+        `Cleared ${isStuck ? 'stuck' : 'existing'} ${task} job (ID: ${existingJob.id})`,
       )
     } else {
       return Response.json(
@@ -110,7 +118,7 @@ export async function POST(
           jobId: existingJob.id,
           hint: 'Add ?force=true to restart anyway',
         },
-        { status: 409 }
+        { status: 409 },
       )
     }
   }
