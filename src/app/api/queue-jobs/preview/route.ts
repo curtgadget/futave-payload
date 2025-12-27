@@ -8,9 +8,11 @@ type PayloadTaskSlug =
   | 'syncTeams'
   | 'syncMatches'
   | 'syncPlayers'
+  | 'syncActivePlayerStats'
   | 'syncMetadataTypes'
   | 'syncCountries'
   | 'syncCoaches'
+  | 'syncRivals'
 
 type PayloadQueueSlug = 'hourly' | 'daily' | 'weekly' | 'monthly' | 'backfill' | 'dev'
 

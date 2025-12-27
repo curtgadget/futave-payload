@@ -50,7 +50,8 @@ const eslintConfig = [
           prefix: ['T'],
         },
       ],
-      '@typescript-eslint/prefer-includes': 'warn',
+      // Disabled: requires parserOptions.typeAwareParser which isn't configured in flat config
+      // '@typescript-eslint/prefer-includes': 'warn',
       '@typescript-eslint/prefer-as-const': 'warn',
       '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
       '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
