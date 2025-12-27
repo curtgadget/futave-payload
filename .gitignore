@@ -77,4 +77,4 @@ node_modules/
 # Added by Claude Task Master
 # Dependency directories
 tasks.json
-tasks/ 
+/tasks/ 
