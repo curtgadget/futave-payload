@@ -40,13 +40,17 @@ export async function GET() {
       })),
     })
   } catch (error) {
+    // For healthcheck purposes, return 200 even if DB is down
+    // This allows Railway to verify the service is running
     console.error('Error fetching database info:', error)
     return NextResponse.json(
       {
         success: false,
+        status: 'service_running_db_error',
         error: error instanceof Error ? error.message : 'Unknown error',
+        message: 'Service is running but database connection failed',
       },
-      { status: 500 },
+      { status: 200 },
     )
   }
 }
