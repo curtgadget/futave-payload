@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get('teamId')
-    const entity = searchParams.get('entity') as EntityType || 'fixtures'
+    const entity = (searchParams.get('entity') as EntityType) || 'fixtures'
     const debug = searchParams.get('debug') === 'true'
 
     if (!teamId) {
@@ -18,18 +18,15 @@ export async function GET(request: NextRequest) {
         {
           error: 'Missing required parameter: teamId',
           hint: 'Usage: /api/v1/debug/compare?teamId=147671&entity=fixtures',
-          supportedEntities: ['fixtures', 'teams', 'players', 'standings', 'playerstats']
+          supportedEntities: ['fixtures', 'teams', 'players', 'standings', 'playerstats'],
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
     const numericTeamId = parseInt(teamId, 10)
     if (isNaN(numericTeamId)) {
-      return NextResponse.json(
-        { error: 'Invalid team ID format' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid team ID format' }, { status: 400 })
     }
 
     // Initialize clients
@@ -55,9 +52,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(
           {
             error: `Unsupported entity type: ${entity}`,
-            supportedEntities: ['fixtures', 'teams', 'players', 'standings', 'playerstats']
+            supportedEntities: ['fixtures', 'teams', 'players', 'standings', 'playerstats'],
           },
-          { status: 400 }
+          { status: 400 },
         )
     }
   } catch (error) {
@@ -65,9 +62,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -84,7 +81,7 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
     if (error instanceof Error && error.message.includes('Not Found')) {
       return NextResponse.json(
         { error: `Team ${teamId} not found in local database` },
-        { status: 404 }
+        { status: 404 },
       )
     }
     throw error
@@ -93,7 +90,7 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
   if (!team) {
     return NextResponse.json(
       { error: `Team ${teamId} not found in local database` },
-      { status: 404 }
+      { status: 404 },
     )
   }
 
@@ -101,21 +98,20 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
   const localLatest = Array.isArray(team.latest) ? team.latest : []
   const localFixtureIds = new Set([
     ...localUpcoming.map((f: any) => f.id),
-    ...localLatest.map((f: any) => f.id)
+    ...localLatest.map((f: any) => f.id),
   ])
 
   // Fetch Sportmonks team with fixtures (using latest and upcoming includes)
   try {
-    const sportmonksResponse = await sportmonksClient.fetchFromApi(
-      `/teams/${teamId}`,
-      {
-        include: 'latest;upcoming'
-      }
-    )
+    const sportmonksResponse = await sportmonksClient.fetchFromApi(`/teams/${teamId}`, {
+      include: 'latest;upcoming',
+    })
 
     const sportmonksTeam = sportmonksResponse.data
     const sportmonksLatest = Array.isArray(sportmonksTeam?.latest) ? sportmonksTeam.latest : []
-    const sportmonksUpcoming = Array.isArray(sportmonksTeam?.upcoming) ? sportmonksTeam.upcoming : []
+    const sportmonksUpcoming = Array.isArray(sportmonksTeam?.upcoming)
+      ? sportmonksTeam.upcoming
+      : []
     const sportmonksFixtures = [...sportmonksLatest, ...sportmonksUpcoming]
     const sportmonksFixtureIds = new Set(sportmonksFixtures.map((f: any) => f.id))
 
@@ -128,11 +124,12 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
         state: f.state?.short_name || 'unknown',
         home_team: f.participants?.find((p: any) => p.meta?.location === 'home')?.name || 'Unknown',
         away_team: f.participants?.find((p: any) => p.meta?.location === 'away')?.name || 'Unknown',
-        league: f.league?.name || 'Unknown'
+        league: f.league?.name || 'Unknown',
       }))
 
-    const missingInSportmonks = Array.from(localFixtureIds)
-      .filter(id => !sportmonksFixtureIds.has(id))
+    const missingInSportmonks = Array.from(localFixtureIds).filter(
+      (id) => !sportmonksFixtureIds.has(id),
+    )
 
     // Generate sync recommendations
     const syncRecommendations = []
@@ -141,7 +138,7 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
         job: 'syncMatches',
         reason: `${missingInLocal.length} fixture(s) missing in local database`,
         command: 'GET /api/queue-jobs/sync (includes syncMatches)',
-        sample: missingInLocal.slice(0, 3)
+        sample: missingInLocal.slice(0, 3),
       })
     }
 
@@ -154,33 +151,38 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
           total: localFixtureIds.size,
           upcoming: localUpcoming.length,
           latest: localLatest.length,
-          fixtureIds: Array.from(localFixtureIds).sort((a, b) => b - a).slice(0, 20)
+          fixtureIds: Array.from(localFixtureIds)
+            .sort((a, b) => b - a)
+            .slice(0, 20),
         },
         sportmonks: {
           total: sportmonksFixtures.length,
           upcoming: sportmonksUpcoming.length,
           latest: sportmonksLatest.length,
-          fixtureIds: Array.from(sportmonksFixtureIds).sort((a, b) => b - a).slice(0, 20)
+          fixtureIds: Array.from(sportmonksFixtureIds)
+            .sort((a, b) => b - a)
+            .slice(0, 20),
         },
         discrepancies: {
           missingInLocal: {
             count: missingInLocal.length,
-            fixtures: missingInLocal.slice(0, 10) // Show first 10
+            fixtures: missingInLocal.slice(0, 10), // Show first 10
           },
           missingInSportmonks: {
             count: missingInSportmonks.length,
-            fixtureIds: missingInSportmonks.slice(0, 10)
+            fixtureIds: missingInSportmonks.slice(0, 10),
           },
-          totalDifference: Math.abs(localFixtureIds.size - sportmonksFixtures.length)
-        }
+          totalDifference: Math.abs(localFixtureIds.size - sportmonksFixtures.length),
+        },
       },
       syncRecommendations: syncRecommendations.length > 0 ? syncRecommendations : undefined,
       analysis: {
         syncNeeded: missingInLocal.length > 0 || missingInSportmonks.length > 0,
-        recommendation: missingInLocal.length > 0
-          ? `Run syncMatches to add ${missingInLocal.length} missing fixtures`
-          : 'Local data appears up to date'
-      }
+        recommendation:
+          missingInLocal.length > 0
+            ? `Run syncMatches to add ${missingInLocal.length} missing fixtures`
+            : 'Local data appears up to date',
+      },
     })
   } catch (error) {
     return NextResponse.json(
@@ -190,10 +192,10 @@ async function compareFixtures(teamId: number, payload: any, sportmonksClient: a
         localData: {
           total: localFixtureIds.size,
           upcoming: localUpcoming.length,
-          latest: localLatest.length
-        }
+          latest: localLatest.length,
+        },
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -210,7 +212,7 @@ async function compareTeams(teamId: number, payload: any, sportmonksClient: any)
     if (error instanceof Error && error.message.includes('Not Found')) {
       return NextResponse.json(
         { error: `Team ${teamId} not found in local database` },
-        { status: 404 }
+        { status: 404 },
       )
     }
     throw error
@@ -219,16 +221,15 @@ async function compareTeams(teamId: number, payload: any, sportmonksClient: any)
   if (!localTeam) {
     return NextResponse.json(
       { error: `Team ${teamId} not found in local database` },
-      { status: 404 }
+      { status: 404 },
     )
   }
 
   // Fetch from Sportmonks
   try {
-    const sportmonksResponse = await sportmonksClient.fetchFromApi(
-      `/teams/${teamId}`,
-      { include: 'country;sport;venue;coaches;activeseasons' }
-    )
+    const sportmonksResponse = await sportmonksClient.fetchFromApi(`/teams/${teamId}`, {
+      include: 'country;sport;venue;coaches;activeseasons',
+    })
 
     const sportmonksTeam = sportmonksResponse.data
 
@@ -242,19 +243,19 @@ async function compareTeams(teamId: number, payload: any, sportmonksClient: any)
           founded: localTeam.founded,
           playersCount: Array.isArray(localTeam.players) ? localTeam.players.length : 0,
           coachesCount: Array.isArray(localTeam.coaches) ? localTeam.coaches.length : 0,
-          updatedAt: localTeam.updatedAt
+          updatedAt: localTeam.updatedAt,
         },
         sportmonks: {
           name: sportmonksTeam.name,
           country: sportmonksTeam.country?.name,
           founded: sportmonksTeam.founded,
-          coachesCount: Array.isArray(sportmonksTeam.coaches) ? sportmonksTeam.coaches.length : 0
+          coachesCount: Array.isArray(sportmonksTeam.coaches) ? sportmonksTeam.coaches.length : 0,
         },
         discrepancies: {
           nameMismatch: localTeam.name !== sportmonksTeam.name,
-          foundedMismatch: localTeam.founded !== sportmonksTeam.founded
-        }
-      }
+          foundedMismatch: localTeam.founded !== sportmonksTeam.founded,
+        },
+      },
     })
   } catch (error) {
     return NextResponse.json(
@@ -264,10 +265,10 @@ async function compareTeams(teamId: number, payload: any, sportmonksClient: any)
         localData: {
           name: localTeam.name,
           country: localTeam.country,
-          founded: localTeam.founded
-        }
+          founded: localTeam.founded,
+        },
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -284,7 +285,7 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
     if (error instanceof Error && error.message.includes('Not Found')) {
       return NextResponse.json(
         { error: `Team ${teamId} not found in local database` },
-        { status: 404 }
+        { status: 404 },
       )
     }
     throw error
@@ -293,7 +294,7 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
   if (!team) {
     return NextResponse.json(
       { error: `Team ${teamId} not found in local database` },
-      { status: 404 }
+      { status: 404 },
     )
   }
 
@@ -307,16 +308,17 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
 
   // Fetch from Sportmonks
   try {
-    const sportmonksResponse = await sportmonksClient.fetchFromApi(
-      `/teams/${teamId}`,
-      { include: 'players' }
-    )
+    const sportmonksResponse = await sportmonksClient.fetchFromApi(`/teams/${teamId}`, {
+      include: 'players',
+    })
 
     const sportmonksPlayers = sportmonksResponse.data?.players || []
     const sportmonksPlayerIds = new Set<number>(sportmonksPlayers.map((p: any) => p.player_id))
 
-    const missingInLocal = Array.from(sportmonksPlayerIds).filter(id => !localPlayerIds.has(id))
-    const missingInSportmonks = Array.from(localPlayerIds).filter(id => !sportmonksPlayerIds.has(id))
+    const missingInLocal = Array.from(sportmonksPlayerIds).filter((id) => !localPlayerIds.has(id))
+    const missingInSportmonks = Array.from(localPlayerIds).filter(
+      (id) => !sportmonksPlayerIds.has(id),
+    )
 
     // Generate sync recommendations
     const syncRecommendations = []
@@ -325,7 +327,7 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
         job: 'syncPlayers',
         reason: `${missingInLocal.length} player(s) missing in local database`,
         command: 'GET /api/queue-jobs/sync (includes syncPlayers)',
-        missingPlayerIds: missingInLocal.slice(0, 10)
+        missingPlayerIds: missingInLocal.slice(0, 10),
       })
     }
 
@@ -336,31 +338,32 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
       comparison: {
         local: {
           total: localPlayerIds.size,
-          playerIds: Array.from(localPlayerIds).slice(0, 20)
+          playerIds: Array.from(localPlayerIds).slice(0, 20),
         },
         sportmonks: {
           total: sportmonksPlayers.length,
-          playerIds: Array.from(sportmonksPlayerIds).slice(0, 20)
+          playerIds: Array.from(sportmonksPlayerIds).slice(0, 20),
         },
         discrepancies: {
           missingInLocal: {
             count: missingInLocal.length,
-            playerIds: missingInLocal.slice(0, 10)
+            playerIds: missingInLocal.slice(0, 10),
           },
           missingInSportmonks: {
             count: missingInSportmonks.length,
-            playerIds: missingInSportmonks.slice(0, 10)
+            playerIds: missingInSportmonks.slice(0, 10),
           },
-          totalDifference: Math.abs(localPlayerIds.size - sportmonksPlayers.length)
-        }
+          totalDifference: Math.abs(localPlayerIds.size - sportmonksPlayers.length),
+        },
       },
       syncRecommendations: syncRecommendations.length > 0 ? syncRecommendations : undefined,
       analysis: {
         syncNeeded: missingInLocal.length > 0,
-        recommendation: missingInLocal.length > 0
-          ? `Run syncPlayers to add ${missingInLocal.length} missing players`
-          : 'Local player data appears up to date'
-      }
+        recommendation:
+          missingInLocal.length > 0
+            ? `Run syncPlayers to add ${missingInLocal.length} missing players`
+            : 'Local player data appears up to date',
+      },
     })
   } catch (error) {
     return NextResponse.json(
@@ -368,15 +371,20 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
         error: 'Failed to fetch from Sportmonks API',
         details: error instanceof Error ? error.message : 'Unknown error',
         localData: {
-          total: localPlayerIds.size
-        }
+          total: localPlayerIds.size,
+        },
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
 
-async function compareStandings(teamId: number, payload: any, sportmonksClient: any, debug = false) {
+async function compareStandings(
+  teamId: number,
+  payload: any,
+  sportmonksClient: any,
+  debug = false,
+) {
   // Get team to find its active seasons and standings
   let team
   try {
@@ -388,7 +396,7 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
     if (error instanceof Error && error.message.includes('Not Found')) {
       return NextResponse.json(
         { error: `Team ${teamId} not found in local database` },
-        { status: 404 }
+        { status: 404 },
       )
     }
     throw error
@@ -397,7 +405,7 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
   if (!team) {
     return NextResponse.json(
       { error: `Team ${teamId} not found in local database` },
-      { status: 404 }
+      { status: 404 },
     )
   }
 
@@ -410,7 +418,7 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
       teamName: team.name,
       entity: 'standings',
       message: 'No active seasons found for this team',
-      hint: 'Team may not be currently active in any leagues'
+      hint: 'Team may not be currently active in any leagues',
     })
   }
 
@@ -427,8 +435,8 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
   const localLeagueStandings = await payload.find({
     collection: 'leaguesstandings',
     where: {
-      leagueId: { in: leagueIds }
-    }
+      leagueId: { in: leagueIds },
+    },
   })
 
   // Build a map of season ID -> local standings data
@@ -451,7 +459,7 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
       // Fetch from Sportmonks
       const sportmonksStandings = await sportmonksClient.fetchFromApi(
         `/standings/seasons/${seasonId}`,
-        { include: 'participant;details' }
+        { include: 'participant;details' },
       )
 
       const sportmonksData = sportmonksStandings.data || []
@@ -460,7 +468,9 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
       // Find the team's position in standings
       const findTeamPosition = (standings: any[], debug = false) => {
         if (debug) {
-          console.log(`[DEBUG] Searching for team ${teamId} in standings with ${standings?.length || 0} entries`)
+          console.log(
+            `[DEBUG] Searching for team ${teamId} in standings with ${standings?.length || 0} entries`,
+          )
           if (standings?.length > 0) {
             console.log(`[DEBUG] First entry participant_id:`, standings[0].participant_id)
           }
@@ -468,8 +478,9 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
 
         // The standings array contains objects where each object IS a team's standing
         // participant_id, position, points are at the top level
-        const teamStanding = standings.find((standing: any) =>
-          standing.participant?.id === teamId || standing.participant_id === teamId
+        const teamStanding = standings.find(
+          (standing: any) =>
+            standing.participant?.id === teamId || standing.participant_id === teamId,
         )
 
         if (teamStanding) {
@@ -482,10 +493,10 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
           return {
             position: teamStanding.position,
             points: teamStanding.points,
-            played: getDetailValue(129) || 0,  // games played
-            wins: getDetailValue(130) || 0,    // wins
-            draws: getDetailValue(131) || 0,   // draws
-            losses: getDetailValue(132) || 0   // losses
+            played: getDetailValue(129) || 0, // games played
+            wins: getDetailValue(130) || 0, // wins
+            draws: getDetailValue(131) || 0, // draws
+            losses: getDetailValue(132) || 0, // losses
           }
         }
 
@@ -493,11 +504,14 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
       }
 
       const sportmonksTeamData = findTeamPosition(sportmonksData, debug)
-      const localTeamData = findTeamPosition(Array.isArray(localData) ? localData : [localData], debug)
+      const localTeamData = findTeamPosition(
+        Array.isArray(localData) ? localData : [localData],
+        debug,
+      )
 
       // Check if standings data is actually populated
-      const hasRealData = sportmonksData.some((standing: any) =>
-        standing.position !== null && standing.position !== undefined
+      const hasRealData = sportmonksData.some(
+        (standing: any) => standing.position !== null && standing.position !== undefined,
       )
 
       const comparisonEntry: any = {
@@ -507,17 +521,18 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
         local: {
           hasData: !!localTeamData,
           teamPosition: localTeamData,
-          totalEntries: Array.isArray(localData) ? localData.length : 0
+          totalEntries: Array.isArray(localData) ? localData.length : 0,
         },
         sportmonks: {
           hasData: !!sportmonksTeamData,
           teamPosition: sportmonksTeamData,
-          totalEntries: sportmonksData.length
+          totalEntries: sportmonksData.length,
         },
         match: JSON.stringify(localTeamData) === JSON.stringify(sportmonksTeamData),
-        note: !hasRealData && sportmonksData.length > 0
-          ? 'Season structure exists but standings not yet populated (season may not have started)'
-          : undefined
+        note:
+          !hasRealData && sportmonksData.length > 0
+            ? 'Season structure exists but standings not yet populated (season may not have started)'
+            : undefined,
       }
 
       // Add debug info if requested
@@ -529,30 +544,34 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
         comparisonEntry.debug = {
           sportmonksGroupsCount: sportmonksData.length,
           localGroupsCount: Array.isArray(localData) ? localData.length : 0,
-          sportmonksRawStructure: sportmonksFirstGroup ? {
-            keys: Object.keys(sportmonksFirstGroup),
-            hasDetails: !!sportmonksFirstGroup.details,
-            detailsLength: sportmonksFirstGroup.details?.length,
-            firstDetail: sportmonksFirstGroup.details?.[0]
-          } : null,
-          localRawStructure: localFirstGroup ? {
-            keys: Object.keys(localFirstGroup),
-            hasDetails: !!localFirstGroup.details,
-            detailsLength: localFirstGroup.details?.length,
-            firstDetail: localFirstGroup.details?.[0]
-          } : null,
+          sportmonksRawStructure: sportmonksFirstGroup
+            ? {
+                keys: Object.keys(sportmonksFirstGroup),
+                hasDetails: !!sportmonksFirstGroup.details,
+                detailsLength: sportmonksFirstGroup.details?.length,
+                firstDetail: sportmonksFirstGroup.details?.[0],
+              }
+            : null,
+          localRawStructure: localFirstGroup
+            ? {
+                keys: Object.keys(localFirstGroup),
+                hasDetails: !!localFirstGroup.details,
+                detailsLength: localFirstGroup.details?.length,
+                firstDetail: localFirstGroup.details?.[0],
+              }
+            : null,
           sportmonksFirstEntriesSample: sportmonksData.slice(0, 3).map((s: any) => ({
             participant_id: s.participant_id,
             position: s.position,
-            points: s.points
+            points: s.points,
           })),
           localFirstEntriesSample: Array.isArray(localData)
             ? localData.slice(0, 3).map((s: any) => ({
                 participant_id: s.participant_id,
                 position: s.position,
-                points: s.points
+                points: s.points,
               }))
-            : null
+            : null,
         }
       }
 
@@ -563,12 +582,12 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
         seasonName: season.name || `Season ${seasonId}`,
         error: error instanceof Error ? error.message : 'Failed to fetch standings',
         local: { hasData: !!localStandingsBySeasonId[seasonId] },
-        sportmonks: { hasData: false }
+        sportmonks: { hasData: false },
       })
     }
   }
 
-  const mismatches = standingsComparison.filter(s => !s.match && !s.error)
+  const mismatches = standingsComparison.filter((s) => !s.match && !s.error)
 
   // Generate sync recommendations
   const syncRecommendations = []
@@ -578,11 +597,11 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
       reason: `${mismatches.length} season(s) have mismatched standings data`,
       command: 'GET /api/queue-jobs/sync (includes syncTeams)',
       note: 'Team sync updates standings from league data',
-      affectedSeasons: mismatches.slice(0, 3).map(m => ({
+      affectedSeasons: mismatches.slice(0, 3).map((m) => ({
         seasonId: m.seasonId,
         seasonName: m.seasonName,
-        leagueName: m.leagueName
-      }))
+        leagueName: m.leagueName,
+      })),
     })
   }
 
@@ -594,21 +613,27 @@ async function compareStandings(teamId: number, payload: any, sportmonksClient: 
     comparison: standingsComparison,
     summary: {
       totalSeasons: standingsComparison.length,
-      matching: standingsComparison.filter(s => s.match).length,
+      matching: standingsComparison.filter((s) => s.match).length,
       mismatched: mismatches.length,
-      errors: standingsComparison.filter(s => s.error).length
+      errors: standingsComparison.filter((s) => s.error).length,
     },
     syncRecommendations: syncRecommendations.length > 0 ? syncRecommendations : undefined,
     analysis: {
       syncNeeded: mismatches.length > 0,
-      recommendation: mismatches.length > 0
-        ? `Run syncTeams to update ${mismatches.length} season(s) with mismatched standings`
-        : 'Standings data appears up to date'
-    }
+      recommendation:
+        mismatches.length > 0
+          ? `Run syncTeams to update ${mismatches.length} season(s) with mismatched standings`
+          : 'Standings data appears up to date',
+    },
   })
 }
 
-async function comparePlayerStats(teamId: number, payload: any, sportmonksClient: any, debug = false) {
+async function comparePlayerStats(
+  teamId: number,
+  payload: any,
+  sportmonksClient: any,
+  debug = false,
+) {
   // Fetch local team with players and their statistics
   let team
   try {
@@ -620,7 +645,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
     if (error instanceof Error && error.message.includes('Not Found')) {
       return NextResponse.json(
         { error: `Team ${teamId} not found in local database` },
-        { status: 404 }
+        { status: 404 },
       )
     }
     throw error
@@ -629,7 +654,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
   if (!team) {
     return NextResponse.json(
       { error: `Team ${teamId} not found in local database` },
-      { status: 404 }
+      { status: 404 },
     )
   }
 
@@ -641,7 +666,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
       teamName: team.name,
       entity: 'playerstats',
       message: 'No players found in local database',
-      hint: 'Team may need player sync'
+      hint: 'Team may need player sync',
     })
   }
 
@@ -690,16 +715,17 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
 
             // Extract values - most stats are objects with total/value properties
             if (goals) {
-              totalGoals += typeof goals === 'object' ? (goals.total || 0) : goals
+              totalGoals += typeof goals === 'object' ? goals.total || 0 : goals
             }
             if (assists) {
-              totalAssists += typeof assists === 'object' ? (assists.total || assists) : assists
+              totalAssists += typeof assists === 'object' ? assists.total || assists : assists
             }
             if (appearances) {
-              totalAppearances += typeof appearances === 'object' ? (appearances.total || 0) : appearances
+              totalAppearances +=
+                typeof appearances === 'object' ? appearances.total || 0 : appearances
             }
             if (minutes) {
-              totalMinutes += typeof minutes === 'object' ? (minutes.total || 0) : minutes
+              totalMinutes += typeof minutes === 'object' ? minutes.total || 0 : minutes
             }
           }
         })
@@ -710,7 +736,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
           assists: totalAssists,
           appearances: totalAppearances,
           minutes: totalMinutes,
-          seasons: seasonStats.length
+          seasons: seasonStats.length,
         }
       }
     } catch (error) {
@@ -725,17 +751,16 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
 
     // Get top players by goals to sample for comparison
     const topPlayers = Object.entries(localPlayerStats)
-      .sort(([, a]: any, [, b]: any) => (b.goals + b.assists) - (a.goals + a.assists))
+      .sort(([, a]: any, [, b]: any) => b.goals + b.assists - (a.goals + a.assists))
       .slice(0, 10)
       .map(([playerId]) => Number(playerId))
 
     // Fetch individual player stats from Sportmonks for comparison sample
     for (const playerId of topPlayers) {
       try {
-        const playerResponse = await sportmonksClient.fetchFromApi(
-          `/players/${playerId}`,
-          { include: 'statistics.details' }
-        )
+        const playerResponse = await sportmonksClient.fetchFromApi(`/players/${playerId}`, {
+          include: 'statistics.details',
+        })
 
         const player = playerResponse.data
         if (!player) continue
@@ -762,16 +787,17 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
             const minutes = getStatValue(119)
 
             if (goals) {
-              totalGoals += typeof goals === 'object' ? (goals.total || 0) : goals
+              totalGoals += typeof goals === 'object' ? goals.total || 0 : goals
             }
             if (assists) {
-              totalAssists += typeof assists === 'object' ? (assists.total || assists) : assists
+              totalAssists += typeof assists === 'object' ? assists.total || assists : assists
             }
             if (appearances) {
-              totalAppearances += typeof appearances === 'object' ? (appearances.total || 0) : appearances
+              totalAppearances +=
+                typeof appearances === 'object' ? appearances.total || 0 : appearances
             }
             if (minutes) {
-              totalMinutes += typeof minutes === 'object' ? (minutes.total || 0) : minutes
+              totalMinutes += typeof minutes === 'object' ? minutes.total || 0 : minutes
             }
           }
         })
@@ -782,7 +808,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
           assists: totalAssists,
           appearances: totalAppearances,
           minutes: totalMinutes,
-          seasons: seasonStats.length
+          seasons: seasonStats.length,
         }
       } catch (playerError) {
         console.error(`Failed to fetch player ${playerId} from Sportmonks:`, playerError)
@@ -792,13 +818,13 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
     // Compare player statistics
     const allPlayerIds = new Set([
       ...Object.keys(localPlayerStats).map(Number),
-      ...Object.keys(sportmonksPlayerStats).map(Number)
+      ...Object.keys(sportmonksPlayerStats).map(Number),
     ])
 
     const playerComparisons = []
     const discrepancies = []
 
-    for (const playerId of allPlayerIds) {
+    for (const playerId of Array.from(allPlayerIds)) {
       const local = localPlayerStats[playerId]
       const sportmonks = sportmonksPlayerStats[playerId]
 
@@ -806,7 +832,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
         playerId,
         name: local?.name || sportmonks?.name || 'Unknown',
         local: local || { goals: 0, assists: 0, appearances: 0, minutes: 0, seasons: 0 },
-        sportmonks: sportmonks || { goals: 0, assists: 0, appearances: 0, minutes: 0, seasons: 0 }
+        sportmonks: sportmonks || { goals: 0, assists: 0, appearances: 0, minutes: 0, seasons: 0 },
       }
 
       // Check for discrepancies
@@ -823,7 +849,7 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
           goals: (local?.goals || 0) - (sportmonks?.goals || 0),
           assists: (local?.assists || 0) - (sportmonks?.assists || 0),
           appearances: (local?.appearances || 0) - (sportmonks?.appearances || 0),
-          minutes: (local?.minutes || 0) - (sportmonks?.minutes || 0)
+          minutes: (local?.minutes || 0) - (sportmonks?.minutes || 0),
         }
         discrepancies.push(comparison)
       }
@@ -834,12 +860,12 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
     // Generate sync recommendations
     const syncRecommendations = []
     if (discrepancies.length > 0) {
-      const playersWithStatDiffs = discrepancies.filter(d =>
-        d.differences && (
-          d.differences.goals !== 0 ||
-          d.differences.assists !== 0 ||
-          d.differences.appearances !== 0
-        )
+      const playersWithStatDiffs = discrepancies.filter(
+        (d) =>
+          d.differences &&
+          (d.differences.goals !== 0 ||
+            d.differences.assists !== 0 ||
+            d.differences.appearances !== 0),
       )
 
       if (playersWithStatDiffs.length > 0) {
@@ -847,11 +873,11 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
           job: 'syncPlayers',
           reason: `${playersWithStatDiffs.length} player(s) have outdated statistics`,
           command: 'POST /api/queue-jobs/sync with task=syncPlayers',
-          affectedPlayers: playersWithStatDiffs.slice(0, 5).map(p => ({
+          affectedPlayers: playersWithStatDiffs.slice(0, 5).map((p) => ({
             id: p.playerId,
             name: p.name,
-            differences: p.differences
-          }))
+            differences: p.differences,
+          })),
         })
       }
     }
@@ -863,28 +889,33 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
       note: 'Comparing top 10 players by goals+assists (full comparison would require many API calls)',
       activeSeasons: activeSeasons.map((s: any) => ({
         id: s.id,
-        name: s.name
+        name: s.name,
       })),
       comparison: {
         totalLocalPlayers: Object.keys(localPlayerStats).length,
         playersCompared: Object.keys(sportmonksPlayerStats).length,
-        matching: playerComparisons.filter(p => p.match).length,
-        withDiscrepancies: discrepancies.length
+        matching: playerComparisons.filter((p) => p.match).length,
+        withDiscrepancies: discrepancies.length,
       },
       discrepancies: discrepancies.length > 0 ? discrepancies : undefined,
-      allComparedPlayers: debug ? playerComparisons.filter(p => p.sportmonks) : undefined,
-      localOnlyPlayers: debug ? playerComparisons.filter(p => !p.sportmonks).map(p => ({
-        playerId: p.playerId,
-        name: p.name,
-        stats: p.local
-      })) : undefined,
+      allComparedPlayers: debug ? playerComparisons.filter((p) => p.sportmonks) : undefined,
+      localOnlyPlayers: debug
+        ? playerComparisons
+            .filter((p) => !p.sportmonks)
+            .map((p) => ({
+              playerId: p.playerId,
+              name: p.name,
+              stats: p.local,
+            }))
+        : undefined,
       syncRecommendations: syncRecommendations.length > 0 ? syncRecommendations : undefined,
       analysis: {
         syncNeeded: discrepancies.length > 0,
-        recommendation: discrepancies.length > 0
-          ? `${discrepancies.length} player(s) have mismatched statistics - run syncPlayers job to update`
-          : `Top ${Object.keys(sportmonksPlayerStats).length} players' statistics match Sportmonks`
-      }
+        recommendation:
+          discrepancies.length > 0
+            ? `${discrepancies.length} player(s) have mismatched statistics - run syncPlayers job to update`
+            : `Top ${Object.keys(sportmonksPlayerStats).length} players' statistics match Sportmonks`,
+      },
     })
   } catch (error) {
     return NextResponse.json(
@@ -893,10 +924,10 @@ async function comparePlayerStats(teamId: number, payload: any, sportmonksClient
         details: error instanceof Error ? error.message : 'Unknown error',
         localData: {
           playersWithStats: Object.keys(localPlayerStats).length,
-          sample: Object.values(localPlayerStats).slice(0, 3)
-        }
+          sample: Object.values(localPlayerStats).slice(0, 3),
+        },
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

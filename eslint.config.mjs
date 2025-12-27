@@ -55,7 +55,8 @@ const eslintConfig = [
       '@typescript-eslint/prefer-as-const': 'warn',
       // Disabled: requires parserOptions.typeAwareParser which isn't configured in flat config
       // '@typescript-eslint/no-unnecessary-type-assertion': 'warn',
-      '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
+      // Disabled: requires parserOptions.typeAwareParser which isn't configured in flat config
+      // '@typescript-eslint/prefer-reduce-type-parameter': 'warn',
       '@typescript-eslint/prefer-function-type': 'warn',
     },
   },
