@@ -313,7 +313,7 @@ async function comparePlayers(teamId: number, payload: any, sportmonksClient: an
     )
 
     const sportmonksPlayers = sportmonksResponse.data?.players || []
-    const sportmonksPlayerIds = new Set(sportmonksPlayers.map((p: any) => p.player_id))
+    const sportmonksPlayerIds = new Set<number>(sportmonksPlayers.map((p: any) => p.player_id))
 
     const missingInLocal = Array.from(sportmonksPlayerIds).filter(id => !localPlayerIds.has(id))
     const missingInSportmonks = Array.from(localPlayerIds).filter(id => !sportmonksPlayerIds.has(id))
