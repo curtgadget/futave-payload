@@ -33,17 +33,17 @@ interface PlayerSyncResult {
 
 export function createResumablePlayerSync(
   sportmonksConfig: SportmonksConfig,
-  options: ResumablePlayerSyncOptions = {}
+  options: ResumablePlayerSyncOptions = {},
 ) {
   const playerEndpoint = createPlayerEndpoint(sportmonksConfig)
   const syncId = options.syncId || 'player-sync-main'
   const maxPagesPerRun = options.maxPagesPerRun || 2800 // ~2800 calls leaving buffer for other endpoints
   const heapWarningMB = options.heapSizeWarningMB || 6000 // Warn at 6GB to prevent 8GB crash
-  
+
   async function resumablePlayerSync(): Promise<PlayerSyncResult> {
     const startTime = Date.now()
     const MAX_ERRORS_IN_MEMORY = 100 // Limit error array to prevent memory leak
-    let stats = {
+    const stats = {
       created: 0,
       updated: 0,
       failed: 0,
@@ -69,7 +69,7 @@ export function createResumablePlayerSync(
           stats: {
             ...stats,
             nextResumeTime: checkpoint.nextResumeTime,
-          }
+          },
         }
       }
 
@@ -90,7 +90,7 @@ export function createResumablePlayerSync(
               ...stats,
               isComplete: true,
               totalPlayersProcessed: checkpoint.playersProcessed,
-            }
+            },
           }
         }
         console.log(`📄 Resuming player sync from page ${checkpoint.currentPage}`)
@@ -109,12 +109,13 @@ export function createResumablePlayerSync(
       while (pagesThisRun < maxPagesPerRun) {
         try {
           console.log(`📥 Fetching page ${currentPage}...`)
-          
+
           // Fetch single page
           const response = await playerEndpoint.client.fetchFromApi('/players', {
             page: currentPage,
             per_page: 50,
-            include: 'teams;nationality;trophies;trophies.season;trophies.trophy;metadata;position;detailedPosition;statistics.details'
+            include:
+              'teams;nationality;trophies;trophies.season;trophies.trophy;metadata;position;detailedPosition;statistics.details',
           })
 
           if (!response.data || !Array.isArray(response.data)) {
@@ -182,7 +183,6 @@ export function createResumablePlayerSync(
 
               // Clear player data from array to free memory immediately
               response.data[i] = null as any
-
             } catch (error) {
               pageFailed++
               const errorMsg = `Player ${(sportmonksPlayer as any).id}: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -205,21 +205,25 @@ export function createResumablePlayerSync(
             currentPage: currentPage + 1,
             playersProcessed: checkpoint.playersProcessed + totalPlayersThisRun,
             rateLimit: {
-              callsUsed: response.rate_limit?.remaining ? (3000 - response.rate_limit.remaining) : checkpoint.rateLimit.callsUsed + 1,
+              callsUsed: response.rate_limit?.remaining
+                ? 3000 - response.rate_limit.remaining
+                : checkpoint.rateLimit.callsUsed + 1,
               lastCallTime: new Date(),
-              resetTime: response.rate_limit?.resets_in_seconds ? 
-                new Date(Date.now() + (response.rate_limit.resets_in_seconds * 1000)) : 
-                checkpoint.rateLimit.resetTime,
+              resetTime: response.rate_limit?.resets_in_seconds
+                ? new Date(Date.now() + response.rate_limit.resets_in_seconds * 1000)
+                : checkpoint.rateLimit.resetTime,
             },
             stats: {
               playersCreated: checkpoint.stats.playersCreated + stats.created,
               playersUpdated: checkpoint.stats.playersUpdated + stats.updated,
               playersFailed: checkpoint.stats.playersFailed + stats.failed,
               pagesCompleted: checkpoint.stats.pagesCompleted + pagesThisRun,
-            }
+            },
           })
 
-          console.log(`✅ Page ${currentPage} complete: +${pageCreated} created, +${pageUpdated} updated, +${pageFailed} failed`)
+          console.log(
+            `✅ Page ${currentPage} complete: +${pageCreated} created, +${pageUpdated} updated, +${pageFailed} failed`,
+          )
 
           // Clear response data to free memory
           response.data = []
@@ -239,8 +243,12 @@ export function createResumablePlayerSync(
 
             // Warn if approaching memory limit
             if (heapUsedMB > heapWarningMB) {
-              console.warn(`⚠️  WARNING: Heap usage (${heapUsedMB}MB) exceeds ${heapWarningMB}MB threshold!`)
-              console.warn(`⚠️  Consider stopping sync and increasing heap: NODE_OPTIONS="--expose-gc --max-old-space-size=8192"`)
+              console.warn(
+                `⚠️  WARNING: Heap usage (${heapUsedMB}MB) exceeds ${heapWarningMB}MB threshold!`,
+              )
+              console.warn(
+                `⚠️  Consider stopping sync and increasing heap: NODE_OPTIONS="--expose-gc --max-old-space-size=8192"`,
+              )
             }
           }
 
@@ -256,7 +264,6 @@ export function createResumablePlayerSync(
             stats.isComplete = true
             break
           }
-
         } catch (error) {
           // Handle rate limiting
           if (error instanceof Error && error.message.includes('rate limit')) {
@@ -274,7 +281,7 @@ export function createResumablePlayerSync(
             stats.errors.push(errorMsg)
           }
           console.error(errorMsg)
-          
+
           // Update checkpoint with error
           await playerSyncCheckpointService.updateCheckpoint(syncId, {
             mode: 'failed',
@@ -288,7 +295,7 @@ export function createResumablePlayerSync(
       stats.totalPlayersProcessed = checkpoint.playersProcessed + totalPlayersThisRun
       stats.endTime = Date.now()
 
-      const message = stats.isComplete 
+      const message = stats.isComplete
         ? `🎉 Player sync completed! Processed ${stats.totalPlayersProcessed} total players.`
         : `📄 Processed ${pagesThisRun} pages (${totalPlayersThisRun} players). Resume from page ${currentPage}.`
 
@@ -297,7 +304,6 @@ export function createResumablePlayerSync(
         message,
         stats,
       }
-
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
       stats.errors.push(errorMessage)

@@ -85,7 +85,7 @@ async function getTeamCoaches(payload: any, team: any): Promise<TeamCoach[]> {
   const currentCoaches = team.coaches.filter((coach: any) => {
     // Include if no end date (still active)
     if (!coach.end) return true
-    
+
     // Include if end date is in the future
     return coach.end >= currentDate
   })
@@ -156,7 +156,7 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   const currentPlayers = team.players.filter((player: any) => {
     // Include if no end date (still active)
     if (!player.end) return true
-    
+
     // Include if end date is in the future
     return player.end >= currentDate
   })
@@ -176,7 +176,9 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   })
 
   // Create a map of player details for quick lookup
-  const playerDetailsMap: Map<number, any> = new Map(playersResult.docs.map((player: any) => [player.id, player]))
+  const playerDetailsMap: Map<number, any> = new Map(
+    playersResult.docs.map((player: any) => [player.id, player]),
+  )
 
   // Collect all unique position IDs for metadata lookup
   const positionIds = new Set<number>()
@@ -186,7 +188,10 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   })
 
   // Fetch position metadata
-  const positionMetadata: Map<number, any> = await getPositionMetadata(payload, Array.from(positionIds))
+  const positionMetadata: Map<number, any> = await getPositionMetadata(
+    payload,
+    Array.from(positionIds),
+  )
 
   // Initialize squad structure by position groups
   const squadByPosition: TeamSquadByPosition = {
@@ -197,11 +202,17 @@ async function getTeamPlayers(payload: any, team: any): Promise<TeamSquadByPosit
   }
 
   // Transform and organize players by position
-  organizePlayersByPosition(currentPlayers, playerDetailsMap, squadByPosition, positionMetadata, team)
-  
+  organizePlayersByPosition(
+    currentPlayers,
+    playerDetailsMap,
+    squadByPosition,
+    positionMetadata,
+    team,
+  )
+
   // Sort each position group
   sortPlayerGroups(squadByPosition)
-  
+
   return squadByPosition
 }
 
@@ -294,10 +305,10 @@ function sortPlayerGroups(squadByPosition: TeamSquadByPosition): void {
 function combineAndDedupeFixtures(upcoming: any[], latest: any[]): any[] {
   const upcomingArray = Array.isArray(upcoming) ? upcoming : []
   const latestArray = Array.isArray(latest) ? latest : []
-  
+
   // Combine arrays
   const allFixtures = [...upcomingArray, ...latestArray]
-  
+
   // Deduplicate by fixture ID (keep first occurrence)
   const seen = new Set<string>()
   return allFixtures.filter((fixture) => {
@@ -313,20 +324,20 @@ function combineAndDedupeFixtures(upcoming: any[], latest: any[]): any[] {
  */
 async function enrichWithMatchDetails(payload: any, fixtures: any[]): Promise<any[]> {
   if (fixtures.length === 0) return []
-  
+
   const fixtureIds = fixtures.map((f) => (typeof f === 'string' ? f : f.id)).filter(Boolean)
-  
+
   if (fixtureIds.length === 0) return fixtures
-  
+
   const matchesResult = await payload.find({
     collection: 'matches',
     where: { id: { in: fixtureIds } },
     limit: fixtureIds.length,
     pagination: false,
   })
-  
+
   const matchMap = new Map(matchesResult.docs.map((m: any) => [String(m.id), m]))
-  
+
   return fixtures.map((fixture) => {
     const id = typeof fixture === 'string' ? fixture : fixture.id
     const match = matchMap.get(String(id))
@@ -340,9 +351,9 @@ async function enrichWithMatchDetails(payload: any, fixtures: any[]): Promise<an
  */
 function filterFixturesByType(fixtures: any[], type: 'all' | 'past' | 'upcoming'): any[] {
   if (type === 'all') return fixtures
-  
+
   const now = Date.now()
-  
+
   return fixtures.filter((fixture) => {
     const timestamp = fixture.starting_at_timestamp * 1000
     return type === 'past' ? timestamp < now : timestamp >= now
@@ -357,17 +368,17 @@ function buildTemporalNavigationUrls(
   currentPage: number,
   totalPages: number,
   queryParams: Record<string, any>,
-  type: string
-): { 
-  next: string | null; 
-  previous: string | null;
-  newer: string | null;
-  older: string | null;
+  type: string,
+): {
+  next: string | null
+  previous: string | null
+  newer: string | null
+  older: string | null
 } {
   const buildUrl = (page: number, newType?: string) => {
     const params = new URLSearchParams()
     params.set('page', String(page))
-    
+
     // Add other query parameters
     Object.entries(queryParams).forEach(([key, value]) => {
       if (key === 'type' && newType) {
@@ -376,24 +387,24 @@ function buildTemporalNavigationUrls(
         params.set(key, String(value))
       }
     })
-    
+
     return `${baseUrl}?${params.toString()}`
   }
-  
+
   // Standard pagination
   const next = currentPage < totalPages ? buildUrl(currentPage + 1) : null
   const previous = currentPage > 1 ? buildUrl(currentPage - 1) : null
-  
+
   // Temporal navigation based on fixture type
   let newer: string | null = null
   let older: string | null = null
-  
+
   if (type === 'upcoming') {
     // For upcoming: newer = more future fixtures, older = past results
     newer = currentPage < totalPages ? buildUrl(currentPage + 1) : null
     older = buildUrl(1, 'past') // Switch to past results
   } else if (type === 'past') {
-    // For past: newer = upcoming fixtures, older = more past fixtures  
+    // For past: newer = upcoming fixtures, older = more past fixtures
     newer = buildUrl(1, 'upcoming') // Switch to upcoming
     older = currentPage < totalPages ? buildUrl(currentPage + 1) : null
   } else {
@@ -401,7 +412,7 @@ function buildTemporalNavigationUrls(
     newer = next
     older = previous
   }
-  
+
   return { next, previous, newer, older }
 }
 
@@ -419,12 +430,7 @@ export async function getTeamFixturesCombined(
   } = {},
 ): Promise<TeamFixturesResponse<MinimalTeamFixture, MinimalNextMatch>> {
   const payload = await getPayload({ config })
-  const { 
-    page = 1, 
-    limit = 10, 
-    type: requestedType = 'auto',
-    includeNextMatch = false 
-  } = options
+  const { page = 1, limit = 10, type: requestedType = 'auto', includeNextMatch = false } = options
 
   // Validate pagination parameters
   const validatedPage = Math.max(1, page)
@@ -444,23 +450,23 @@ export async function getTeamFixturesCombined(
   const teamData = team as any
   const combinedFixtures = combineAndDedupeFixtures(
     Array.isArray(teamData.upcoming) ? teamData.upcoming : [],
-    Array.isArray(teamData.latest) ? teamData.latest : []
+    Array.isArray(teamData.latest) ? teamData.latest : [],
   )
-  
+
   // 2. Enrich with match details
   const enrichedFixtures = await enrichWithMatchDetails(payload, combinedFixtures)
-  
+
   // 3. Sort chronologically (will be re-sorted after type determination)
   const sortedFixtures = enrichedFixtures.sort((a, b) => {
     const aTime = a.starting_at_timestamp || 0
     const bTime = b.starting_at_timestamp || 0
     return bTime - aTime // Most recent first initially
   })
-  
+
   // 4. Smart default: try upcoming first, fall back to past if empty
   let actualType = requestedType
   let filteredFixtures = sortedFixtures
-  
+
   if (requestedType === 'auto') {
     // Try upcoming first
     const upcomingFixtures = filterFixturesByType(sortedFixtures, 'upcoming')
@@ -483,16 +489,16 @@ export async function getTeamFixturesCombined(
     actualType = requestedType
     filteredFixtures = filterFixturesByType(sortedFixtures, requestedType)
   }
-  
+
   // 5. Calculate pagination
   const totalFixtures = filteredFixtures.length
   const totalPages = Math.ceil(totalFixtures / validatedLimit)
   const offset = (validatedPage - 1) * validatedLimit
   const paginatedFixtures = filteredFixtures.slice(offset, offset + validatedLimit)
-  
+
   // 6. Transform fixtures
   const docs = paginatedFixtures.map(transformFixture)
-  
+
   // 6. Re-sort based on determined type for better UX
   if (actualType === 'upcoming') {
     // For upcoming: soonest first (ascending order)
@@ -503,15 +509,21 @@ export async function getTeamFixturesCombined(
     })
   }
   // Past and all remain in descending order (most recent first)
-  
+
   // 7. Build temporal navigation URLs
   const baseUrl = `/api/v1/team/${teamId}/fixtures`
-  const navigationUrls = buildTemporalNavigationUrls(baseUrl, validatedPage, totalPages, {
-    limit: validatedLimit,
-    type: actualType,
-    includeNextMatch: includeNextMatch ? 'true' : undefined,
-  }, actualType)
-  
+  const navigationUrls = buildTemporalNavigationUrls(
+    baseUrl,
+    validatedPage,
+    totalPages,
+    {
+      limit: validatedLimit,
+      type: actualType,
+      includeNextMatch: includeNextMatch ? 'true' : undefined,
+    },
+    actualType,
+  )
+
   // 8. Optional next match calculation
   let nextMatch: MinimalNextMatch | null = null
   if (includeNextMatch) {
@@ -519,7 +531,7 @@ export async function getTeamFixturesCombined(
     const nextFixture = sortedFixtures
       .filter((f) => f.starting_at_timestamp * 1000 >= now)
       .sort((a, b) => a.starting_at_timestamp - b.starting_at_timestamp)[0]
-    
+
     if (nextFixture) {
       // Simplified next match calculation (can be expanded as needed)
       const home = Array.isArray(nextFixture.participants)
@@ -528,7 +540,7 @@ export async function getTeamFixturesCombined(
       const away = Array.isArray(nextFixture.participants)
         ? nextFixture.participants.find((p: any) => p.meta?.location === 'away')
         : null
-        
+
       nextMatch = {
         starting_at: nextFixture.starting_at,
         league: nextFixture.league
@@ -581,7 +593,7 @@ export const teamDataFetcher: TabDataFetcher = {
       const numericId = validateTeamId(teamId)
 
       const payload = await getPayload({ config })
-      
+
       // Get the team document
       const teamResult = await payload.find({
         collection: 'teams',
@@ -638,11 +650,11 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Merge standings and filter to only include active seasons where the team appears
       const teamStandings: Record<string, any> = {}
-      
+
       standingsResult.docs.forEach((doc) => {
         if (doc.standings && typeof doc.standings === 'object') {
           const standings = doc.standings as Record<string, any>
-          
+
           Object.entries(standings).forEach(([seasonId, seasonData]) => {
             // First check if this season is in the active seasons list
             const seasonIdNum = parseInt(seasonId, 10)
@@ -657,21 +669,17 @@ export const teamDataFetcher: TabDataFetcher = {
             if (Array.isArray(seasonData)) {
               // Handle array format (could be direct standings or tables with standings)
               const hasDirectStandings = seasonData[0]?.participant_id !== undefined
-              
+
               if (hasDirectStandings) {
                 // Direct standings array
-                teamFound = seasonData.some((row: any) => 
-                  row.participant_id === numericId
-                )
+                teamFound = seasonData.some((row: any) => row.participant_id === numericId)
                 if (teamFound) {
                   filteredData = seasonData
                 }
               } else {
                 // Array of tables with standings
-                const tablesWithTeam = seasonData.filter((table: any) => 
-                  table.standings?.some((row: any) => 
-                    row.participant_id === numericId
-                  )
+                const tablesWithTeam = seasonData.filter((table: any) =>
+                  table.standings?.some((row: any) => row.participant_id === numericId),
                 )
                 if (tablesWithTeam.length > 0) {
                   teamFound = true
@@ -683,21 +691,19 @@ export const teamDataFetcher: TabDataFetcher = {
               if (seasonData.standings && Array.isArray(seasonData.standings)) {
                 // Check if it's a direct standings array
                 const hasDirectStandings = seasonData.standings[0]?.participant_id !== undefined
-                
+
                 if (hasDirectStandings) {
                   // Direct standings array
-                  teamFound = seasonData.standings.some((row: any) => 
-                    row.participant_id === numericId
+                  teamFound = seasonData.standings.some(
+                    (row: any) => row.participant_id === numericId,
                   )
                   if (teamFound) {
                     filteredData = seasonData
                   }
                 } else {
                   // Array of tables with standings
-                  const tablesWithTeam = seasonData.standings.filter((table: any) => 
-                    table.standings?.some((row: any) => 
-                      row.participant_id === numericId
-                    )
+                  const tablesWithTeam = seasonData.standings.filter((table: any) =>
+                    table.standings?.some((row: any) => row.participant_id === numericId),
                   )
                   if (tablesWithTeam.length > 0) {
                     teamFound = true
@@ -720,7 +726,9 @@ export const teamDataFetcher: TabDataFetcher = {
         id: team.id as number,
         name: team.name as string,
         standings: Object.keys(teamStandings).length > 0 ? teamStandings : null,
-        activeseasons: Array.isArray(teamWithSeasons.activeseasons) ? teamWithSeasons.activeseasons : null,
+        activeseasons: Array.isArray(teamWithSeasons.activeseasons)
+          ? teamWithSeasons.activeseasons
+          : null,
       }
 
       const transformedStandings = transformTeamTable(rawTeam)
@@ -803,10 +811,10 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Process coaches
       const coaches = await getTeamCoaches(payload, team)
-      
+
       // Process players
       const players = await getTeamPlayers(payload, team)
-      
+
       return {
         players,
         coaches,
@@ -840,7 +848,7 @@ export const teamDataFetcher: TabDataFetcher = {
       // For comparison, get the squad data
       try {
         const squadResponse = await this.getSquad(teamId)
-        
+
         // Count total players in all positions
         let totalPlayers = 0
         Object.values(squadResponse.players).forEach((positionGroup) => {
@@ -867,10 +875,12 @@ export const teamDataFetcher: TabDataFetcher = {
 
       // Transform team stats
       const teamStatsResponse = transformTeamStats(rawTeam, seasonId)
-      
+
       // If we have players in the team, fetch their individual statistics
       if (Array.isArray(team.players) && team.players.length > 0) {
-        const seasonIdNumber = seasonId ? parseInt(seasonId, 10) : teamStatsResponse.current_season.season_id
+        const seasonIdNumber = seasonId
+          ? parseInt(seasonId, 10)
+          : teamStatsResponse.current_season.season_id
 
         // Get player statistics for the selected season
 
@@ -920,9 +930,8 @@ export const teamDataFetcher: TabDataFetcher = {
             })
           })
 
-
           // 2. Get player IDs from the squad data as a backup source
-          let playerIdsFromSquad = new Set<number>()
+          const playerIdsFromSquad = new Set<number>()
           try {
             const squadResponse = await this.getSquad(teamId)
 
@@ -934,7 +943,6 @@ export const teamDataFetcher: TabDataFetcher = {
                 }
               })
             })
-
           } catch (error) {
             console.error('Error fetching squad data:', error)
           }
@@ -959,8 +967,6 @@ export const teamDataFetcher: TabDataFetcher = {
               // Increase limit to ensure we get all players
               limit: Math.max(100, allPlayerIds.length),
             })
-
-
 
             // 5. Process player statistics for the selected season
             if (playersResult.docs.length > 0) {
@@ -993,7 +999,6 @@ export const teamDataFetcher: TabDataFetcher = {
           // Don't fail the whole request if player stats retrieval fails
         }
       }
-
 
       // Last attempt - force a known good value directly onto the object if there are no top_stats
       if (
@@ -1343,7 +1348,6 @@ function processPlayerStats(
 
       // Tertiary scan - deep search in entire player statistics object
       if (playerStat.assists === undefined && player.statistics) {
-
         // Define a recursive function to search the stats object
         const findAssistValue = (obj: any): number | undefined => {
           if (!obj || typeof obj !== 'object') return undefined
@@ -1411,9 +1415,7 @@ function processPlayerStats(
 
     // Always include all players, no filtering
     playerStats.push(playerStat)
-
   })
-
 
   // Sort by appearances (descending), then by minutes played (descending)
   return playerStats.sort((a, b) => {
@@ -1444,7 +1446,6 @@ function getPlayerJerseyNumber(player: any): number | undefined {
   return undefined
 }
 
-
 /**
  * Find player statistics for a specific season - improved to handle more data formats
  */
@@ -1456,9 +1457,7 @@ function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: 
 
   // Handle array format (which is what we actually have in the database)
   if (Array.isArray(statistics)) {
-    return statistics.find((stat: any) => 
-      stat && stat.season_id === seasonId
-    )
+    return statistics.find((stat: any) => stat && stat.season_id === seasonId)
   }
 
   // Convert to object if it's not already
@@ -1562,7 +1561,6 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         where.or = [{ name: { like: `%${search}%` } }, { venue_name: { like: `%${search}%` } }]
       }
 
-
       // Query the database
       const result = await payload.find({
         collection: 'teams',
@@ -1571,7 +1569,6 @@ export const teamListDataFetcher: TeamListDataFetcher = {
         limit,
         depth: 1, // Include related data like activeseasons
       })
-
 
       // Transform the results to match the expected response format
       const teams = result.docs.map((team) => {
@@ -1584,7 +1581,7 @@ export const teamListDataFetcher: TeamListDataFetcher = {
             }
           })
         }
-        
+
         return {
           id: String(team.id),
           name: team.name as string,
@@ -1595,13 +1592,13 @@ export const teamListDataFetcher: TeamListDataFetcher = {
                   id: String(s.id),
                   name: s.name,
                 }
-                
+
                 // Add league name if available
                 const leagueName = seasonLeagueMap.get(seasonData.id)
                 if (leagueName) {
                   seasonData.league_name = leagueName
                 }
-                
+
                 return seasonData
               })
             : [],

@@ -220,7 +220,7 @@ export function createLeagueRequest(
   const { queryParams = {}, method = 'GET', headers = {} } = options
 
   let basePath: string
-  let finalQueryParams = { ...queryParams }
+  const finalQueryParams = { ...queryParams }
 
   if (resource) {
     // For league resource endpoints: league/{id}/{resource}

@@ -20,7 +20,7 @@ export type ValidationResult = {
 
 export async function validateTeamData(
   teamId: number,
-  entity: EntityType
+  entity: EntityType,
 ): Promise<ValidationResult> {
   const startTime = Date.now()
 
@@ -38,7 +38,7 @@ export async function validateTeamData(
         collection: 'teams',
         id: teamId.toString(),
       })
-    } catch (error) {
+    } catch (_error) {
       return {
         teamId,
         teamName: 'Unknown',
@@ -97,7 +97,7 @@ async function comparePlayerStats(
   teamId: number,
   teamName: string,
   payload: any,
-  sportmonksClient: any
+  sportmonksClient: any,
 ): Promise<Omit<ValidationResult, 'executionTime'>> {
   try {
     const team = await payload.findByID({
@@ -190,7 +190,7 @@ async function comparePlayers(
   teamId: number,
   teamName: string,
   payload: any,
-  sportmonksClient: any
+  sportmonksClient: any,
 ): Promise<Omit<ValidationResult, 'executionTime'>> {
   // Simplified implementation
   return {
@@ -207,7 +207,7 @@ async function compareFixtures(
   teamId: number,
   teamName: string,
   payload: any,
-  sportmonksClient: any
+  sportmonksClient: any,
 ): Promise<Omit<ValidationResult, 'executionTime'>> {
   // Simplified implementation
   return {
@@ -224,7 +224,7 @@ async function compareStandings(
   teamId: number,
   teamName: string,
   payload: any,
-  sportmonksClient: any
+  sportmonksClient: any,
 ): Promise<Omit<ValidationResult, 'executionTime'>> {
   // Simplified implementation
   return {
@@ -241,7 +241,7 @@ async function compareTeams(
   teamId: number,
   teamName: string,
   payload: any,
-  sportmonksClient: any
+  sportmonksClient: any,
 ): Promise<Omit<ValidationResult, 'executionTime'>> {
   // Simplified implementation
   return {

@@ -2,6 +2,7 @@ import type { APIRouteV1 } from '@/app/api/v1/index'
 import type { PayloadRequest } from 'payload'
 import { createAuthMiddleware } from '@/utilities/auth'
 import { teamListDataFetcher } from './services/teamDataFetcher'
+import configPromise from '@payload-config'
 
 const getTeamsHandler = async (req: PayloadRequest) => {
   if (!req.url) {
@@ -32,7 +33,7 @@ const getTeamsHandler = async (req: PayloadRequest) => {
     if (debug) {
       try {
         const payload = await import('payload').then((mod) =>
-          mod.getPayload({ config: require('@/payload.config') }),
+          mod.getPayload({ config: configPromise }),
         )
         const rawTeam = await payload.find({
           collection: 'teams',

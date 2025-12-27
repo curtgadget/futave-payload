@@ -30,17 +30,17 @@ function buildTemporalNavigationUrls(
   currentPage: number,
   totalPages: number,
   queryParams: Record<string, any>,
-  type: string
-): { 
-  next: string | null; 
-  previous: string | null;
-  newer: string | null;
-  older: string | null;
+  type: string,
+): {
+  next: string | null
+  previous: string | null
+  newer: string | null
+  older: string | null
 } {
   const buildUrl = (page: number, newType?: string) => {
     const params = new URLSearchParams()
     params.set('page', String(page))
-    
+
     // Add other query parameters
     Object.entries(queryParams).forEach(([key, value]) => {
       if (key === 'type' && newType) {
@@ -49,24 +49,24 @@ function buildTemporalNavigationUrls(
         params.set(key, String(value))
       }
     })
-    
+
     return `${baseUrl}?${params.toString()}`
   }
-  
+
   // Standard pagination
   const next = currentPage < totalPages ? buildUrl(currentPage + 1) : null
   const previous = currentPage > 1 ? buildUrl(currentPage - 1) : null
-  
+
   // Temporal navigation based on fixture type
   let newer: string | null = null
   let older: string | null = null
-  
+
   if (type === 'upcoming') {
     // For upcoming: newer = more future fixtures, older = past results
     newer = currentPage < totalPages ? buildUrl(currentPage + 1) : null
     older = buildUrl(1, 'past') // Switch to past results
   } else if (type === 'past') {
-    // For past: newer = upcoming fixtures, older = more past fixtures  
+    // For past: newer = upcoming fixtures, older = more past fixtures
     newer = buildUrl(1, 'upcoming') // Switch to upcoming
     older = currentPage < totalPages ? buildUrl(currentPage + 1) : null
   } else {
@@ -74,12 +74,16 @@ function buildTemporalNavigationUrls(
     newer = next
     older = previous
   }
-  
+
   return { next, previous, newer, older }
 }
 
 // Process player statistics for league aggregation (using the same logic as team stats)
-function processLeaguePlayerStats(players: any[], seasonId: number, leagueId: number): PlayerSeasonStats[] {
+function processLeaguePlayerStats(
+  players: any[],
+  seasonId: number,
+  leagueId: number,
+): PlayerSeasonStats[] {
   const playerStats: PlayerSeasonStats[] = []
 
   let playersWithSeasonStats = 0
@@ -92,10 +96,10 @@ function processLeaguePlayerStats(players: any[], seasonId: number, leagueId: nu
     }
 
     playersProcessed++
-    
+
     // Find statistics for the requested season AND league to avoid cross-competition contamination
     const playerSeasonStats = findPlayerSeasonStats(player.statistics, seasonId, leagueId)
-    
+
     if (playerSeasonStats) {
       playersWithSeasonStats++
       if (playerSeasonStats.league_id === leagueId) {
@@ -221,7 +225,7 @@ function calculateLeagueAggregatedStats(playerStats: PlayerSeasonStats[]): any {
     average_assists_per_player: 0,
   }
 
-  playerStats.forEach(player => {
+  playerStats.forEach((player) => {
     stats.total_goals += player.goals || 0
     stats.total_assists += player.assists || 0
     // Cards are stored in the cards object
@@ -242,7 +246,10 @@ function calculateLeagueAggregatedStats(playerStats: PlayerSeasonStats[]): any {
 }
 
 // Enhanced function to create player stat categories for tabbed UI
-function createPlayerStatCategories(playerStats: PlayerSeasonStats[], teamsMap: Map<string, { name: string; logo?: string }>): {
+function createPlayerStatCategories(
+  playerStats: PlayerSeasonStats[],
+  teamsMap: Map<string, { name: string; logo?: string }>,
+): {
   top_scorers: LeaguePlayerStatCategory
   top_assists: LeaguePlayerStatCategory
   most_minutes: LeaguePlayerStatCategory
@@ -252,10 +259,10 @@ function createPlayerStatCategories(playerStats: PlayerSeasonStats[], teamsMap: 
   const createCategory = (
     category: 'goals' | 'assists' | 'minutes' | 'goals_assists' | 'discipline',
     label: string,
-    getValue: (player: PlayerSeasonStats) => number
+    getValue: (player: PlayerSeasonStats) => number,
   ): LeaguePlayerStatCategory => {
     const filteredPlayers = playerStats
-      .filter(player => getValue(player) > 0)
+      .filter((player) => getValue(player) > 0)
       .sort((a, b) => getValue(b) - getValue(a))
       .map((player, index) => {
         const teamInfo = teamsMap.get(player.team_id || '') || { name: 'Unknown Team' }
@@ -282,16 +289,31 @@ function createPlayerStatCategories(playerStats: PlayerSeasonStats[], teamsMap: 
   }
 
   return {
-    top_scorers: createCategory('goals', 'Top Goal Scorers', player => player.goals || 0),
-    top_assists: createCategory('assists', 'Most Assists', player => player.assists || 0),
-    most_minutes: createCategory('minutes', 'Most Minutes Played', player => player.minutes_played || 0),
-    top_goals_assists: createCategory('goals_assists', 'Goals + Assists', player => (player.goals || 0) + (player.assists || 0)),
-    discipline: createCategory('discipline', 'Most Yellow Cards', player => player.cards?.yellow || 0),
+    top_scorers: createCategory('goals', 'Top Goal Scorers', (player) => player.goals || 0),
+    top_assists: createCategory('assists', 'Most Assists', (player) => player.assists || 0),
+    most_minutes: createCategory(
+      'minutes',
+      'Most Minutes Played',
+      (player) => player.minutes_played || 0,
+    ),
+    top_goals_assists: createCategory(
+      'goals_assists',
+      'Goals + Assists',
+      (player) => (player.goals || 0) + (player.assists || 0),
+    ),
+    discipline: createCategory(
+      'discipline',
+      'Most Yellow Cards',
+      (player) => player.cards?.yellow || 0,
+    ),
   }
 }
 
-// Enhanced function to create team stat categories for tabbed UI  
-function createTeamStatCategories(teamsData: any[], seasonId: number): {
+// Enhanced function to create team stat categories for tabbed UI
+function createTeamStatCategories(
+  teamsData: any[],
+  seasonId: number,
+): {
   attack: LeagueTeamStatCategory
   defense: LeagueTeamStatCategory
   discipline: LeagueTeamStatCategory
@@ -300,16 +322,15 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
   // Extract team statistics for the specific season
   let teamsWithNoStats = 0
   let teamsWithStats = 0
-  
-  const teamsWithStatsData = teamsData.map(team => {
-    
+
+  const teamsWithStatsData = teamsData.map((team) => {
     const teamStats = extractTeamSeasonStats(team.statistics, seasonId)
     if (!teamStats) {
       teamsWithNoStats++
     } else {
       teamsWithStats++
     }
-    
+
     return {
       id: String(team.id || team._id),
       name: team.name || `Team ${team.id}`,
@@ -317,13 +338,12 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
       stats: teamStats,
     }
   })
-  
-  const teamsWithStatsFiltered = teamsWithStatsData
-    .filter(team => team.stats !== null) // Only include teams with actual stats for the season
+
+  const teamsWithStatsFiltered = teamsWithStatsData.filter((team) => team.stats !== null) // Only include teams with actual stats for the season
 
   // Create attack statistics category
   const attackStats = teamsWithStatsFiltered
-    .map(team => ({
+    .map((team) => ({
       team_id: team.id,
       team_name: team.name,
       team_logo: team.logo,
@@ -335,13 +355,13 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
         corners: team.stats?.corners || 0,
       },
     }))
-    .filter(team => team.value > 0) // Only include teams with goals scored
+    .filter((team) => team.value > 0) // Only include teams with goals scored
     .sort((a, b) => b.value - a.value)
     .map((team, index) => ({ ...team, rank: index + 1 }))
 
   // Create defense statistics category
   const defenseStats = teamsWithStatsFiltered
-    .map(team => ({
+    .map((team) => ({
       team_id: team.id,
       team_name: team.name,
       team_logo: team.logo,
@@ -353,13 +373,13 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
         tackles: team.stats?.tackles || 0,
       },
     }))
-    .filter(team => team.value > 0) // Only include teams with clean sheets
+    .filter((team) => team.value > 0) // Only include teams with clean sheets
     .sort((a, b) => b.value - a.value)
     .map((team, index) => ({ ...team, rank: index + 1 }))
 
   // Create discipline statistics category (fewest cards is better)
   const disciplineStats = teamsWithStatsFiltered
-    .map(team => ({
+    .map((team) => ({
       team_id: team.id,
       team_name: team.name,
       team_logo: team.logo,
@@ -376,7 +396,7 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
 
   // Create performance statistics category (based on wins/points)
   const performanceStats = teamsWithStatsFiltered
-    .map(team => ({
+    .map((team) => ({
       team_id: team.id,
       team_name: team.name,
       team_logo: team.logo,
@@ -389,7 +409,7 @@ function createTeamStatCategories(teamsData: any[], seasonId: number): {
         points: team.stats?.points || 0,
       },
     }))
-    .filter(team => team.value > 0) // Only include teams with wins
+    .filter((team) => team.value > 0) // Only include teams with wins
     .sort((a, b) => b.value - a.value)
     .map((team, index) => ({ ...team, rank: index + 1 }))
 
@@ -424,8 +444,8 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
   }
 
   // Find the statistics object for the target season
-  const seasonStats = statistics.find(stat => 
-    stat && (stat.season_id === seasonId || (stat.season && stat.season.id === seasonId))
+  const seasonStats = statistics.find(
+    (stat) => stat && (stat.season_id === seasonId || (stat.season && stat.season.id === seasonId)),
   )
 
   if (!seasonStats || !Array.isArray(seasonStats.details)) {
@@ -502,13 +522,17 @@ function extractTeamSeasonStats(statistics: any, seasonId: number): any {
 
   // Calculate matches played and points
   extractedStats.matches_played = extractedStats.wins + extractedStats.draws + extractedStats.losses
-  extractedStats.points = (extractedStats.wins * 3) + extractedStats.draws
+  extractedStats.points = extractedStats.wins * 3 + extractedStats.draws
 
   return extractedStats
 }
 
 // Optimized helper function for finding player season stats
-function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: number, leagueId?: number): any {
+function findPlayerSeasonStats(
+  statistics: Record<string, any> | any,
+  seasonId: number,
+  leagueId?: number,
+): any {
   if (!statistics) {
     return null
   }
@@ -519,14 +543,17 @@ function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: 
   for (const key in statsObj) {
     const stat = statsObj[key]
     if (stat && typeof stat === 'object') {
-      const matchesSeason = stat.season_id === seasonId || (stat.season && stat.season.id === seasonId)
-      
+      const matchesSeason =
+        stat.season_id === seasonId || (stat.season && stat.season.id === seasonId)
+
       if (matchesSeason) {
         // Check if league filtering is needed and available
-        const hasLeagueInfo = stat.league_id !== undefined || (stat.league && stat.league.id !== undefined)
-        
+        const hasLeagueInfo =
+          stat.league_id !== undefined || (stat.league && stat.league.id !== undefined)
+
         if (leagueId && hasLeagueInfo) {
-          const matchesLeague = stat.league_id === leagueId || (stat.league && stat.league.id === leagueId)
+          const matchesLeague =
+            stat.league_id === leagueId || (stat.league && stat.league.id === leagueId)
           if (matchesLeague) {
             return stat
           }
@@ -543,7 +570,7 @@ function findPlayerSeasonStats(statistics: Record<string, any> | any, seasonId: 
     const seasonStat = statsObj.seasons.find((s: any) => {
       if (!s) return false
       const matchesSeason = s.id === seasonId || s.season_id === seasonId
-      
+
       if (matchesSeason) {
         if (leagueId) {
           const hasLeagueInfo = s.league_id !== undefined || (s.league && s.league.id !== undefined)
@@ -571,7 +598,7 @@ function getPlayerJerseyNumber(player: any): number | null {
 
 function extractStatValue(seasonStats: any, field: string): number | null {
   if (!seasonStats) return null
-  
+
   // Direct field access
   if (seasonStats[field] !== undefined) {
     const value = seasonStats[field]
@@ -622,26 +649,34 @@ function transformMatchToFixture(match: any): any {
   const awayTeam = participants.find((p: any) => p.meta?.location === 'away')
 
   // Convert starting_at date to timestamp for compatibility
-  const startingAtTimestamp = match.starting_at ? Math.floor(new Date(match.starting_at).getTime() / 1000) : null
+  const startingAtTimestamp = match.starting_at
+    ? Math.floor(new Date(match.starting_at).getTime() / 1000)
+    : null
 
   return {
     id: match.id,
     starting_at: match.starting_at,
     starting_at_timestamp: startingAtTimestamp,
-    league: match.league ? {
-      id: match.league.id,
-      name: match.league.name,
-    } : null,
-    home_team: homeTeam ? {
-      id: homeTeam.id,
-      name: homeTeam.name,
-      image_path: homeTeam.image_path || null,
-    } : null,
-    away_team: awayTeam ? {
-      id: awayTeam.id, 
-      name: awayTeam.name,
-      image_path: awayTeam.image_path || null,
-    } : null,
+    league: match.league
+      ? {
+          id: match.league.id,
+          name: match.league.name,
+        }
+      : null,
+    home_team: homeTeam
+      ? {
+          id: homeTeam.id,
+          name: homeTeam.name,
+          image_path: homeTeam.image_path || null,
+        }
+      : null,
+    away_team: awayTeam
+      ? {
+          id: awayTeam.id,
+          name: awayTeam.name,
+          image_path: awayTeam.image_path || null,
+        }
+      : null,
     result_info: match.result_info || null,
     state: match.state || null,
     // Add other fields as needed
@@ -656,20 +691,26 @@ function transformMatchToNextMatch(match: any): any {
 
   return {
     starting_at: match.starting_at,
-    league: match.league ? {
-      id: match.league.id,
-      name: match.league.name,
-    } : { id: 0, name: '' },
-    home_team: homeTeam ? {
-      id: homeTeam.id,
-      name: homeTeam.name,
-      image_path: homeTeam.image_path || null,
-    } : { id: 0, name: '', image_path: null },
-    away_team: awayTeam ? {
-      id: awayTeam.id,
-      name: awayTeam.name,
-      image_path: awayTeam.image_path || null,
-    } : { id: 0, name: '', image_path: null },
+    league: match.league
+      ? {
+          id: match.league.id,
+          name: match.league.name,
+        }
+      : { id: 0, name: '' },
+    home_team: homeTeam
+      ? {
+          id: homeTeam.id,
+          name: homeTeam.name,
+          image_path: homeTeam.image_path || null,
+        }
+      : { id: 0, name: '', image_path: null },
+    away_team: awayTeam
+      ? {
+          id: awayTeam.id,
+          name: awayTeam.name,
+          image_path: awayTeam.image_path || null,
+        }
+      : { id: 0, name: '', image_path: null },
     home_position: null, // Can be enhanced later with league position
     away_position: null,
     home_goals_per_match: null,
@@ -681,12 +722,18 @@ function transformMatchToNextMatch(match: any): any {
 
 // Transform league table for current season only
 function transformLeagueTable(
-  rawLeague: { id: number; name: string; standings: Record<string, any> | null; current_season?: any },
+  rawLeague: {
+    id: number
+    name: string
+    standings: Record<string, any> | null
+    current_season?: any
+  },
   seasonId?: string,
 ): LeagueStandingsResponse {
   // Determine which season to use
-  let targetSeasonId = seasonId || (rawLeague.current_season?.id ? String(rawLeague.current_season.id) : null)
-  
+  let targetSeasonId =
+    seasonId || (rawLeague.current_season?.id ? String(rawLeague.current_season.id) : null)
+
   // If no current season, try to use the most recent season from standings
   if (!targetSeasonId && rawLeague.standings) {
     const availableSeasons = Object.keys(rawLeague.standings)
@@ -695,7 +742,7 @@ function transformLeagueTable(
       targetSeasonId = availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0]
     }
   }
-  
+
   if (!targetSeasonId) {
     throw new Error('No current season available for this league and no standings data found')
   }
@@ -703,18 +750,20 @@ function transformLeagueTable(
   // Only process the specific season's standings
   if (!rawLeague.standings || !rawLeague.standings[targetSeasonId]) {
     const availableSeasons = rawLeague.standings ? Object.keys(rawLeague.standings) : []
-    throw new Error(`No standings data available for season ${targetSeasonId}. Available seasons: ${availableSeasons.join(', ')}`)
+    throw new Error(
+      `No standings data available for season ${targetSeasonId}. Available seasons: ${availableSeasons.join(', ')}`,
+    )
   }
 
   // Create a temporary object with only the target season for transformation
   const seasonOnlyLeague = {
     ...rawLeague,
-    standings: { [targetSeasonId]: rawLeague.standings[targetSeasonId] }
+    standings: { [targetSeasonId]: rawLeague.standings[targetSeasonId] },
   }
 
   // Use the team transformer but only for the specific season
   const transformedStandings = transformTeamTable(seasonOnlyLeague as any)
-  
+
   return transformedStandings
 }
 
@@ -769,35 +818,35 @@ type Team = {
 // Helper function to extract seasons from league data
 function extractLeagueSeasons(league: any): Array<{ id: string; name: string }> {
   const seasons: Array<{ id: string; name: string }> = []
-  
+
   // Get seasons from the seasons array if available
   if (league.seasons && Array.isArray(league.seasons)) {
     league.seasons.forEach((season: any) => {
       seasons.push({
         id: String(season.id),
-        name: season.name || `Season ${season.id}`
+        name: season.name || `Season ${season.id}`,
       })
     })
   }
-  
+
   // Also get seasons from standings if not in seasons array
   if (league.standings && typeof league.standings === 'object') {
     const standingSeasons = Object.keys(league.standings)
-    standingSeasons.forEach(seasonId => {
+    standingSeasons.forEach((seasonId) => {
       // Check if this season is already in our list
-      if (!seasons.find(s => s.id === seasonId)) {
+      if (!seasons.find((s) => s.id === seasonId)) {
         const standingData = league.standings[seasonId]
         seasons.push({
           id: seasonId,
-          name: standingData.name || `Season ${seasonId}`
+          name: standingData.name || `Season ${seasonId}`,
         })
       }
     })
   }
-  
+
   // Sort seasons by ID descending (most recent first)
   seasons.sort((a, b) => parseInt(b.id) - parseInt(a.id))
-  
+
   return seasons
 }
 
@@ -814,7 +863,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const payload = await getPayload({ config })
-      
+
       // First get the league to determine available seasons
       const leagueResult = await payload.find({
         collection: 'leagues',
@@ -834,14 +883,14 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Determine target season
       let targetSeasonId: number | null
-      
+
       if (seasonId) {
         // Use the provided season ID
         targetSeasonId = parseInt(seasonId, 10)
         if (isNaN(targetSeasonId)) {
           throw new Error('Invalid season ID format')
         }
-        
+
         // Verify the season exists in standings
         const standingsCheck = await payload.find({
           collection: 'leaguesstandings',
@@ -853,18 +902,24 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           limit: 1,
         })
 
-        if (standingsCheck.docs.length > 0 && standingsCheck.docs[0].standings && typeof standingsCheck.docs[0].standings === 'object') {
+        if (
+          standingsCheck.docs.length > 0 &&
+          standingsCheck.docs[0].standings &&
+          typeof standingsCheck.docs[0].standings === 'object'
+        ) {
           const standings = standingsCheck.docs[0].standings as Record<string, any>
           if (!standings[String(targetSeasonId)]) {
             const availableSeasons = Object.keys(standings)
-            throw new Error(`Season ${seasonId} not found. Available seasons: ${availableSeasons.join(', ')}`)
+            throw new Error(
+              `Season ${seasonId} not found. Available seasons: ${availableSeasons.join(', ')}`,
+            )
           }
         }
       } else {
         // Use current season or most recent
         const currentSeason = league.currentseason as any
         targetSeasonId = currentSeason?.id ? parseInt(String(currentSeason.id), 10) : null
-        
+
         // If no current season, try to use the most recent season from standings
         if (!targetSeasonId) {
           const standingsForSeasonCheck = await payload.find({
@@ -877,11 +932,17 @@ export const leagueDataFetcher: LeagueDataFetcher = {
             limit: 1,
           })
 
-          if (standingsForSeasonCheck.docs.length > 0 && standingsForSeasonCheck.docs[0].standings && typeof standingsForSeasonCheck.docs[0].standings === 'object') {
+          if (
+            standingsForSeasonCheck.docs.length > 0 &&
+            standingsForSeasonCheck.docs[0].standings &&
+            typeof standingsForSeasonCheck.docs[0].standings === 'object'
+          ) {
             const standings = standingsForSeasonCheck.docs[0].standings as Record<string, any>
             const availableSeasons = Object.keys(standings)
             if (availableSeasons.length > 0) {
-              targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
+              targetSeasonId = parseInt(
+                availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0],
+              )
             }
           }
         }
@@ -893,7 +954,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Get season name from seasons array or standings - need to get data from new collections
       let seasonName = `Season ${targetSeasonId}`
-      
+
       // First try to get from seasons collection
       const seasonsForName = await payload.find({
         collection: 'leaguesseason',
@@ -905,8 +966,14 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         limit: 1,
       })
 
-      if (seasonsForName.docs.length > 0 && seasonsForName.docs[0].seasons && Array.isArray(seasonsForName.docs[0].seasons)) {
-        const seasonInfo: any = seasonsForName.docs[0].seasons.find((s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId))
+      if (
+        seasonsForName.docs.length > 0 &&
+        seasonsForName.docs[0].seasons &&
+        Array.isArray(seasonsForName.docs[0].seasons)
+      ) {
+        const seasonInfo: any = seasonsForName.docs[0].seasons.find(
+          (s: any) => s.id === targetSeasonId || s.id === String(targetSeasonId),
+        )
         if (seasonInfo && seasonInfo.name) {
           seasonName = seasonInfo.name
         }
@@ -929,62 +996,66 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           }
         }
       }
-      
+
       // Fetch data in parallel for performance
       const [standingsData, statsData, matchesData] = await Promise.all([
         // Get standings
-        leagueDataFetcher.getStandings(leagueId, String(targetSeasonId)).catch(err => {
+        leagueDataFetcher.getStandings(leagueId, String(targetSeasonId)).catch((err) => {
           console.error('Error fetching standings:', err)
           return null
         }),
         // Get stats
-        leagueDataFetcher.getStats(leagueId, String(targetSeasonId)).catch(err => {
+        leagueDataFetcher.getStats(leagueId, String(targetSeasonId)).catch((err) => {
           console.error('Error fetching stats:', err)
           return null
         }),
         // Get matches (both upcoming and recent)
         Promise.all([
-          leagueDataFetcher.getMatches(leagueId, 1, 10, String(targetSeasonId), 'upcoming').catch(err => {
-            console.error('Error fetching upcoming matches:', err)
-            return null
-          }),
-          leagueDataFetcher.getMatches(leagueId, 1, 10, String(targetSeasonId), 'past').catch(err => {
-            console.error('Error fetching past matches:', err)
-            return null
-          })
-        ])
+          leagueDataFetcher
+            .getMatches(leagueId, 1, 10, String(targetSeasonId), 'upcoming')
+            .catch((err) => {
+              console.error('Error fetching upcoming matches:', err)
+              return null
+            }),
+          leagueDataFetcher
+            .getMatches(leagueId, 1, 10, String(targetSeasonId), 'past')
+            .catch((err) => {
+              console.error('Error fetching past matches:', err)
+              return null
+            }),
+        ]),
       ])
 
       const [upcomingMatchesData, recentMatchesData] = matchesData
 
       // Process standings to get table summary
-      let tableSummary = {
+      const tableSummary = {
         top_teams: [] as any[],
         promotion_teams: [] as any[],
-        relegation_teams: [] as any[]
+        relegation_teams: [] as any[],
       }
 
       if (standingsData && standingsData[String(targetSeasonId)]) {
         const seasonStandings = standingsData[String(targetSeasonId)]
-        
+
         if (seasonStandings.standings && Array.isArray(seasonStandings.standings)) {
           // Combine all standings groups to get the full table
           const allTeams: any[] = []
-          
+
           seasonStandings.standings.forEach((standingGroup: any) => {
             if (standingGroup.standings && Array.isArray(standingGroup.standings)) {
               allTeams.push(...standingGroup.standings)
             }
           })
-          
+
           // Sort by position to ensure correct order
           allTeams.sort((a, b) => a.position - b.position)
-          
+
           // Remove duplicates (keep first occurrence)
-          const uniqueTeams = allTeams.filter((team, index, self) => 
-            index === self.findIndex(t => t.team_id === team.team_id)
+          const uniqueTeams = allTeams.filter(
+            (team, index, self) => index === self.findIndex((t) => t.team_id === team.team_id),
           )
-          
+
           // Get top 3 teams
           tableSummary.top_teams = uniqueTeams.slice(0, 3).map((team: any) => ({
             id: String(team.team_id),
@@ -995,14 +1066,15 @@ export const leagueDataFetcher: LeagueDataFetcher = {
             played: team.played,
             goal_difference: team.goal_difference,
             form: team.form ? team.form.split('').slice(-5) : [],
-            qualification_status: team.qualification_status
+            qualification_status: team.qualification_status,
           }))
-          
+
           // Get teams in promotion positions (usually 2-3, but check qualification status)
           tableSummary.promotion_teams = uniqueTeams
-            .filter((team: any) => 
-              team.qualification_status?.type?.includes('promotion') || 
-              team.qualification_status?.type?.includes('playoff')
+            .filter(
+              (team: any) =>
+                team.qualification_status?.type?.includes('promotion') ||
+                team.qualification_status?.type?.includes('playoff'),
             )
             .slice(0, 3)
             .map((team: any) => ({
@@ -1014,14 +1086,12 @@ export const leagueDataFetcher: LeagueDataFetcher = {
               played: team.played,
               goal_difference: team.goal_difference,
               form: team.form ? team.form.split('').slice(-5) : [],
-              qualification_status: team.qualification_status
+              qualification_status: team.qualification_status,
             }))
-          
+
           // Get relegation zone teams (usually bottom 3)
           tableSummary.relegation_teams = uniqueTeams
-            .filter((team: any) => 
-              team.qualification_status?.type?.includes('relegation')
-            )
+            .filter((team: any) => team.qualification_status?.type?.includes('relegation'))
             .slice(0, 3)
             .map((team: any) => ({
               id: String(team.team_id),
@@ -1032,96 +1102,103 @@ export const leagueDataFetcher: LeagueDataFetcher = {
               played: team.played,
               goal_difference: team.goal_difference,
               form: team.form ? team.form.split('').slice(-5) : [],
-              qualification_status: team.qualification_status
+              qualification_status: team.qualification_status,
             }))
         }
       }
 
       // Process upcoming matches
-      const upcomingMatches = upcomingMatchesData?.docs.slice(0, 5).map((match: any) => ({
-        id: match.id,
-        starting_at: match.starting_at,
-        starting_at_timestamp: match.starting_at_timestamp,
-        home_team: match.home_team,
-        away_team: match.away_team,
-        state: match.state
-      })) || []
+      const upcomingMatches =
+        upcomingMatchesData?.docs.slice(0, 5).map((match: any) => ({
+          id: match.id,
+          starting_at: match.starting_at,
+          starting_at_timestamp: match.starting_at_timestamp,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          state: match.state,
+        })) || []
 
       // Process recent results
-      const recentResults = recentMatchesData?.docs.slice(0, 5).map((match: any) => ({
-        id: match.id,
-        starting_at: match.starting_at,
-        starting_at_timestamp: match.starting_at_timestamp,
-        home_team: match.home_team,
-        away_team: match.away_team,
-        state: match.state,
-        final_score: match.result_info || { home: 0, away: 0 }
-      })) || []
+      const recentResults =
+        recentMatchesData?.docs.slice(0, 5).map((match: any) => ({
+          id: match.id,
+          starting_at: match.starting_at,
+          starting_at_timestamp: match.starting_at_timestamp,
+          home_team: match.home_team,
+          away_team: match.away_team,
+          state: match.state,
+          final_score: match.result_info || { home: 0, away: 0 },
+        })) || []
 
       // Process stats summary
-      let statsSummary = {
+      const statsSummary = {
         top_scorers: [] as any[],
         top_assists: [] as any[],
-        top_rated: [] as any[]
+        top_rated: [] as any[],
       }
 
       if (statsData && statsData.player_stats) {
         // Top scorers
-        statsSummary.top_scorers = statsData.player_stats.top_scorers.players.slice(0, 5).map(player => ({
-          player_id: player.player_id,
-          name: player.name,
-          team_name: player.team_name || 'Unknown',
-          team_logo: player.team_logo,
-          image_path: player.image_path,
-          value: player.value,
-          position: player.position_name || 'Unknown'
-        }))
+        statsSummary.top_scorers = statsData.player_stats.top_scorers.players
+          .slice(0, 5)
+          .map((player) => ({
+            player_id: player.player_id,
+            name: player.name,
+            team_name: player.team_name || 'Unknown',
+            team_logo: player.team_logo,
+            image_path: player.image_path,
+            value: player.value,
+            position: player.position_name || 'Unknown',
+          }))
 
         // Top assists
-        statsSummary.top_assists = statsData.player_stats.top_assists.players.slice(0, 5).map(player => ({
-          player_id: player.player_id,
-          name: player.name,
-          team_name: player.team_name || 'Unknown',
-          team_logo: player.team_logo,
-          image_path: player.image_path,
-          value: player.value,
-          position: player.position_name || 'Unknown'
-        }))
+        statsSummary.top_assists = statsData.player_stats.top_assists.players
+          .slice(0, 5)
+          .map((player) => ({
+            player_id: player.player_id,
+            name: player.name,
+            team_name: player.team_name || 'Unknown',
+            team_logo: player.team_logo,
+            image_path: player.image_path,
+            value: player.value,
+            position: player.position_name || 'Unknown',
+          }))
 
         // For top rated, we'll use goals + assists as a proxy
-        statsSummary.top_rated = statsData.player_stats.top_goals_assists.players.slice(0, 5).map(player => ({
-          player_id: player.player_id,
-          name: player.name,
-          team_name: player.team_name || 'Unknown',
-          team_logo: player.team_logo,
-          image_path: player.image_path,
-          value: player.value,
-          position: player.position_name || 'Unknown'
-        }))
+        statsSummary.top_rated = statsData.player_stats.top_goals_assists.players
+          .slice(0, 5)
+          .map((player) => ({
+            player_id: player.player_id,
+            name: player.name,
+            team_name: player.team_name || 'Unknown',
+            team_logo: player.team_logo,
+            image_path: player.image_path,
+            value: player.value,
+            position: player.position_name || 'Unknown',
+          }))
       }
 
       // Calculate metadata
-      let metadata = {
+      const metadata = {
         total_teams: 0,
         total_matches_played: 0,
         total_goals: 0,
-        average_goals_per_match: 0
+        average_goals_per_match: 0,
       }
 
       // Get total teams from standings first (most reliable source)
       if (standingsData && standingsData[String(targetSeasonId)]) {
         const seasonStandings = standingsData[String(targetSeasonId)]
-        
+
         // Some leagues have multiple standings groups (e.g., Scottish Premiership split)
         // We need to count unique teams across all groups
         const uniqueTeams = new Set<number>()
         let totalPlayedByAllTeams = 0
-        
+
         if (seasonStandings.standings && Array.isArray(seasonStandings.standings)) {
           // Iterate through all standings groups
           seasonStandings.standings.forEach((standingGroup: any, index: number) => {
             if (standingGroup.standings && Array.isArray(standingGroup.standings)) {
-              
               standingGroup.standings.forEach((team: any) => {
                 uniqueTeams.add(team.team_id)
                 // Only count played matches from the first occurrence of each team
@@ -1131,10 +1208,9 @@ export const leagueDataFetcher: LeagueDataFetcher = {
               })
             }
           })
-          
+
           metadata.total_teams = uniqueTeams.size
           metadata.total_matches_played = Math.floor(totalPlayedByAllTeams / 2)
-          
         }
       }
 
@@ -1145,7 +1221,6 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           metadata.total_teams = statsData.overview.teams_count || 0
         }
         metadata.total_goals = statsData.overview.total_goals || 0
-        
       }
 
       // If we still don't have team count, try to get it from the teams endpoint
@@ -1160,9 +1235,9 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Calculate average goals per match
       if (metadata.total_matches_played > 0) {
-        metadata.average_goals_per_match = Math.round((metadata.total_goals / metadata.total_matches_played) * 100) / 100
+        metadata.average_goals_per_match =
+          Math.round((metadata.total_goals / metadata.total_matches_played) * 100) / 100
       }
-
 
       // Get all available seasons for the dropdown - need to get data from new collections
       const seasonsResultOverview = await payload.find({
@@ -1188,8 +1263,12 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Create a mock league object with seasons and standings data
       const mockLeagueOverview = {
         ...league,
-        seasons: seasonsResultOverview.docs.length > 0 ? seasonsResultOverview.docs[0].seasons : null,
-        standings: standingsResultOverview.docs.length > 0 ? standingsResultOverview.docs[0].standings : null,
+        seasons:
+          seasonsResultOverview.docs.length > 0 ? seasonsResultOverview.docs[0].seasons : null,
+        standings:
+          standingsResultOverview.docs.length > 0
+            ? standingsResultOverview.docs[0].standings
+            : null,
       }
 
       const seasons = extractLeagueSeasons(mockLeagueOverview)
@@ -1200,11 +1279,13 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         id: leagueId,
         name: league.name as string,
         logo: league.logo_path as string | undefined,
-        country: leagueData.country ? {
-          id: String(leagueData.country.id),
-          name: leagueData.country.name as string,
-          flag: leagueData.country.flag as string | undefined
-        } : undefined,
+        country: leagueData.country
+          ? {
+              id: String(leagueData.country.id),
+              name: leagueData.country.name as string,
+              flag: leagueData.country.flag as string | undefined,
+            }
+          : undefined,
         season_id: targetSeasonId,
         season_name: seasonName,
         seasons,
@@ -1212,7 +1293,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         upcoming_matches: upcomingMatches,
         recent_results: recentResults,
         stats_summary: statsSummary,
-        metadata
+        metadata,
       }
 
       return response
@@ -1234,7 +1315,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const payload = await getPayload({ config })
-      
+
       // Get league basic info
       const leagueResult = await payload.find({
         collection: 'leagues',
@@ -1265,9 +1346,10 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       let standings: Record<string, any> | null = null
       if (standingsResult.docs.length > 0) {
-        standings = typeof standingsResult.docs[0].standings === 'object' 
-          ? (standingsResult.docs[0].standings as Record<string, any>) 
-          : null
+        standings =
+          typeof standingsResult.docs[0].standings === 'object'
+            ? (standingsResult.docs[0].standings as Record<string, any>)
+            : null
       }
 
       // Create a properly structured raw league object
@@ -1323,7 +1405,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       const mongoTeams = await payload.db.collections.teams
         .find({
           // Only include teams with active seasons for this league to avoid defunct teams
-          activeseasons: { $elemMatch: { league_id: leagueIdNum } }
+          activeseasons: { $elemMatch: { league_id: leagueIdNum } },
         })
         .skip((page - 1) * limit)
         .limit(limit)
@@ -1331,11 +1413,10 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         .exec()
 
       // Count total for pagination (separate query)
-      const totalTeams = await payload.db.collections.teams
-        .countDocuments({
-          // Only count teams with active seasons for this league
-          activeseasons: { $elemMatch: { league_id: leagueIdNum } }
-        })
+      const totalTeams = await payload.db.collections.teams.countDocuments({
+        // Only count teams with active seasons for this league
+        activeseasons: { $elemMatch: { league_id: leagueIdNum } },
+      })
 
       // Transform the MongoDB results to match the expected format
       // The MongoDB _id field needs to be mapped to 'id'
@@ -1401,7 +1482,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const payload = await getPayload({ config })
-      
+
       // Validate pagination parameters
       const validatedPage = Math.max(1, page)
       const validatedLimit = Math.max(1, Math.min(100, limit)) // Cap at 100
@@ -1436,7 +1517,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       // Fetch matches with pagination
       // Always sort by most recent first (descending), except for upcoming which should be soonest first
       const sortOrder = type === 'upcoming' ? 'starting_at' : '-starting_at'
-      
+
       const matchesResult = await payload.find({
         collection: 'matches',
         where,
@@ -1523,12 +1604,18 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Build temporal navigation URLs
       const baseUrl = `/api/v1/league/${leagueId}/matches`
-      const navigationUrls = buildTemporalNavigationUrls(baseUrl, finalPagination.page, finalPagination.totalPages, {
-        limit: finalPagination.limit,
-        type: actualType,
-        season_id: seasonId || undefined,
-        includeNextMatch: includeNextMatch ? 'true' : undefined,
-      }, actualType)
+      const navigationUrls = buildTemporalNavigationUrls(
+        baseUrl,
+        finalPagination.page,
+        finalPagination.totalPages,
+        {
+          limit: finalPagination.limit,
+          type: actualType,
+          season_id: seasonId || undefined,
+          includeNextMatch: includeNextMatch ? 'true' : undefined,
+        },
+        actualType,
+      )
 
       return {
         docs: finalDocs,
@@ -1592,7 +1679,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const league = leagueResult.docs[0]
-      
+
       // Determine target season (provided or current season)
       let targetSeasonId = seasonId ? parseInt(seasonId, 10) : null
       const currentSeason2 = league.currentseason as any
@@ -1613,8 +1700,14 @@ export const leagueDataFetcher: LeagueDataFetcher = {
           limit: 1,
         })
 
-        if (standingsResult.docs.length > 0 && standingsResult.docs[0].standings && typeof standingsResult.docs[0].standings === 'object') {
-          const availableSeasons = Object.keys(standingsResult.docs[0].standings as Record<string, any>)
+        if (
+          standingsResult.docs.length > 0 &&
+          standingsResult.docs[0].standings &&
+          typeof standingsResult.docs[0].standings === 'object'
+        ) {
+          const availableSeasons = Object.keys(
+            standingsResult.docs[0].standings as Record<string, any>,
+          )
           if (availableSeasons.length > 0) {
             // Sort seasons descending and take the most recent
             targetSeasonId = parseInt(availableSeasons.sort((a, b) => parseInt(b) - parseInt(a))[0])
@@ -1636,8 +1729,8 @@ export const leagueDataFetcher: LeagueDataFetcher = {
             // Also include teams that have current season statistics but may not be in activeseasons yet
             { statistics: { $elemMatch: { season_id: targetSeasonId } } },
             // Fallback to historical seasons only if needed (but this can include defunct teams)
-            { seasons: { $elemMatch: { league_id: numericId } } }
-          ]
+            { seasons: { $elemMatch: { league_id: numericId } } },
+          ],
         })
         .limit(100) // Should be enough for most leagues
         .lean()
@@ -1657,7 +1750,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Collect all player IDs from all teams
       const allPlayerIds = new Set<number>()
-      
+
       teamsResult.docs.forEach((team: any) => {
         if (Array.isArray(team.players)) {
           team.players.forEach((p: any) => {
@@ -1699,7 +1792,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
 
       // Create teams map for player stat categories
       const teamsMap = new Map<string, { name: string; logo?: string }>()
-      teamsResult.docs.forEach(team => {
+      teamsResult.docs.forEach((team) => {
         teamsMap.set(String(team.id || team._id), {
           name: team.name || `Team ${team.id}`,
           logo: team.logo,
@@ -1707,15 +1800,17 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       })
 
       // Add team_id to player stats by finding which team each player belongs to
-      const enhancedPlayerStats = playerStats.map(player => {
+      const enhancedPlayerStats = playerStats.map((player) => {
         // Find the team this player belongs to
-        const playerTeam = teamsResult.docs.find(team => {
+        const playerTeam = teamsResult.docs.find((team) => {
           if (Array.isArray(team.players)) {
             return team.players.some((p: any) => {
               return (
                 (typeof p.player_id === 'number' && p.player_id === parseInt(player.player_id)) ||
                 (typeof p.id === 'number' && p.id === parseInt(player.player_id)) ||
-                (p.player && typeof p.player.id === 'number' && p.player.id === parseInt(player.player_id))
+                (p.player &&
+                  typeof p.player.id === 'number' &&
+                  p.player.id === parseInt(player.player_id))
               )
             })
           }
@@ -1769,7 +1864,10 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       const mockLeagueForSeasons = {
         ...league,
         seasons: seasonsResult.docs.length > 0 ? seasonsResult.docs[0].seasons : null,
-        standings: standingsResultForSeasons.docs.length > 0 ? standingsResultForSeasons.docs[0].standings : null,
+        standings:
+          standingsResultForSeasons.docs.length > 0
+            ? standingsResultForSeasons.docs[0].standings
+            : null,
       }
 
       const seasons = extractLeagueSeasons(mockLeagueForSeasons)
@@ -1798,7 +1896,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         top_stats: topStats,
         legacy_player_stats: enhancedPlayerStats.slice(0, 50), // Limit to top 50 for performance
       }
-      
+
       return response
     } catch (error) {
       console.error('Error in getStats:', {
@@ -1819,7 +1917,7 @@ export const leagueDataFetcher: LeagueDataFetcher = {
       }
 
       const payload = await getPayload({ config })
-      
+
       // Get league basic info
       const leagueResult = await payload.find({
         collection: 'leagues',
@@ -1865,16 +1963,16 @@ export const leagueDataFetcher: LeagueDataFetcher = {
         seasons: seasonsResult.docs.length > 0 ? seasonsResult.docs[0].seasons : null,
         standings: standingsResult.docs.length > 0 ? standingsResult.docs[0].standings : null,
       }
-      
+
       // Get simplified seasons for the dropdown
       const simplifiedSeasons = extractLeagueSeasons(mockLeague)
-      
+
       // Convert to full season format with additional details
-      const seasons: any[] = simplifiedSeasons.map(simpleSeason => {
+      const seasons: any[] = simplifiedSeasons.map((simpleSeason) => {
         // Find full season data if available
         const mockSeasons = Array.isArray(mockLeague.seasons) ? mockLeague.seasons : []
         const fullSeasonData: any = mockSeasons.find((s: any) => String(s.id) === simpleSeason.id)
-        
+
         return {
           id: simpleSeason.id,
           name: simpleSeason.name,
@@ -1888,14 +1986,14 @@ export const leagueDataFetcher: LeagueDataFetcher = {
             top_scorers: true,
             predictions: false,
             odds: false,
-          }
+          },
         }
       })
-      
+
       return {
         id: leagueId,
         name: league.name as string,
-        seasons
+        seasons,
       }
     } catch (error) {
       console.error('Error in getSeasons:', {
