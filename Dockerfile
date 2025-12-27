@@ -27,9 +27,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy source files
 COPY . .
 
-# Build the application using npm (avoids pnpm workspace issues)
+# Build the application
 ENV NEXT_TELEMETRY_DISABLED 1
-RUN npm run build
+RUN pnpm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
