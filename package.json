@@ -26,7 +26,7 @@
     "cross-env": "^7.0.3",
     "dotenv": "^16.6.1",
     "graphql": "^16.12.0",
-    "next": "15",
+    "next": "^15.5.9",
     "p-limit": "^6.2.0",
     "payload": "latest",
     "payload-openapi": "^1.4.0",
